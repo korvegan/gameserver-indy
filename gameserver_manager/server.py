@@ -63,7 +63,8 @@ class Handler(BaseHTTPRequestHandler):
                                        "game_profile": manager.game.schema,
                                        **self.server.registry.catalog()})
             if path == "/api/logs":
-                return self.send(200, manager.logs())
+                source = parse_qs(urlsplit(self.path).query).get("source", [None])[0]
+                return self.send(200, manager.logs(source))
             files = {
                 "/": ("index.html", "text/html; charset=utf-8"),
                 "/app.js": ("app.js", "text/javascript; charset=utf-8"),

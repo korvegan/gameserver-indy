@@ -49,7 +49,7 @@ class ServerRegistry:
             raise ManagerError("Die Profil-ID benötigt 1–48 kleine Buchstaben, Zahlen, Unterstriche oder Bindestriche.")
         if not isinstance(profile.get("label"), str) or not 1 <= len(profile["label"].strip()) <= 80:
             raise ManagerError("Bitte einen Profilnamen mit höchstens 80 Zeichen angeben.")
-        for key in ("server_directory", "config_path", "launcher_script"):
+        for key in ("server_directory", "config_path", "launcher_script", "log_directory"):
             value = profile.get(key, "")
             if key == "server_directory" or value:
                 if (not isinstance(value, str) or not value.strip() or any(c in value for c in '\r\n\0"')
@@ -79,7 +79,7 @@ class ServerRegistry:
             }
 
     def register(self, body):
-        profile = {key: body[key] for key in ("id", "game", "label", "server_directory", "config_path", "launcher_script") if key in body}
+        profile = {key: body[key] for key in ("id", "game", "label", "server_directory", "config_path", "launcher_script", "log_directory") if key in body}
         self.validate_profile(profile)
         with self.lock:
             if profile["id"] in self.managers:

@@ -12,9 +12,10 @@ from gameserver_manager.server import LocalServer
 
 
 class FakeBridge:
-    def __init__(self):
+    def __init__(self, user_profile=None):
         self.running = False
         self.calls = []
+        self.user_profile = user_profile
 
     def call(self, action):
         self.calls.append(action)
@@ -22,7 +23,7 @@ class FakeBridge:
             self.running = True
         elif action == "Stop":
             self.running = False
-        return {"processes": [{"pid": 42}] if self.running else []}
+        return {"processes": [{"pid": 42}] if self.running else [], "user_profile": self.user_profile}
 
 
 class ManagerFixture(unittest.TestCase):

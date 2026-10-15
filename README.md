@@ -43,7 +43,21 @@ Auf Indy wird die **aktive externe Konfiguration** unter `C:\Users\korvegan\Docu
 
 Ohne externen Starter setzt die Windows-Anbindung SteamAppId/SteamGameId 1898300 und übergibt den Konfigurationspfad direkt. Ein Gameserver-Token für Spiel-App-ID 1898300 ist nötig. Die Download-App-ID des Servers ist 3246670.
 
-Grundlage: mitgelieferte **ASKA Dedicated Server Setup - EN.pdf** und installierte Konfigurationsvorlage. Die Anleitung beschreibt Ctrl+C als regulären Stopp. Der Stopp mit dem vorhandenen Starter an der echten Welt bleibt im Betrieb zu bestätigen; automatisierte Prüfungen nutzen Testprozesse. Rohe ASKA-Logs können Zugangsdaten enthalten; die Oberfläche verweist deshalb auf das Starterfenster.
+Grundlage: mitgelieferte **ASKA Dedicated Server Setup - EN.pdf** und installierte Konfigurationsvorlage. Die Anleitung beschreibt Ctrl+C als regulären Stopp. Der Stopp mit dem vorhandenen Starter an der echten Welt bleibt im Betrieb zu bestätigen; automatisierte Prüfungen nutzen Testprozesse.
+
+## Serverlogs
+
+Unter **Serverlog** zwischen **Spielserver** und **Starter / Startfehler** wechseln. Die Ansicht zeigt die letzten 200 Zeilen und den Dateistand; sie aktualisiert sich alle acht Sekunden. Bei einem fehlgeschlagenen Start öffnet sich das Starterprotokoll automatisch. Ein noch arbeitender externer Starter wird als solcher angezeigt und gegen doppelte Starts gesperrt.
+
+Passwörter, Tokens und Discord-Webhooks werden vor der Anzeige ausgeblendet. Enshrouded verwendet seinen konfigurierten Logordner, ASKA zunächst `Player.log` bzw. `Player-prev.log` im Windows-Benutzerprofil. Deren Datum beachten: Ein alter Lauf erklärt keinen neuen Startfehler. Für abweichende Installationen kann das lokale Serverprofil einen absoluten `log_directory` enthalten.
+
+Der bestehende ASKA-Starter verwirft normalerweise seine umgeleitete Serverausgabe. Einmalig den folgenden Integrationsschritt in Windows PowerShell ausführen, um diese Ausgabe bei Dashboard-Starts bereinigt zu protokollieren. Das Skript legt vorher eine Sicherung neben dem Starter an und lässt sich wiederholt ausführen:
+
+```powershell
+.\scripts\enable-aska-logs.ps1 -LauncherScript 'C:\Users\korvegan\Documents\workspace\Aska\start-aska-discord.ps1'
+```
+
+Auf Indy ist dieser Schritt eingerichtet. Die neuen Protokolle liegen im jeweiligen Datenordner unter `logs/`, für ASKA unter `data/servers/aska/logs/`. Der externe Starter erhält ein eigenes Protokoll; sein Server-Ausgabestrom hat Vorrang vor `Player.log`. Beide Dateien rotieren bei etwa 2 MiB mit jeweils einer Vorgängerdatei. Die ursprünglichen Unity-Dateien werden nicht verändert.
 
 ## Betrieb und Backups
 
@@ -59,7 +73,7 @@ Stoppen sendet Ctrl+C an die Konsole der ausgewählten Installation und wartet b
 
 Unter **Discord** den Dashboard-Webhook hinterlegen und optional Prozessmeldungen einschalten. Ein leeres URL-Feld behält den Webhook; die Checkbox entfernt ihn. Die URL wird nicht zurückgegeben. `DISCORD_WEBHOOK_URL` hat Vorrang. Discord-Fehler stoppen keinen erfolgreich gestarteten Server; Erwähnungen erzeugen keine Pings.
 
-Der ASKA-Starter behält seine eigene Windows-DPAPI-Anbindung. Sie wird nicht importiert. Manuelle Nachrichten und Stoppmeldungen verwenden den Dashboard-Webhook.
+Der ASKA-Starter behält seine eigene Windows-DPAPI-Anbindung. Sie wird nicht importiert. Der Dashboard-Starter lädt das Verschlüsselungsmodul ausdrücklich aus seiner eigenen PowerShell-Installation: Ein geerbter PowerShell-7-Modulpfad kann sonst unter Windows PowerShell 5.1 die Entschlüsselung verhindern. Manuelle Nachrichten und Stoppmeldungen verwenden den Dashboard-Webhook.
 
 ## Desktop-Starter
 

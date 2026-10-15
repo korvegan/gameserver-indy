@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 from .configuration import ManagerError, atomic_json, local_path, read_json
 from .games import GAME_TYPES
+from .logs import append_diagnostic, read_tail, secret_values
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIRECTORY = GAME_TYPES["enshrouded"].default_directory
@@ -25,11 +26,12 @@ initial_config = GAME_TYPES["enshrouded"].initial_config
 
 
 class WindowsServerBridge:
-    def __init__(self, directory: str, game="enshrouded", config_path=None, launcher_script=None):
+    def __init__(self, directory: str, game="enshrouded", config_path=None, launcher_script=None, diagnostic_directory=None):
         self.directory = directory
         self.game = game
         self.config_path = config_path
         self.launcher_script = launcher_script
+        self.diagnostic_directory = diagnostic_directory
 
     def call(self, action: str):
         powershell = shutil.which("powershell.exe") or (
@@ -51,7 +53,8 @@ class WindowsServerBridge:
         config_argument = GAME_TYPES[self.game].schema.get("config_argument")
         if config_argument:
             arguments.extend(["-ConfigArgument", config_argument])
-        for flag, value in (("-ConfigPath", self.config_path), ("-LauncherScript", self.launcher_script)):
+        for flag, value in (("-ConfigPath", self.config_path), ("-LauncherScript", self.launcher_script),
+                            ("-DiagnosticDirectory", self.diagnostic_directory)):
             if value:
                 arguments.extend([flag, windows_path(value)])
         try:
@@ -114,9 +117,11 @@ class GameServerManager:
         }
         self.game = GAME_TYPES[self.profile["game"]]
         self.data = root / "data" if self.profile["id"] == "enshrouded" else root / "data" / "servers" / self.profile["id"]
+        self.diagnostic_directory = self.data / "logs"
+        self._windows_user_profile = None
         self.directory = local_path(self.profile["server_directory"])
         self.bridge = bridge or WindowsServerBridge(self.profile["server_directory"], self.game.id,
-                                                    str(self.config_path), self.profile.get("launcher_script"))
+                                                    str(self.config_path), self.profile.get("launcher_script"), str(self.diagnostic_directory))
 
     @property
     def config_path(self):
@@ -149,7 +154,9 @@ class GameServerManager:
         return list(reversed(entries))
 
     def status(self):
-        processes = self.bridge.call("Status").get("processes", [])
+        state = self.bridge.call("Status")
+        processes = state.get("processes", [])
+        self._windows_user_profile = state.get("user_profile") or self._windows_user_profile
         return {
             "installed": (self.directory / self.game.executable).is_file(),
             "configured": self.config_path.is_file(), "running": bool(processes),
@@ -157,6 +164,7 @@ class GameServerManager:
             "server_id": self.profile["id"], "game": self.game.id, "game_label": self.game.label,
             "profile_label": self.profile["label"], "config_path": str(self.config_path),
             "external_launcher": bool(self.profile.get("launcher_script")),
+            "starting": bool(state.get("launcher_running") and not processes),
             "discord_configured": bool(self.webhook()),
             "auto_notify": self.settings.get("discord", {}).get("auto_notify", False),
         }
@@ -165,7 +173,8 @@ class GameServerManager:
         return os.environ.get("DISCORD_WEBHOOK_URL", "") or self.settings.get("discord", {}).get("webhook_url", "")
 
     def require_stopped(self):
-        if self.bridge.call("Status").get("processes"):
+        state = self.bridge.call("Status")
+        if state.get("processes") or state.get("launcher_running"):
             raise ManagerError("Bitte zuerst den Server stoppen. Die laufende Konfiguration wird nicht überschrieben.")
 
     def setup(self):
@@ -207,7 +216,12 @@ class GameServerManager:
         if action not in ("start", "stop", "restart"):
             raise ManagerError("Unbekannte Serveraktion.")
         with self.lock:
-            before = self.bridge.call("Status").get("processes", [])
+            state = self.bridge.call("Status")
+            before = state.get("processes", [])
+            if state.get("launcher_running") and not before:
+                if action == "start":
+                    return {"message": "Der Serverstarter läuft bereits. Den Fortschritt siehst du im Starterprotokoll."}
+                raise ManagerError("Der Serverstarter arbeitet noch. Bitte zuerst das Starterprotokoll prüfen.")
             if action == "start" and before:
                 return {"message": "Der Serverprozess läuft bereits."}
             if action == "stop" and not before:
@@ -216,12 +230,20 @@ class GameServerManager:
                 self.bridge.call("Stop")
                 self.event("Server gestoppt.")
             if action in ("start", "restart"):
-                if not self.config_path.exists():
-                    raise ManagerError("Bitte zuerst das erste Setup ausführen.")
-                config = self.config()
-                self.game.validate_config(config)
-                self.game.validate_start(config)
-                self.bridge.call("Start")
+                append_diagnostic(self.diagnostic_directory, "Serverstart angefordert.")
+                config = {}
+                try:
+                    if not self.config_path.exists():
+                        raise ManagerError("Bitte zuerst das erste Setup ausführen.")
+                    config = self.config()
+                    self.game.validate_config(config)
+                    self.game.validate_start(config)
+                    started = self.bridge.call("Start")
+                except ManagerError as exc:
+                    append_diagnostic(self.diagnostic_directory, str(exc), secret_values(config, self.webhook()))
+                    raise
+                if started.get("launcher_running") and not started.get("processes"):
+                    return {"message": "Der Serverstarter arbeitet. Den Fortschritt siehst du im Starterprotokoll."}
                 self.event("Serverprozess gestartet.")
             message = "Server gestoppt." if action == "stop" else "Serverprozess gestartet. Den Verbindungsaufbau siehst du im Serverlog."
             warning = None
@@ -264,18 +286,44 @@ class GameServerManager:
         self.event("Discord-Nachricht gesendet.")
         return {"message": "Nachricht an Discord gesendet."}
 
-    def logs(self):
-        if self.game.schema.get("logs") == "external":
-            return {"file": None, "text": f"{self.game.label}: Status und Sitzung im Starterfenster prüfen. Rohe Unity-Logs können Zugangsdaten enthalten und werden hier nicht angezeigt."}
-        config = self.config() or {}
-        directory = local_path(config.get("logDirectory", "./logs"))
-        if not directory.is_absolute():
-            directory = self.directory / directory
-        files = [p for p in directory.glob("*") if p.is_file() and p.suffix.lower() in (".log", ".txt")]
-        if not files:
-            return {"file": None, "text": "Noch keine Serverlogs vorhanden."}
-        latest = max(files, key=lambda p: p.stat().st_mtime)
-        with latest.open("rb") as handle:
-            handle.seek(max(0, latest.stat().st_size - 65536))
-            content = handle.read().decode("utf-8", errors="replace")
-        return {"file": latest.name, "text": "\n".join(content.splitlines()[-200:])}
+    def logs(self, source=None):
+        if source not in (None, "server", "launcher"):
+            raise ManagerError("Unbekannte Protokollquelle.")
+        config_error = False
+        try:
+            config = self.config() or {}
+        except (ManagerError, OSError):
+            config, config_error = {}, True
+        values = secret_values(config, self.webhook())
+        owned = self.diagnostic_directory / "server.log"
+        files = [owned] if source != "launcher" and owned.is_file() else []
+        directory = None
+        if not files and source != "launcher":
+            if self.profile.get("log_directory"):
+                directory = local_path(self.profile["log_directory"])
+            elif self.game.schema.get("windows_log_directory"):
+                if not self._windows_user_profile:
+                    self._windows_user_profile = self.bridge.call("Status").get("user_profile")
+                if self._windows_user_profile:
+                    directory = local_path(self._windows_user_profile) / self.game.schema["windows_log_directory"]
+            else:
+                directory = local_path(config.get("logDirectory", "./logs"))
+                if not directory.is_absolute():
+                    directory = self.directory / directory
+            if directory:
+                allowed = self.game.schema.get("log_files")
+                files = [p for p in directory.glob("*") if p.is_file() and p.suffix.lower() in (".log", ".txt")
+                         and (not allowed or p.name in allowed)]
+        server = max(files, key=lambda p: p.stat().st_mtime) if files else None
+        launcher = self.diagnostic_directory / "launcher.log"
+        paths = {"server": server, "launcher": launcher if launcher.is_file() else None}
+        selected = source or ("server" if server else "launcher" if paths["launcher"] else "server")
+        path = paths[selected]
+        result = {"source": selected, "sources": [{"id": "server", "label": "Spielserver"}, {"id": "launcher", "label": "Starter / Startfehler"}],
+                  "file": path.name if path else None, "updated_at": None}
+        if path:
+            result["updated_at"] = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
+            result["text"] = "Die Konfiguration ist nicht lesbar; das Serverprotokoll kann deshalb gerade nicht bereinigt werden." if config_error and selected == "server" else read_tail(path, values)
+        else:
+            result["text"] = "Noch keine Serverlogs vorhanden." if selected == "server" else "Noch kein Starterprotokoll vorhanden. Der nächste Start über das Dashboard wird hier protokolliert."
+        return result

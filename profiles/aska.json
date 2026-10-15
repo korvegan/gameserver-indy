@@ -8,7 +8,8 @@
   "launch_steam_app_id": 1898300,
   "steam_server_app_id": 3246670,
   "config_argument": "-propertiesPath",
-  "logs": "external",
+  "windows_log_directory": "AppData/LocalLow/Sand Sailor Studio/Aska",
+  "log_files": ["Player.log", "Player-prev.log"],
   "external_launcher": true,
   "fields": [
     {"key": "server name", "label": "Servername", "type": "text", "required": true, "wide": true},
