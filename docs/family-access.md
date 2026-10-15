@@ -37,6 +37,8 @@ Der Familienlistener erwartet dieselbe feste HTTPS-Origin wie sein Host, auch we
 
 Auf Indy ist WSL-Netzwerkmodus `mirrored` aktiv. Am 15.10.2026 belegte der vorhandene Container `platform-gateway-caddy-1` bereits `0.0.0.0:443`; Tailscale protokollierte beim lokalen Listener einen Bind-Konflikt. Ein HTTPS-Selbsttest traf daher nicht verlässlich den vorgesehenen Serve-Listener, obwohl dessen Konfiguration und Zertifikatsbereitstellung aktiv waren. Diesen Fall anhand Linux- und Windows-Listenern sowie Tailscale-Dienstprotokoll unterscheiden. Der Zugang von einem zweiten Tailscale-Gerät muss separat geprüft werden; der konfigurierte Serve-Status allein bestätigt keine Erreichbarkeit. Bestehende Gateway-Dienste nicht stillschweigend stoppen, Ports nicht pauschal freigeben und Zertifikatsprüfung nicht abschalten.
 
+Anschließend bestätigte der Nutzer den Dashboardzugriff vom Handy nach Verbindung der Tailscale-App. Hoststatus und persönliche Besitzer-Sitzung mit HTTP 200 bestätigen den aktiven Android-Peer und den privaten Identitätsweg. Der lokale Bind-Konflikt hat diesen Handyzugriff nicht verhindert. Die gesonderte Abnahme von Mobilfunk, anderen Familienidentitäten, übrigen Netzwerkports und Neustart ohne Anmeldung bleibt in #17 dokumentiert.
+
 ## Start ohne Windows-Anmeldung
 
 Tailscale allein startet den WSL-Manager nicht. `scripts/install-family-startup.ps1 -PlanOnly` zeigt die konkret geplante Aufgabe. Der normale Aufruf fragt im Windows-Anmeldedialog nach dem **Windows-Kontokennwort des bestehenden Besitzerkontos**, nicht nach dem Windows-Hello-PIN. Der Wert gehört nicht in Chat, Projektdateien oder Kommandozeilen. Die Windows-Aufgabenplanung speichert ihre eigene Anmeldeinformation; der Manager speichert kein Kennwort.
