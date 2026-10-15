@@ -9,6 +9,7 @@ import {loadLogs} from './views/logs.js';
 import {loadGames} from './views/catalog.js';
 import {loadCommunity} from './views/community.js';
 import {renderUpdate} from './views/updates.js';
+import {bindConnections, renderConnection} from './views/connection.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map();
@@ -69,6 +70,7 @@ async function refresh() {
   } catch (error) {
     if (!current() || error.name === 'AbortError') return;
     state.available = false;
+    renderConnection();
     $('#server-state').textContent = 'Status nicht erreichbar'; $('#server-state').className = 'pill error';
     $('#status-updated').textContent = 'Stand veraltet · Aktualisierung fehlgeschlagen';
     $('#process-note').textContent = 'Windows-/WSL-Verbindung prüfen.';
@@ -89,6 +91,7 @@ async function selectServer(target, openOverview = false) {
   $('#log-source').value = 'server'; $('#log-updated').textContent = ''; $('#log-content').textContent = 'Logs werden geladen …';
   renderEvents([]); renderJobs(); controls();
   renderUpdate();
+  renderConnection();
   if (openOverview) await go('overview');
   await refresh(); return true;
 }
@@ -156,7 +159,7 @@ async function mutate(path, body = {}) {
   finally { state.submitting = false; controls(); }
 }
 
-bindNavigation(go); bindForms(mutate);
+bindNavigation(go); bindForms(mutate); bindConnections();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;

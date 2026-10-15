@@ -7,6 +7,11 @@
   "steam_game_app_id": 1203620,
   "steam_server_app_id": 2278520,
   "role_groups": true,
+  "connection": {
+    "mode": "ip_query", "port_key": "queryPort", "bind_key": "ip",
+    "instructions": "Enshrouded → Online-Spiele → Dedizierter Server → T (Suche nach IPv4 / Domain). Adresse samt Port eingeben. Alternativ nach dem Servernamen suchen.",
+    "password_hint": "Mitspieler verwenden das Passwort ihrer Benutzergruppe, z. B. Friend. Du findest es unter Einstellungen → Benutzergruppen. Passwörter separat teilen."
+  },
   "fields": [
     {"key": "name", "label": "Servername", "type": "text", "required": true, "wide": true},
     {"key": "slotCount", "label": "Spielerplätze", "type": "number", "min": 1, "max": 16, "required": true},

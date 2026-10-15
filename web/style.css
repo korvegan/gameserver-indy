@@ -71,6 +71,11 @@ a {
   margin:24px 14px 14px;
 }
 .server-picker { margin-top:28px; }
+.join-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:16px; }
+.join-card { min-width:0; padding:16px; border:1px solid var(--border); border-radius:6px; background:#101813; }
+.join-card h4 { font-size:12px; color:var(--accent); margin:0 0 10px; }
+.join-address { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px; }
+.join-address .path { flex:1; min-width:0; font-size:13px; user-select:all; }
 .update-builds { display:flex; gap:24px; flex-wrap:wrap; }
 .update-builds>div { min-width:0; max-width:100%; }
 .update-builds small,.update-builds strong { display:block; }

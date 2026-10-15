@@ -59,4 +59,8 @@ Bei weiter bedienbaren Discord-Feldern darf eine verspätete Speicherbestätigun
 
 ## Lernen bei weiterer Arbeit
 
+Beitrittsadressen werden über `connections.py`/`scripts/windows-network.ps1` am nativen Windows-Host ermittelt; die WSL-Adresse gehört nicht zum Spielserver. Die bestätigte Enshrouded-IP-Suche verwendet IP plus konfigurierten Query-Port. Eine öffentliche IP belegt keine Routerfreigabe oder Erreichbarkeit; Details und Grenzen stehen in `docs/connection-info.md`. ASKA bleibt bei der Serversuche nach Namen, bis ein direkter Beitrittsweg belegt ist. Statuspolls lesen nur zwischengespeicherte Adressen, keine externe Netzabfrage auslösen.
+
+Eine verzögerte manuelle Adressantwort darf auch innerhalb desselben Profils keine neueren Statusdaten überschreiben. Im Review wurde eine alte Beitrittsadresse nach einer Portänderung reproduziert; neben der Auswahlgeneration schützt nun eine Renderrevision mit Browser-Regression.
+
 Beim Abschluss relevanter Arbeiten neue **beobachtete** Fehlerursachen, wirksame Abhilfe und verbleibende Prüflücken kurz ergänzen oder bestehende Aussagen korrigieren. Passende Regressionstests im Projekt vorziehen; keine Sammlung bloßer Vermutungen anlegen. Veraltete Hinweise entfernen, sobald aktuelle Belege sie widerlegen. Das Repository ist die Quelle; `SKILL.md` und verwendete Referenzen nach Änderungen nach `~/.codex/skills/gameserver-indy/` synchronisieren. Das geschieht während beauftragter Arbeiten, nicht durch einen Hintergrunddienst, und erweitert deren Berechtigungen nicht.

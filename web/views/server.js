@@ -1,6 +1,7 @@
 import {$, element} from '../dom.js';
 import {can, state} from '../state.js';
 import {renderUpdate} from './updates.js';
+import {renderConnection} from './connection.js';
 
 export function controls() {
   const status = state.snapshot?.status;
@@ -58,6 +59,7 @@ export function renderStatus(data) {
   state.snapshot = data;
   const {status, summary} = data;
   renderUpdate(data.update);
+  renderConnection(data.connection);
   $('#server-name').textContent = summary.title;
   $('#game-label').textContent = `${status.game_label.toUpperCase()} · DEDICATED SERVER`;
   $('#profile-caption').textContent = status.profile_label + (status.external_launcher ? ' · Start und Discord über deinen vorhandenen Starter.' : '');

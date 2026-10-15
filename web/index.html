@@ -38,6 +38,14 @@
       </div>
       <div id="setup-panel" class="setup-panel" hidden><div><h3>Bereit für den ersten Start?</h3><p>Erzeuge eine fehlende Konfiguration passend zum Spiel. Vorhandene Dateien werden geprüft.</p></div><button class="button primary" id="setup">Server vorbereiten</button></div>
       <p class="inline-info" id="access-note" hidden>Deine freigegebenen Server sind hier sichtbar. Als Familienbediener kannst du sie starten. Stoppen, Neustart und Einstellungen bleiben derzeit Besitzeraktionen.</p>
+      <section class="panel activity" aria-labelledby="join-heading">
+        <div class="panel-heading"><h3 id="join-heading">Mitspielen · Was gebe ich ein?</h3></div>
+        <p id="join-instructions">Beitrittsinformationen werden geladen …</p>
+        <div class="join-grid" id="join-addresses"></div>
+        <p id="join-password" class="muted"></p>
+        <p id="join-network-note" class="field-help"></p>
+        <div class="form-footer"><span class="muted" id="join-checked"></span><button class="button secondary" id="refresh-connections" data-permission="connections.refresh" disabled>Adressen aktualisieren</button></div>
+      </section>
       <section class="panel activity"><div class="panel-heading"><h3>Aufträge</h3><span class="muted">Für dieses Serverprofil</span></div><div id="job-list"><p class="empty">Noch keine Aufträge für dieses Profil.</p></div></section>
       <section class="panel activity" aria-labelledby="updates-heading">
         <div class="panel-heading"><h3 id="updates-heading">Steam-Updates</h3><span class="pill" id="update-state">Unbekannt</span></div>

@@ -3,6 +3,7 @@ import copy
 
 from .catalog import GameCatalog
 from .community import CommunityService
+from .connections import ConnectionService
 from .configuration import ManagerError
 from .jobs import JobService
 from .logs import redact, secret_values
@@ -20,6 +21,7 @@ class Application:
         self.database = Database(registry.root / "data" / "platform.sqlite3")
         self.jobs = JobService(self.database)
         self.updates = UpdateService(registry)
+        self.connections = ConnectionService()
         self.community = CommunityService(self.database, self.catalog, registry)
 
     def instance(self, principal, server_id=None, permission="status.read", explicit=False):
@@ -44,7 +46,7 @@ class Application:
         if principal.role != "owner":
             status = {key: value for key, value in status.items() if key in PUBLIC_STATUS}
         # Only specifically selected display values, never arbitrary config keys.
-        summary, error = {"title": instance.profile["label"], "metrics": []}, None
+        summary, error, config = {"title": instance.profile["label"], "metrics": []}, None, {}
         try:
             config = instance.config() or {}
             summary["title"] = instance.game.title(config)
@@ -52,7 +54,16 @@ class Application:
                                   for metric in instance.game.schema["metrics"]]
         except (ManagerError, OSError):
             error = "Die Spielkonfiguration ist nicht lesbar. Andere Profile bleiben erreichbar."
-        return {"status": status, "summary": summary, "config_error": error, "update": update}
+        return {"status": status, "summary": summary, "config_error": error, "update": update,
+                "connection": self.connections.view(instance, config)}
+
+    def refresh_connections(self, principal, server_id):
+        instance = self.instance(principal, server_id, 'connections.refresh', explicit=True)
+        if server_id is None:
+            raise ManagerError('Bitte das Serverprofil ausdrücklich auswählen.')
+        config = instance.config() or {}
+        self.connections.refresh()
+        return {'connection': self.connections.view(instance, config)}
 
     def check_updates(self, principal, server_id):
         instance = self.instance(principal, server_id, 'updates.check', explicit=True)
@@ -122,5 +133,6 @@ class Application:
         return future.result()
 
     def close(self):
+        self.connections.close()
         self.updates.close()
         self.jobs.close()
