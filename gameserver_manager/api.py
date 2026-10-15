@@ -46,6 +46,8 @@ class Api:
             return self.app.chronicle.page(principal, **{key: one(query, key) for key in query})
         if path == '/api/community/options':
             return self.app.chronicle.options(principal)
+        if path == '/api/community/story':
+            return self.app.chronicle.story(principal, **{key: one(query, key) for key in query})
         if path == '/api/community/event':
             return self.app.chronicle.detail(principal, one(query, 'id'))
         raise NotFound("Nicht gefunden.")

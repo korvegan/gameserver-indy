@@ -290,3 +290,11 @@ class ChronicleHTTPTests(HTTPFixture):
             self.assertIn('attachment', response.headers['Content-Disposition'])
             self.assertEqual(response.headers.get_content_type(), 'application/zip')
             self.assertIn('chronicle.json', zipfile.ZipFile(io.BytesIO(response.read())).namelist())
+        with urllib.request.urlopen(self.url + '/api/community/story?chapter=0') as response:
+            story = json.load(response)
+            self.assertEqual(story['events'][0]['scene']['blueprint'], 'landscape-v1-mountains')
+            self.assertEqual(story['chapters'], [{'id': 0, 'count': 1}])
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(self.url + '/api/community/story?chapter=-1')
+        self.assertEqual(error.exception.code, 409)
+        error.exception.close()

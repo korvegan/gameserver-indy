@@ -648,19 +648,39 @@ dialog h2 { overflow-wrap:anywhere; }
 .chronicle-history summary { cursor:pointer; color:var(--accent); }
 #chronicle-more { margin-bottom:22px; }
 #moment-error { color:var(--red); }
-@media(prefers-reduced-motion:no-preference) {
-  .scene-celebrate .scene-mark { animation:celebrate-banner 1.1s ease-out; }
-  @keyframes celebrate-banner { 0% { transform:translateY(14px) scale(.7); opacity:.3; } 60% { transform:translateY(-5px) scale(1.12); } 100% { transform:none; opacity:1; } }
-}
 .catalog-grid .button { margin:8px 8px 0 0; white-space:normal; }
 .capability-list { padding-left:18px; color:var(--muted); font-size:12px; }
 .section-title { font-size:25px; margin-bottom:20px; }
 .badge-list { list-style:none; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
 .badge-list li { padding:4px 8px; color:var(--accent); background:#282d21; border:1px solid #4b4d32; border-radius:5px; font-size:11px; overflow-wrap:anywhere; }
-#story-scenes { display:grid; gap:16px; }
-.story-scene { border:1px solid #655b3c; background:linear-gradient(140deg,#293222,#18251e); border-radius:8px; padding:24px; overflow-wrap:anywhere; }
-.story-scene:focus { outline:2px solid var(--accent); outline-offset:4px; }
-.scene-mark { color:var(--accent); font-size:40px; display:block; }
+.tapestry-panel { padding:24px; margin-bottom:32px; min-width:0; }
+.tapestry-heading,.tapestry-toolbar { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:center; }
+.tapestry-heading .section-title { margin:6px 0; }
+.story-chapter-label { display:flex; align-items:center; gap:10px; }
+.story-chapter-label select { max-width:210px; }
+.tapestry-viewport { overflow:hidden; border:1px solid #9b8756; border-radius:12px; background:#d6ccaa; margin:20px 0; touch-action:pan-y; }
+.tapestry-viewport.zoomed { touch-action:none; cursor:grab; }
+.tapestry-canvas { display:block; width:100%; max-height:72vh; user-select:none; }
+.tapestry-canvas:focus-visible { outline:3px solid #f0c380; outline-offset:-4px; }
+.tapestry-scene { cursor:pointer; outline:none; }
+.tapestry-scene:focus .scene-focus-frame,.tapestry-scene:hover .scene-focus-frame { stroke:#803e3b; fill:#f1e5bb; fill-opacity:.15; }
+.tapestry-scene .scene-art { pointer-events:none; }
+.scene-revealing .scene-focus-frame { stroke:#9c6337; }
+#story-zoom-level { min-width:48px; text-align:center; }
+#story-status { min-height:1.6em; }
+.story-pan-hint { font-size:11px; }
+.story-text { margin-top:14px; overflow-wrap:anywhere; }
+.story-text li { padding:8px 0; }
+.story-text a { color:var(--accent); }
+.chronicle-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)); gap:20px; }
+#community-news { position:fixed; bottom:20px; right:20px; max-width:min(560px,calc(100vw - 40px)); z-index:15; box-shadow:0 6px 24px #0005; }
+@media(max-width:700px) {
+  .tapestry-panel { padding:12px; }
+  .tapestry-heading .section-title { font-size:23px; }
+  .tapestry-heading .chronicle-actions { width:100%; justify-content:space-between; }
+  .story-chapter-label { font-size:11px; gap:5px; }
+  .story-chapter-label select { max-width:165px; }
+}
 @media(min-width:1450px) {
   main {
     padding:0 65px;

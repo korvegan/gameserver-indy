@@ -13,13 +13,16 @@ from .catalog import identifier
 from .configuration import ManagerError
 from .security import AccessDenied
 from .storage import chronicle_time
+from .story import scene_view, SCENES_PER_CHAPTER
 
 MAX_IMAGE = 256 * 1024
 MAX_EXPORT = 32 * 1024 * 1024
 LATEST = 'NOT EXISTS (SELECT 1 FROM community_events n WHERE n.id=e.id AND n.revision>e.revision)'
 ACTIVE = "COALESCE(json_extract(e.payload,'$.removed'),0)=0"
 MOMENT_TIME = "chronicle_time(json_extract(e.payload,'$.occurred_at'),e.recorded_at)"
-SELECT = 'SELECT e.payload,e.recorded_at,s.id AS scene_id,s.position,s.template FROM community_events e JOIN scenes s ON s.event_id=e.id'
+SELECT = '''SELECT e.payload,e.recorded_at,s.id AS scene_id,s.position,s.template,
+            (SELECT first.game_id FROM community_events first WHERE first.id=e.id ORDER BY first.revision LIMIT 1) AS original_game
+            FROM community_events e JOIN scenes s ON s.event_id=e.id'''
 
 
 def text(value, maximum, required=False):
@@ -39,7 +42,7 @@ def name_id(prefix, value):
 def event_view(row):
     event = json.loads(row['payload'])
     return {**event, 'recorded_at': row['recorded_at'],
-            'scene': {'id': row['scene_id'], 'position': row['position'], 'template': row['template']},
+            'scene': scene_view(row),
             'awards': [{'member_id': member, 'badge_id': event['badge_id']} for member in event['member_ids']]}
 
 
@@ -96,6 +99,25 @@ class ChronicleService:
             return '1', []
         ids = sorted(principal.server_ids)
         return ('(e.instance_id IS NULL' + (' OR e.instance_id IN (' + ','.join('?' for _ in ids) + ')' if ids else '') + ')', ids)
+
+    def story(self, principal, **query):
+        chapter = query.pop('chapter', None)
+        if set(query) & {'cursor', 'limit'}:
+            raise ManagerError('Das Geschichtsbild verwendet Kapitel statt Chronikseiten.')
+        where, parameters = self.filters(principal, query)
+        if chapter is not None and (not isinstance(chapter, str) or not chapter.isascii() or not chapter.isdecimal() or len(chapter) > 9):
+            raise ManagerError('Ungültiges Kapitel.')
+        with self.database.connect() as db:
+            db.execute('BEGIN')
+            chapters = [dict(row) for row in db.execute(
+                'SELECT CAST(s.position / ? AS INTEGER) AS id,COUNT(*) AS count FROM community_events e '
+                'JOIN scenes s ON s.event_id=e.id WHERE ' + where + ' GROUP BY 1 ORDER BY 1',
+                [SCENES_PER_CHAPTER, *parameters])]
+            selected = int(chapter) if chapter is not None else (chapters[-1]['id'] if chapters else 0)
+            rows = db.execute(SELECT + ' WHERE ' + where + ' AND s.position>=? AND s.position<? ORDER BY s.position',
+                              [*parameters, selected * SCENES_PER_CHAPTER, (selected + 1) * SCENES_PER_CHAPTER]).fetchall()
+        return {'chapter': selected, 'chapters': chapters, 'events': [event_view(row) for row in rows],
+                'layout': 'landscape-v1', 'slots': SCENES_PER_CHAPTER}
 
     def filters(self, principal, query, active=True):
         scope, parameters = self.scope(principal)

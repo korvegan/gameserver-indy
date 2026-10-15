@@ -2,6 +2,7 @@ import {api} from '../api.js';
 import {$, element, notice} from '../dom.js';
 import {can, state} from '../state.js';
 import {bindMomentForm, openMoment} from './chronicle-form.js';
+import {bindStory, cancelStoryFocus, focusScene, loadStory} from './story.js';
 
 let request = 0, detailRequest = 0, nextCursor, token, currentDetail;
 let filters = {}, events = new Map(), labels = new Map();
@@ -26,33 +27,9 @@ function image(event) {
   return node;
 }
 
-function celebrate(scene) {
-  scene.focus({preventScroll: true});
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  scene.scrollIntoView({behavior: reduced ? 'instant' : 'smooth', block: 'nearest'});
-  if (!reduced) { scene.classList.remove('scene-celebrate'); void scene.offsetWidth; scene.classList.add('scene-celebrate'); }
-}
-
-function sceneFor(event) {
-  let scene = document.getElementById(event.scene.id);
-  if (!scene) {
-    scene = element('article', undefined, 'story-scene'); scene.id = event.scene.id; scene.tabIndex = -1; scene.dataset.eventId = event.id;
-    scene.addEventListener('animationend', () => scene.classList.remove('scene-celebrate'));
-  }
-  if (scene.dataset.revision !== String(event.revision)) {
-    scene.dataset.revision = event.revision;
-    scene.replaceChildren(element('span', '⚑', 'scene-mark'), element('h3', event.title),
-      element('p', `${context(event)} · ${event.member_ids.length} gemeinsame Auszeichnungen`, 'muted'));
-    const link = element('a', 'Erinnerung öffnen', 'button secondary'); link.href = `#moment-${event.id}`;
-    link.addEventListener('click', click => { click.preventDefault(); showDetail(event.id); }); scene.append(link);
-  }
-  return scene;
-}
-
 function render() {
-  const chronicle = $('#chronicle'), scenes = $('#story-scenes');
+  const chronicle = $('#chronicle');
   for (const node of chronicle.querySelectorAll('[data-event-id]')) if (!events.has(node.dataset.eventId)) node.remove();
-  for (const node of scenes.querySelectorAll('[data-event-id]')) if (!events.has(node.dataset.eventId)) node.remove();
   chronicle.querySelector('.empty')?.remove();
   if (!events.size) chronicle.append(element('p', 'Hier beginnt eure Geschichte. Haltet euren ersten gemeinsamen Moment fest oder passt die Filter an.', 'empty'));
   let index = 0;
@@ -70,12 +47,10 @@ function render() {
       const actions = element('div', undefined, 'chronicle-actions');
       const details = element('a', 'Details', 'button secondary'); details.href = `#moment-${event.id}`;
       details.addEventListener('click', click => { click.preventDefault(); showDetail(event.id); });
-      const show = element('button', 'Szene ansehen', 'button secondary'); show.addEventListener('click', () => celebrate(document.getElementById(event.scene.id)));
+      const show = element('button', 'Szene ansehen', 'button secondary'); show.addEventListener('click', () => focusScene(event));
       actions.append(details, show); card.append(actions);
     }
-    const scene = sceneFor(event);
     if (chronicle.children[index] !== card) chronicle.insertBefore(card, chronicle.children[index] || null);
-    if (scenes.children[index] !== scene) scenes.insertBefore(scene, scenes.children[index] || null);
     index++;
   }
   $('#chronicle-more').hidden = !nextCursor;
@@ -95,7 +70,8 @@ async function options(current) {
   }
 }
 
-export async function loadCommunity(append = false) {
+export async function loadCommunity(append = false, resetChapter = false) {
+  cancelStoryFocus();
   append = append === true;
   const generation = ++request, epoch = state.navigationEpoch;
   const current = () => generation === request && epoch === state.navigationEpoch && state.view === 'community';
@@ -113,17 +89,14 @@ export async function loadCommunity(append = false) {
     if (!append) { token = result.change_token; $('#community-news').hidden = true; }
     else if (result.change_token !== token) announceChanges();
     render();
+    if (!append) await loadStory(filters, labels, current, resetChapter ? null : undefined);
+    if (!current()) return;
     if (location.hash.startsWith('#moment-')) await showDetail(location.hash.slice(8), false);
     if (location.hash.startsWith('#scene-')) {
       const sceneId = location.hash.slice(1), eventId = sceneId.slice(6);
-      let scene = document.getElementById(sceneId);
-      if (!scene) {
-        const {event} = await api('/api/community/event?id=' + encodeURIComponent(eventId));
-        if (!current() || location.hash !== '#' + sceneId) return;
-        scene = sceneFor(event); $('#story-scenes').append(scene);
-      }
-      scene.focus({preventScroll: true});
-      scene.scrollIntoView({behavior: 'instant', block: 'nearest'});
+      const {event} = await api('/api/community/event?id=' + encodeURIComponent(eventId));
+      if (!current() || location.hash !== '#' + sceneId) return;
+      await focusScene(event, false);
     }
   } catch (error) {
     if (current()) { $('#community-state').textContent = 'Die Chronik konnte nicht aktualisiert werden. Bereits geladene Momente bleiben sichtbar.'; notice(error.message, true); }
@@ -148,9 +121,7 @@ export async function showDetail(id, updateHash = true) {
     if (!event.removed) {
       const replay = element('button', 'Moment noch einmal feiern', 'button secondary');
       replay.addEventListener('click', () => {
-        $('#moment-detail').close(); const scene = sceneFor(event);
-        if (!scene.isConnected) $('#story-scenes').append(scene);
-        celebrate(scene);
+        $('#moment-detail').close(); focusScene(event);
       }); body.append(replay);
     }
     if (data.history.length) {
@@ -169,15 +140,29 @@ export async function showDetail(id, updateHash = true) {
 }
 
 export function bindCommunity() {
-  bindMomentForm(async id => { await loadCommunity(); if (id) await showDetail(id); }, () => { detailRequest++; });
+  bindStory(showDetail);
+  bindMomentForm(async (id, created) => {
+    const epoch = state.navigationEpoch, draft = detailRequest;
+    if (created) {
+      filters = {};
+      for (const input of $('#chronicle-filters').querySelectorAll('select,input')) input.value = '';
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+    await loadCommunity(false, created);
+    if (!id || state.view !== 'community') return;
+    if (created) {
+      const {event} = await api('/api/community/event?id=' + encodeURIComponent(id));
+      if (state.view === 'community' && epoch === state.navigationEpoch && draft === detailRequest && !$('#moment-editor').open) await focusScene(event);
+    } else await showDetail(id);
+  }, () => { detailRequest++; cancelStoryFocus(); });
   $('#chronicle-more').addEventListener('click', () => loadCommunity(true));
   $('#close-moment-detail').addEventListener('click', () => $('#moment-detail').close());
   $('#moment-detail').addEventListener('close', () => { if (location.hash.startsWith('#moment-')) history.replaceState(null, '', location.pathname + location.search); });
   $('#edit-moment').addEventListener('click', () => openMoment(currentDetail));
   $('#chronicle-filters').addEventListener('submit', event => {
-    event.preventDefault(); filters = Object.fromEntries([...new FormData(event.target)].filter(([, value]) => value)); loadCommunity();
+    event.preventDefault(); filters = Object.fromEntries([...new FormData(event.target)].filter(([, value]) => value)); loadCommunity(false, true);
   });
-  $('#chronicle-filters').addEventListener('reset', () => { filters = {}; loadCommunity(); });
+  $('#chronicle-filters').addEventListener('reset', () => { filters = {}; loadCommunity(false, true); });
   setInterval(async () => {
     if (document.hidden || state.view !== 'community' || !token || $('#moment-editor').open || $('#moment-detail').open) return;
     const generation = request, epoch = state.navigationEpoch;

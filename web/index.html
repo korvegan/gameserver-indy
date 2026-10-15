@@ -102,7 +102,20 @@
         <div class="form-grid"><label>Zeitraum von (UTC)<input name="from" type="date"></label><label>Zeitraum bis (UTC)<input name="to" type="date"></label></div>
         <div class="chronicle-actions wide"><button class="button secondary" type="submit">Filter anwenden</button><button class="button secondary" type="reset">Filter zurücksetzen</button><a id="chronicle-export" class="button secondary" href="/api/community/export" data-permission="community.export">Auswahl als ZIP exportieren</a></div>
       </form>
-      <div class="community-layout"><div><h2 class="section-title">Chronik</h2><div id="chronicle"></div></div><section aria-labelledby="story-title"><h2 class="section-title" id="story-title">Unser Geschichtsbild</h2><p class="muted">Jeder gespeicherte Moment erhält seinen festen Platz.</p><div id="story-scenes"></div></section></div>
+      <section id="story-board" class="panel tapestry-panel" aria-labelledby="story-title" aria-busy="true">
+        <div class="tapestry-heading"><div><p class="eyebrow">EIN BILD AUS EUREN ERINNERUNGEN</p><h2 class="section-title" id="story-title">Der Wandteppich der Sturmklingen.</h2></div>
+          <div class="chronicle-actions"><button id="story-previous" class="button secondary" aria-label="Vorheriges Kapitel">←</button><label class="story-chapter-label">Kapitel<select id="story-chapter" aria-label="Kapitel wählen"></select></label><button id="story-next" class="button secondary" aria-label="Nächstes Kapitel">→</button></div>
+        </div>
+        <p class="muted">Jeder Moment hat seinen festen Platz. Wähle eine Szene, um die Erinnerung zu öffnen.</p>
+        <div id="tapestry-viewport" class="tapestry-viewport"></div>
+        <div class="tapestry-toolbar"><div class="chronicle-actions" role="group" aria-label="Bildausschnitt"><button id="story-zoom-out" class="button secondary" aria-label="Verkleinern">−</button><output id="story-zoom-level">100 %</output><button id="story-zoom-in" class="button secondary" aria-label="Vergrößern">＋</button><button id="story-fit" class="button secondary">Ganzes Bild</button></div>
+          <div class="chronicle-actions"><button id="story-pause" class="button secondary" hidden>Enthüllung pausieren</button><button id="story-skip" class="button secondary" hidden>Enthüllung überspringen</button><button id="story-export" class="button secondary" data-permission="community.export">Standbild als SVG</button></div>
+        </div>
+        <p id="story-status" class="muted" role="status">Geschichtsbild wird geladen …</p>
+        <p class="story-pan-hint muted">Vergrößertes Bild ziehen oder mit den Pfeiltasten verschieben. Keine automatische Wiedergabe beim Wiederkommen.</p>
+        <details class="story-text"><summary>Erinnerungen dieses Kapitels als Text</summary><ul id="story-scenes"></ul></details>
+      </section>
+      <h2 class="section-title">Die Chronik</h2><div id="chronicle" class="chronicle-grid"></div>
       <button id="chronicle-more" class="button secondary" hidden>Weitere Momente laden</button>
       <dialog id="moment-editor" aria-labelledby="moment-editor-title">
         <form id="moment-form">
