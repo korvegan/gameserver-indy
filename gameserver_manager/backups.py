@@ -164,7 +164,10 @@ class WorldBackups:
         entries, directories = dict(extras), ['world']
         if not world.is_dir():
             raise ManagerError('Der konfigurierte Weltordner existiert noch nicht. Erst eine Welt anlegen und regulär speichern.')
-        for parent, dirs, files in os.walk(world, followlinks=False):
+        def scan_failed(error):
+            raise ManagerError('Der Weltordner ist nicht vollständig lesbar. Keine Sicherung erstellt.') from error
+
+        for parent, dirs, files in os.walk(world, followlinks=False, onerror=scan_failed):
             for child in sorted(dirs + files):
                 path = plain_path(Path(parent) / child)
                 relative = 'world/' + path.relative_to(world).as_posix()
@@ -213,7 +216,10 @@ class WorldBackups:
         if not path.is_file():
             raise ManagerError('Diese Weltsicherung existiert nicht.')
         value = read_json(path)
-        if value.get('id') != identifier:
+        required = {'id', 'created_at', 'verified_at', 'pinned', 'reason', 'bytes', 'count', 'build', 'manifest', 'sha256'}
+        if (not isinstance(value, dict) or not required.issubset(value) or value.get('id') != identifier
+                or not isinstance(value['manifest'], dict) or not isinstance(value['pinned'], bool)
+                or not isinstance(value['sha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', value['sha256'])):
             raise ManagerError('Die Sicherungsmetadaten sind beschädigt.')
         return value
 
@@ -435,6 +441,12 @@ class WorldBackups:
         return self.preview(read_json(self.pending)['before'], recovery=True)
 
     def restore(self, identifier, token, confirmation, *, recovery=False):
+        try:
+            return self._restore(identifier, token, confirmation, recovery=recovery)
+        finally:
+            self.phase('idle')
+
+    def _restore(self, identifier, token, confirmation, *, recovery=False):
         with self.instance.lock:
             if confirmation != 'WIEDERHERSTELLEN':
                 raise ManagerError('Die ausdrückliche Wiederherstellungsbestätigung fehlt.')

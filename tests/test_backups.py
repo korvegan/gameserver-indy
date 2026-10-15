@@ -91,6 +91,17 @@ class BackupTests(ManagerFixture):
         self.assertFalse(list(self.store.folder.glob('*.partial')))
         self.assertEqual(len(self.store.view()['backups']), 1)
 
+    def test_bad_metadata_is_isolated_and_failed_restore_prebackup_clears_progress(self):
+        identifier = self.create()
+        damaged = self.store.metadata_path('a' * 32)
+        atomic_json(damaged, [])
+        self.assertEqual(sum('error' in item for item in self.store.view()['backups']), 1)
+        preview = self.store.preview(identifier)
+        with patch.object(self.store, 'ensure_space', side_effect=ManagerError('full')), self.assertRaises(ManagerError):
+            self.store.restore(identifier, preview['token'], preview['confirmation'])
+        self.assertEqual(self.store.progress['phase'], 'idle')
+        self.assertFalse(self.store.pending.exists())
+
     def test_retention_exactly_72_hours_and_pinned_preserved(self):
         current = datetime.now(timezone.utc)
         with patch('gameserver_manager.backups.now', return_value=current - timedelta(hours=73)):
@@ -247,9 +258,12 @@ class BackupTests(ManagerFixture):
         config = m.game.initial_config()
         config.update({'save id': 'ae44d_300926202259', 'custom game preset path': str(preset), 'authentication token': 'private-token'})
         m.game.write_config(configuration, config)
-        world = profile / 'AppData/LocalLow/Sand Sailor Studio/Aska/data/savegame_ae44d_300926202259'
+        world = profile / 'AppData/LocalLow/Sand Sailor Studio/Aska/data/server/savegame_ae44d_300926202259'
         world.mkdir(parents=True)
         (world / 'worldgen').write_bytes(b'aska world')
+        decoy = profile / 'AppData/LocalLow/Sand Sailor Studio/Aska/data/savegame_ae44d_300926202259'
+        decoy.mkdir()
+        (decoy / 'worldgen').write_bytes(b'old unrelated world')
         m.backups.settle_seconds = 0
         identifier = m.backups.create()['backup_id']
         self.assertEqual(m.backups.metadata(identifier)['manifest']['binding']['world'], str(world))
@@ -261,12 +275,33 @@ class BackupTests(ManagerFixture):
         preview = m.backups.preview(identifier)
         m.backups.restore(identifier, preview['token'], preview['confirmation'])
         self.assertEqual((world / 'worldgen').read_bytes(), b'aska world')
+        self.assertEqual((decoy / 'worldgen').read_bytes(), b'old unrelated world')
         self.assertNotIn('private-token', json.dumps(m.backups.view()))
 
     def test_windows_archive_names(self):
         for name in ('../a', '/a', 'world/a:b', 'world\\x', 'world/con', 'world/NUL.txt', 'world/a.', 'world/a ', 'world/./a', 'world//a'):
             with self.subTest(name=name), self.assertRaises(ManagerError):
                 member_name(name)
+
+    def test_scan_permission_error_never_publishes_an_incomplete_backup(self):
+        unreadable = self.world / 'unreadable'
+        unreadable.mkdir()
+        (unreadable / 'important.ksd').write_bytes(b'must never disappear')
+        scandir = os.scandir
+        calls = 0
+
+        def failing_scan(path):
+            nonlocal calls
+            if Path(path) == unreadable:
+                calls += 1
+                raise PermissionError('Simulated access denied')
+            return scandir(path)
+
+        with patch('os.scandir', side_effect=failing_scan), self.assertRaisesRegex(ManagerError, 'nicht vollständig lesbar'):
+            self.create()
+        self.assertEqual(calls, 1)
+        self.assertFalse(self.store.view()['backups'])
+        self.assertEqual((unreadable / 'important.ksd').read_bytes(), b'must never disappear')
 
     def test_shared_world_targets_block_backups_and_start_but_can_be_repaired(self):
         registry = ServerRegistry(self.root, self.manager)

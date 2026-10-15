@@ -27,7 +27,7 @@ def aska(instance, config):
         instance._windows_user_profile = instance.bridge.call('Status').get('user_profile')
     if not instance._windows_user_profile:
         raise ManagerError('Das Windows-Benutzerprofil für die ASKA-Welt ist nicht bekannt.')
-    directory = local_path(instance._windows_user_profile) / 'AppData/LocalLow/Sand Sailor Studio/Aska/data' / ('savegame_' + save_id)
+    directory = local_path(instance._windows_user_profile) / 'AppData/LocalLow/Sand Sailor Studio/Aska/data/server' / ('savegame_' + save_id)
     extras = {}
     if preset := config.get('custom game preset path', ''):
         target = local_path(preset)

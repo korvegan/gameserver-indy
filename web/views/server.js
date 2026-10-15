@@ -27,8 +27,12 @@ export function controls() {
   if (pending && state.available) {
     $('#server-state').textContent = '◌ Auftrag läuft';
     $('#process-note').textContent = 'Fortschritt und Ergebnis unter Aufträge.';
+  } else if (recovery) {
+    $('#server-state').textContent = 'Wiederherstellung offen'; $('#server-state').className = 'pill error';
+    $('#process-note').textContent = can('backups.manage') ? 'Unter Weltsicherungen den vorherigen Stand zurückholen.' : 'Der Besitzer muss die Weltwiederherstellung abschließen.';
   }
-  if (status) $('#settings-hint').textContent = pending ? 'Für dieses Profil läuft ein Auftrag. Andere Profile bleiben bedienbar.'
+  if (status) $('#settings-hint').textContent = recovery ? 'Wiederherstellung offen. Unter Weltsicherungen den vorherigen Stand zurückholen.'
+    : pending ? 'Für dieses Profil läuft ein Auftrag. Andere Profile bleiben bedienbar.'
     : status.starting ? 'Der Serverstarter arbeitet noch. Fortschritt unter Serverlog → Starter / Startfehler.'
       : status.running ? 'Der Server läuft. Stoppe ihn vor dem Bearbeiten, damit er deine Änderungen nicht überschreibt.'
         : !status.configured ? 'Bitte den Server zuerst unter Übersicht vorbereiten.'

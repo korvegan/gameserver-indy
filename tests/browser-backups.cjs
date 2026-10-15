@@ -82,6 +82,16 @@ const fs = require('node:fs');
     }
     // Keep fixture state independent for any later suite.
     await post('/api/jobs', {operation: 'backup_settings', automatic_after_stop: false});
+    await page.route('**/api/status?server=enshrouded', async route => {
+      const response = await route.fetch(), body = await response.json(); body.status.recovery_required = true;
+      await route.fulfill({response, json: body});
+    });
+    await page.getByRole('button', {name: 'Übersicht', exact: true}).click();
+    await page.locator('#refresh').click();
+    await page.waitForFunction(() => document.querySelector('#server-state').textContent === 'Wiederherstellung offen');
+    assert.equal(await page.locator('#start').isDisabled(), true);
+    assert.match(await page.locator('#process-note').textContent(), /Weltsicherungen/);
+    await page.unroute('**/api/status?server=enshrouded');
     assert.deepEqual(errors, []);
     const family = await browser.newContext({extraHTTPHeaders: {'X-QA-Identity': 'family'}});
     try {
