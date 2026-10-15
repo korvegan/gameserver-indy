@@ -22,7 +22,7 @@ class UpdateService:
         self.entries = {}
         try:
             data = read_json(self.path) if self.path.exists() else {}
-            if data.get('schema_version') == 1 and isinstance(data.get('entries'), dict):
+            if isinstance(data, dict) and data.get('schema_version') == 1 and isinstance(data.get('entries'), dict):
                 self.entries = data['entries']
         except ManagerError:
             pass  # Disposable metadata cache; never claim an unparseable result.

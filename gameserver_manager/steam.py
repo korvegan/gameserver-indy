@@ -54,10 +54,10 @@ def object_at(text, offset=0):
 
 
 def named_object(text, name):
-    match = re.search(r'(?m)^\s*"' + re.escape(str(name)) + r'"\s*(?=\{)', text)
-    if not match:
+    matches = list(re.finditer(r'(?m)^\s*"' + re.escape(str(name)) + r'"\s*(?=\{)', text))
+    if len(matches) != 1:
         raise ManagerError("Steam hat keine passenden App-Informationen geliefert.")
-    return object_at(text, match.end())
+    return object_at(text, matches[0].end())
 
 
 def small_text(path):
@@ -114,8 +114,11 @@ def installed(instance):
         raise ManagerError("Das Steam-Appmanifest enthält keine installierte Build-ID.")
     try:
         flags = int(data.get('stateflags', '-1'))
-        incomplete = any(int(data.get(total, '0')) > int(data.get(done, '0'))
-                         for total, done in (('bytestodownload', 'bytesdownloaded'), ('bytestostage', 'bytesstaged')))
+        counters = [(int(data.get(total, '0')), int(data.get(done, '0')))
+                    for total, done in (('bytestodownload', 'bytesdownloaded'), ('bytestostage', 'bytesstaged'))]
+        if not 0 <= flags < 2**32 or any(min(pair) < 0 for pair in counters):
+            raise ValueError()
+        incomplete = any(total > done for total, done in counters)
         updated = int(data.get('lastupdated', '0'))
     except (TypeError, ValueError):
         raise ManagerError("Der Steam-Installationszustand ist nicht lesbar.") from None

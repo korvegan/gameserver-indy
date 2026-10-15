@@ -148,6 +148,19 @@ class UpdateTests(ManagerFixture):
         for group in self.manager.config()['userGroups']:
             self.assertNotIn(group['password'], raw)
 
+    def test_invalid_cache_shapes_are_discarded_without_breaking_status(self):
+        for data in ([], None, 'unexpected', {'schema_version': 1, 'entries': []},
+                     {'schema_version': 1, 'entries': {'enshrouded': []}}):
+            with self.subTest(data=data):
+                atomic_json(self.updates.path, data)
+                service = UpdateService(self.registry, self.provider)
+                self.assertEqual(service.view(self.manager)['state'], 'unknown')
+
+    def test_missing_negative_or_malformed_install_state_is_unknown(self):
+        for extra in ('"StateFlags" "-1"', '"StateFlags" "not a number"', '"BytesToDownload" "-10"'):
+            self.manifest.write_text(f'"AppState" {{"appid" "2278520" "installdir" "{self.manager.directory.name}" "buildid" "100" {extra}}}')
+            self.assertEqual(self.updates.view(self.manager)['state'], 'unknown')
+
     def test_running_process_build_is_not_inferred_from_updated_files(self):
         self.updates.check(self.manager)
         status = {'running': True, 'processes': [{'pid': 42, 'started': '2000-01-01T00:00:00Z'}]}
@@ -270,7 +283,8 @@ class SteamCmdTests(ManagerFixture):
         self.provider.lock.release()
 
     def test_keyvalues_duplicates_and_truncation_are_rejected(self):
-        for text in ('"AppState" {"buildid" "1" "BuildID" "2"}', '"AppState" {"buildid" "1"'):
+        for text in ('"AppState" {"buildid" "1" "BuildID" "2"}', '"AppState" {"buildid" "1"',
+                     '"AppState" {}\n"AppState" {}'):
             with self.subTest(text=text), self.assertRaises(ManagerError):
                 named_object(text, 'AppState')
 
