@@ -25,7 +25,7 @@ const fs = require('node:fs');
     await page.goto('http://127.0.0.1:8766');
     await page.getByRole('button', {name: 'Server vorbereiten', exact: true}).waitFor();
     await page.waitForFunction(() => !document.querySelector('#setup').disabled);
-    assert.equal(await page.locator('#start').isDisabled(), true);
+    assert.equal(await page.locator('#start').isDisabled(), false, 'Commands are accepted; missing setup is checked by the worker.');
     await page.locator('#setup').click();
     await expectNotice('Server vorbereitet');
     assert.equal(await page.locator('#start').isEnabled(), true);

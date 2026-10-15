@@ -1,4 +1,4 @@
-import {api, setToken} from './api.js';
+import {api, onSessionExpired, setToken} from './api.js';
 import {$, notice} from './dom.js';
 import {can, replaceSelection, state} from './state.js';
 import {bindForms, clearConfig, populateConfig} from './forms.js';
@@ -15,6 +15,11 @@ import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map();
+onSessionExpired(async () => {
+  const session = await api('/api/session');
+  if (JSON.stringify(session.principal) !== JSON.stringify(state.principal)) { location.reload(); throw new Error('Zugriff geändert'); }
+  setToken(session.token);
+});
 const mayOpenFailureLogs = context => context && context.target === state.selectedServer
   && context.selectionEpoch === state.selectionEpoch && context.navigationEpoch === state.navigationEpoch
   && ['overview', 'logs'].includes(state.view) && can('logs.read');
@@ -134,13 +139,13 @@ async function finishJob(job) {
 async function runOperation(operation, payload = {}) {
   const target = state.selectedServer;
   const context = {target, selectionEpoch: state.selectionEpoch, navigationEpoch: state.navigationEpoch};
-  if (state.submitting || state.pending.has(target)) return;
+  if (state.submitting) return;
   state.submitting = true; controls(); notice('Auftrag wird angelegt …');
   let job;
   try { job = (await api('/api/jobs', {...payload, operation}, target)).job; }
   catch (error) {
     notice(error.message, true);
-    if (mayOpenFailureLogs(context) && ['start', 'restart'].includes(operation)) {
+    if (error.code !== 'session_expired' && mayOpenFailureLogs(context) && ['start', 'restart'].includes(operation)) {
       state.logSource = 'launcher'; $('#log-source').value = 'launcher'; await go('logs', {keepNotice: true});
     }
   } finally { state.submitting = false; controls(); }
