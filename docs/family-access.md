@@ -35,6 +35,8 @@ Der Familienlistener erwartet dieselbe feste HTTPS-Origin wie sein Host, auch we
 
 `configure-family-network.ps1` ohne Parameter gibt einen begrenzten Einrichtungsstatus aus. Keine API-Schlüssel sind für die persönliche Serve-Identität erforderlich. Der Spielhost selbst übernimmt dabei kein MagicDNS; für einen Selbsttest gegebenenfalls eine gezielte Namensauflösung verwenden. Andere Clients verwenden Tailscale-DNS für den privaten Gerätenamen.
 
+Auf Indy ist WSL-Netzwerkmodus `mirrored` aktiv. Am 15.10.2026 belegte der vorhandene Container `platform-gateway-caddy-1` bereits `0.0.0.0:443`; Tailscale protokollierte beim lokalen Listener einen Bind-Konflikt. Ein HTTPS-Selbsttest traf daher nicht verlässlich den vorgesehenen Serve-Listener, obwohl dessen Konfiguration und Zertifikatsbereitstellung aktiv waren. Diesen Fall anhand Linux- und Windows-Listenern sowie Tailscale-Dienstprotokoll unterscheiden. Der Zugang von einem zweiten Tailscale-Gerät muss separat geprüft werden; der konfigurierte Serve-Status allein bestätigt keine Erreichbarkeit. Bestehende Gateway-Dienste nicht stillschweigend stoppen, Ports nicht pauschal freigeben und Zertifikatsprüfung nicht abschalten.
+
 ## Start ohne Windows-Anmeldung
 
 Tailscale allein startet den WSL-Manager nicht. `scripts/install-family-startup.ps1 -PlanOnly` zeigt die konkret geplante Aufgabe. Der normale Aufruf fragt im Windows-Anmeldedialog nach dem **Windows-Kontokennwort des bestehenden Besitzerkontos**, nicht nach dem Windows-Hello-PIN. Der Wert gehört nicht in Chat, Projektdateien oder Kommandozeilen. Die Windows-Aufgabenplanung speichert ihre eigene Anmeldeinformation; der Manager speichert kein Kennwort.
