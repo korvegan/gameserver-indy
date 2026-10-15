@@ -1,5 +1,6 @@
 """Bounded background execution with durable outcomes and per-target exclusion."""
-from concurrent.futures import ThreadPoolExecutor
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 import json
 import sqlite3
@@ -18,6 +19,7 @@ class JobService:
         self.database = database
         self.lock = threading.Lock()
         self.active = {}
+        self.waiting = {}
         self.unsettled = {}
         self.closed = False
         self.executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gameserver-job")
@@ -25,27 +27,80 @@ class JobService:
             db.execute("UPDATE jobs SET state='interrupted', message=?, updated_at=? WHERE state IN ('queued', 'running')",
                        ("Verwaltung unterbrochen. Ergebnis unbekannt; Prozessstatus und Protokoll prüfen. Kein automatischer Wiederholungsversuch.", utcnow()))
 
-    def submit(self, server_id, operation, actor_id, callback, *, reservation=None):
+    def submit(self, server_id, operation, actor_id, callback, *, reservation=None, enqueue=False):
         reservation = server_id if reservation is None else reservation
         with self.lock:
             if self.closed:
                 raise ManagerError("Die Verwaltung wird gerade beendet.")
-            if reservation in self.active:
+            if reservation in self.active and not enqueue:
                 raise ManagerError("Für dieses Ziel arbeitet bereits ein Auftrag. Bitte dessen Ergebnis abwarten.")
-            if len(self.active) >= 16:
+            if len(self.active) + sum(len(queue) for queue in self.waiting.values()) >= 16:
                 raise ManagerError("Die Auftragswarteschlange ist voll. Bitte später erneut versuchen.")
+            if reservation in self.active and len(self.waiting.get(reservation, ())) >= 7:
+                raise ManagerError('Für dieses Serverprofil warten bereits sieben Befehle. Bitte deren Ergebnisse abwarten.')
             job_id, now = uuid4().hex, utcnow()
             with self.database.connect(write=True) as db:
                 db.execute("INSERT INTO jobs VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, NULL)",
                            (job_id, server_id, operation, actor_id, "Wartet auf Ausführung.", now, now))
-            self.active[reservation] = job_id
+            future = Future()
+            future.set_running_or_notify_cancel()  # Product jobs cannot be cancelled.
+            entry = (job_id, callback, future)
+            if reservation in self.active:
+                self.waiting.setdefault(reservation, deque()).append(entry)
+                start = False
+            else:
+                self.active[reservation] = job_id
+                start = True
             try:
-                future = self.executor.submit(self._run, job_id, reservation, callback)
+                if start:
+                    self.executor.submit(self._drain, reservation, entry)
             except BaseException:
                 self.active.pop(reservation, None)
                 self._update(job_id, "interrupted", "Auftrag konnte nicht gestartet werden.")
                 raise
         return self.get(job_id), future
+
+    def _interrupt(self, job_id, message):
+        try:
+            self._update(job_id, 'interrupted', message)
+        except (sqlite3.Error, OSError):
+            with self.lock:
+                self.unsettled[job_id] = {'state': 'interrupted', 'message': message, 'result': None}
+
+    def _drain(self, reservation, entry):
+        # One worker per active target; queued commands never occupy waiting workers.
+        while entry is not None:
+            job_id, callback, future = entry
+            error, result = None, None
+            try:
+                result = self._run(job_id, reservation, callback)
+            except BaseException as exc:
+                error = exc
+                if not isinstance(exc, ManagerError):
+                    message = 'Auftrag wurde unterbrochen. Ausgang unbekannt; bitte Prozessstatus prüfen.'
+                    self._interrupt(job_id, message)
+                    error = ManagerError(message)
+            with self.lock:
+                queue = self.waiting.get(reservation, deque())
+                cancelled = list(queue) if error is not None or self.closed else []
+                if cancelled:
+                    queue.clear()
+                entry = queue.popleft() if queue else None
+                if not queue:
+                    self.waiting.pop(reservation, None)
+                if entry is None:
+                    self.active.pop(reservation, None)
+                else:
+                    self.active[reservation] = entry[0]
+            message = ('Ein vorheriger Auftrag ist fehlgeschlagen oder unklar. Dieser wartende Befehl wurde nicht ausgeführt. Bitte neu beauftragen.'
+                       if error is not None else 'Verwaltung wird beendet. Dieser wartende Befehl wurde nicht ausgeführt.')
+            for cancelled_id, _callback, cancelled_future in cancelled:
+                self._interrupt(cancelled_id, message)
+                cancelled_future.set_exception(ManagerError(message))
+            if error is None:
+                future.set_result(result)
+            else:
+                future.set_exception(error)
 
     def _update(self, job_id, state, message, result=None):
         with self.database.connect(write=True) as db:
@@ -71,9 +126,6 @@ class JobService:
                 self.unsettled[job_id] = {"state": "interrupted", "message": message, "result": None}
             self._reconcile()
             raise ManagerError(message) from None
-        finally:
-            with self.lock:
-                self.active.pop(reservation, None)
 
     def _reconcile(self):
         with self.lock:
@@ -90,8 +142,9 @@ class JobService:
         result = dict(row)
         with self.lock:
             result.update(self.unsettled.get(result["id"], {}))
+            position = next((index + 1 for queue in self.waiting.values() for index, entry in enumerate(queue) if entry[0] == result['id']), 0)
         result["result"] = json.loads(result["result"]) if result["result"] else None
-        result.update(cancellable=False, resumable=False, progress={"phase": result["state"],
+        result.update(cancellable=False, resumable=False, queue_position=position, progress={"phase": result["state"],
                       "completed": 1 if result["state"] == "succeeded" else 0, "total": 1, "unit": "Auftrag"})
         return result
 

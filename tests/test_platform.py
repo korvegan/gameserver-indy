@@ -52,13 +52,18 @@ class PlatformTests(ManagerFixture):
             other, other_future = self.app.submit(OWNER, "start", {"server_id": "aska"})
             self.assertIn("gestartet", other_future.result(timeout=2)["message"])
             self.assertEqual(self.app.jobs.get(other["id"])["state"], "succeeded")
-            for operation in ("start", "stop", "config", "setup"):
+            for operation in ("config", "setup"):
                 with self.subTest(operation=operation), self.assertRaisesRegex(ManagerError, "bereits ein Auftrag"):
                     self.app.submit(OWNER, operation, {"server_id": "enshrouded"})
+            queued, queued_future = self.app.submit(OWNER, 'stop', {'server_id': 'enshrouded'})
+            self.assertEqual(queued['state'], 'queued')
+            self.assertEqual(queued['queue_position'], 1)
             self.assertFalse(future.done())
         finally:
             release.set()
             future.result(timeout=2)
+            queued_future.result(timeout=2)
+            self.assertFalse(self.bridge.running)
 
     def test_public_read_models_and_permissions_do_not_expose_owner_configuration(self):
         secrets = [group["password"] for group in self.manager.config()["userGroups"]]

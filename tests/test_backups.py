@@ -362,10 +362,12 @@ class BackupTests(ManagerFixture):
             with patch.object(self.store, '_create', side_effect=gated):
                 _job, future = app.submit(owner, 'backup', {'server_id': 'enshrouded'})
                 self.assertTrue(entered.wait(2))
-                with self.assertRaisesRegex(ManagerError, 'bereits ein Auftrag'):
-                    app.submit(owner, 'start', {'server_id': 'enshrouded'})
+                queued, start = app.submit(owner, 'start', {'server_id': 'enshrouded'})
+                self.assertEqual(queued['state'], 'queued')
+                self.assertNotIn('Start', self.bridge.calls)
                 release.set()
                 self.assertIn('gesichert', future.result(timeout=5)['message'])
+                self.assertIn('gestartet', start.result(timeout=5)['message'])
         finally:
             release.set()
 

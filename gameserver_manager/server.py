@@ -16,6 +16,7 @@ from .configuration import ManagerError
 from .paths import ROOT
 from .registry import ServerRegistry
 from .security import AccessDenied, local_owner
+from .sessions import signing_token
 
 STATIC = ROOT / "web"
 
@@ -25,7 +26,7 @@ class LocalServer(ThreadingHTTPServer):
 
     def __init__(self, manager, port=8765, identity=None, application=None):
         self.registry = manager if isinstance(manager, ServerRegistry) else ServerRegistry(manager.root, manager)
-        self.token = secrets.token_urlsafe(32)
+        self.token = signing_token(self.registry.root, 'family:' + self.hostname if hasattr(self, 'hostname') else 'local-owner')
         self.identity = identity or local_owner
         self.scheme = 'http'
         self.owns_application = application is None
@@ -169,7 +170,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(403, {"error": "Unzulässiger Ursprung."})
         token = self.headers.get("X-Manager-Token", "")
         if len(self.headers.get_all('X-Manager-Token', [])) != 1 or not secrets.compare_digest(token.encode(), self.server.csrf_token(principal).encode()):
-            return self.send(403, {"error": "Sitzung abgelaufen. Bitte die Seite neu laden."})
+            return self.send(403, {"error": "Sitzung muss aktualisiert werden. Die Aktion wurde nicht ausgeführt.", "code": "session_expired"})
         if self.headers.get_content_type() != "application/json":
             return self.send(415, {"error": "JSON erforderlich."})
         try:

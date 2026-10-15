@@ -144,7 +144,8 @@ class Application:
             except ManagerError as exc:
                 raise ManagerError(redact(str(exc), values)) from None
 
-        return self.jobs.submit(instance.profile["id"], operation, principal.id, self.authorized_callback(principal, callback))
+        return self.jobs.submit(instance.profile["id"], operation, principal.id, self.authorized_callback(principal, callback),
+                                enqueue=operation in ('start', 'stop', 'restart'))
 
     def mutate(self, principal, path, body):
         if path == "/api/servers":

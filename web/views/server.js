@@ -8,14 +8,22 @@ export function controls() {
   const status = state.snapshot?.status;
   const pending = state.pending.has(state.selectedServer);
   const locked = state.submitting || !state.available || pending;
-  const actionLocked = locked || state.refreshing;
+  const actionLocked = state.submitting || !state.catalogAvailable || !state.selectedServer;
   const recovery = status?.recovery_required;
   $('#server-select').disabled = state.submitting || !state.catalogAvailable;
   $('#profile-fields').disabled = state.submitting || !can('catalog.write');
-  $('#start').disabled = actionLocked || recovery || !can('server.start') || !status?.installed || !status?.configured || state.snapshot?.config_error || status.running || status.starting;
-  $('#stop').disabled = actionLocked || !can('server.stop') || !status?.running;
-  $('#restart').disabled = actionLocked || recovery || !can('server.restart') || !status?.running;
-  $('#setup').disabled = actionLocked || recovery || !can('server.setup') || !status?.installed || status.running || status.starting;
+  $('#start').disabled = actionLocked || recovery || !can('server.start');
+  $('#stop').disabled = actionLocked || !can('server.stop');
+  $('#restart').disabled = actionLocked || recovery || !can('server.restart');
+  $('#setup').disabled = locked || recovery || !can('server.setup') || !status?.installed || status.running || status.starting;
+  for (const [id, permission] of [['start', 'server.start'], ['stop', 'server.stop'], ['restart', 'server.restart']]) {
+    $(`#${id}`).title = !can(permission) ? 'Deine Rolle erlaubt diese Aktion nicht.' : 'Als Auftrag annehmen; beim Ausführen wird der aktuelle Serverzustand geprüft.';
+  }
+  $('#control-hint').textContent = !state.catalogAvailable ? 'Serverprofile werden geladen …'
+    : recovery ? 'Eine Weltwiederherstellung ist offen. Start und Neustart benötigen zuerst den Rückweg unter Weltsicherungen.'
+      : can('server.stop') ? 'Start, Stopp und Neustart werden als Aufträge nacheinander ausgeführt. Statusabfragen laufen unabhängig weiter.'
+        : can('server.start') ? 'Du darfst freigegebene Server starten. Stoppen und Neustart sind mit deiner Rolle nicht freigegeben.'
+          : 'Deine Rolle erlaubt das Ansehen; Serverbefehle sind nicht freigegeben.';
   $('#config-fields').disabled = locked || recovery || state.configLoading || !can('config.write') || !state.config || status?.running || status?.starting;
   $('#refresh').disabled = state.submitting;
   $('#refresh-logs').disabled = state.submitting;

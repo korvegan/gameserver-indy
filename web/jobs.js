@@ -3,11 +3,20 @@ import {$, element, notice} from './dom.js';
 import {state} from './state.js';
 
 const watching = new Set(), completed = new Set();
+const outstanding = new Map();
 const active = job => job.state === 'queued' || job.state === 'running';
 const names = {queued: 'Wartet', running: 'Läuft', succeeded: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen'};
 const operations = {start: 'Starten', stop: 'Stoppen', restart: 'Neu starten', setup: 'Vorbereiten', config: 'Einstellungen speichern', check_updates: 'Steam-Update prüfen'};
 Object.assign(operations, {backup: 'Welt sichern', backup_verify: 'Sicherung prüfen', backup_pin: 'Sicherung anheften / lösen', backup_settings: 'Sicherungsautomatik speichern', backup_restore: 'Welt wiederherstellen', backup_recover: 'Vorherigen Stand zurückholen'});
 const reservation = job => job.operation === 'check_updates' ? `updates:${job.server_id}` : job.server_id;
+
+function track(job) {
+  if (active(job)) outstanding.set(job.id, job); else outstanding.delete(job.id);
+  const key = reservation(job);
+  const pending = [...outstanding.values()].filter(item => reservation(item) === key)
+    .sort((a, b) => (a.state === 'running' ? -1 : 0) - (b.state === 'running' ? -1 : 0) || a.created_at.localeCompare(b.created_at));
+  if (pending.length) state.pending.set(key, pending[0]); else state.pending.delete(key);
+}
 
 export function mergeJobs(jobs) {
   const known = new Map(state.latestJobs.map(job => [job.id, job]));
@@ -24,7 +33,7 @@ export function renderJobs() {
   for (const job of state.latestJobs.slice(0, 5)) {
     const row = element('div', undefined, 'job-row'); row.dataset.jobId = job.id;
     const title = element('strong', `${operations[job.operation] || job.operation} · ${names[job.state]}`);
-    const detail = element('span', job.message, 'muted');
+    const detail = element('span', `${job.message}${job.state === 'queued' && job.queue_position ? ` Warteschlange: Position ${job.queue_position}.` : ''}`, 'muted');
     const identity = element('small', `Auftrag ${job.id.slice(0, 8)} · ${new Date(job.updated_at).toLocaleString('de-DE')}`, 'muted');
     row.append(title, detail, identity); container.append(row);
   }
@@ -33,7 +42,7 @@ export function renderJobs() {
 export function watchJob(initial, update, finish) {
   if (!active(initial) || watching.has(initial.id) || completed.has(initial.id)) return;
   watching.add(initial.id);
-  state.pending.set(reservation(initial), initial);
+  track(initial);
   update();
   (async () => {
     try {
@@ -48,10 +57,10 @@ export function watchJob(initial, update, finish) {
         if (state.selectedServer === job.server_id) { mergeJobs([job]); renderJobs(); }
         if (!active(job)) {
           completed.add(job.id);
-          if (state.pending.get(reservation(job))?.id === job.id) state.pending.delete(reservation(job));
+          track(job);
           update(); await finish(job); return;
         }
-        state.pending.set(reservation(job), job); update();
+        track(job); update();
         await new Promise(resolve => setTimeout(resolve, document.hidden ? 2000 : 500));
       }
     } finally { watching.delete(initial.id); }
