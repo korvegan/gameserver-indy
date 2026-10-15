@@ -32,6 +32,7 @@ using System.IO;
 using System.Threading;
 public static class StandIn {
     public static void Main() {
+        File.WriteAllText("process.pid", System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
         Console.CancelKeyPress += (sender, args) => {
             args.Cancel = true;
             File.WriteAllText("graceful-stop.txt", "saved");
@@ -49,10 +50,10 @@ public static class StandIn {
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             bridge = WindowsBridge(windows_path(directory))
             self.assertEqual(bridge.call("Status")["processes"], [])
-            started = bridge.call("Start")["processes"]
-            self.assertEqual(len(started), 1)
-            process_id = started[0]["pid"]
             try:
+                started = bridge.call("Start")["processes"]
+                self.assertEqual(len(started), 1)
+                process_id = started[0]["pid"]
                 self.assertEqual(bridge.call("Status")["processes"][0]["pid"], process_id)
                 # Another installation must never adopt or stop this process.
                 other = directory / "other"
@@ -62,9 +63,10 @@ public static class StandIn {
                 self.assertEqual((directory / "graceful-stop.txt").read_text(), "saved")
             finally:
                 # A failed test must clean up only its own disposable process.
-                remaining = bridge.call("Status")["processes"]
-                if any(p["pid"] == process_id for p in remaining):
-                    subprocess.run([powershell, "-NoProfile", "-NonInteractive", "-Command", f"Stop-Process -Id {int(process_id)} -Force"], capture_output=True, timeout=15)
+                marker = directory / "process.pid"
+                if marker.exists():
+                    process_id = int(marker.read_text())
+                    subprocess.run([powershell, "-NoProfile", "-NonInteractive", "-Command", f"$p = Get-Process -Id {process_id} -ErrorAction SilentlyContinue; if ($p) {{ $p | Stop-Process -Force; $p.WaitForExit() }}"], capture_output=True, timeout=15)
 
 
 if __name__ == "__main__":
