@@ -22,8 +22,9 @@
       <button class="nav" data-view="profiles" data-permission="catalog.write" hidden><span aria-hidden="true">＋</span> Serverprofile</button>
       <button class="nav" data-view="games"><span aria-hidden="true">▦</span> Spiele / Mods</button>
       <button class="nav" data-view="community"><span aria-hidden="true">⚑</span> Sturmklingen</button>
+      <button class="nav" data-view="access" data-permission="access.manage" hidden><span aria-hidden="true">♙</span> Familienzugang</button>
     </nav>
-    <div class="sidebar-bottom"><span class="local-dot"></span> Lokal auf deinem Rechner<small>GameServer Indy · v0.3</small></div>
+    <div class="sidebar-bottom"><span class="local-dot"></span> <span id="location-label">Lokal auf deinem Rechner</span><small>GameServer Indy · v0.3</small></div>
   </aside>
   <main>
     <header class="topbar"><span><span class="muted">Verwaltung</span><span class="slash">/</span><span id="breadcrumb">Übersicht</span></span><span class="local-badge" id="identity-label">LOCAL HOST</span></header>
@@ -91,6 +92,17 @@
     <section id="games" class="view" hidden>
       <div class="page-heading"><div><p class="eyebrow">GEMEINSAM SPIELEN</p><h1>Deine Spiele.</h1><p class="subtitle" id="games-state">Spiele werden geladen …</p></div></div>
       <div id="game-catalog" class="catalog-grid"></div>
+    </section>
+    <section id="access" class="view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">PERSÖNLICH UND PRIVAT</p><h1>Familienzugang.</h1><p class="subtitle">Du entscheidest, wer welche Server sehen und starten darf.</p></div><button id="access-refresh" class="button secondary">↻ Freigaben neu laden</button></div>
+      <p class="inline-info">Familienbediener können freigegebene Server ansehen und starten. Stoppen und Neustarten bleiben gesperrt, solange keine verlässliche Prüfung der Spielerbelegung eingerichtet ist.</p>
+      <section class="panel"><h2 class="section-title">Private Verbindung</h2><p id="family-state" role="status">Einrichtung wird geladen …</p><a id="family-address" class="path" target="_blank" rel="noopener" hidden></a>
+        <form id="family-settings"><fieldset class="form-grid"><label class="check-row wide"><input id="family-enabled" type="checkbox"> Privaten Familienzugang aktivieren</label><label>Tailscale-Gerätename<input id="family-hostname" placeholder="rechner.tailnet.ts.net" maxlength="253"></label><label>Lokaler Familienport<input id="family-port" type="number" min="1024" max="65535" value="8767" required></label><p class="field-help wide">HTTPS wird über Tailscale Serve eingerichtet. Namen und Port nach Änderungen durch Neustart der Verwaltung übernehmen. Das beendet keine Spielserver.</p><div class="wide"><button class="button primary" type="submit">Verbindung speichern</button></div></fieldset></form>
+      </section>
+      <div class="community-layout access-layout"><section class="panel"><h2 id="access-user-title" class="section-title">Eine Person freigeben</h2><p class="muted">Die Person braucht einen eigenen Tailscale-Zugang und eine private Netzwerkfreigabe. Hier legst du zusätzlich ihre Dashboard-Rechte fest. Es wird keine Einladung versendet.</p>
+        <form id="access-user-form"><fieldset id="access-user-fields" class="form-grid"><label>Anzeigename<input id="access-user-name" maxlength="80" required></label><label>Persönlicher Tailscale-Anmeldename<input id="access-user-login" maxlength="254" autocomplete="off" placeholder="name@example.com" required></label><label class="wide">Rechte<select id="access-user-role"><option value="family">Familie · ansehen und starten</option><option value="viewer">Nur ansehen</option><option value="owner">Besitzer · voller Zugriff</option></select></label><div id="access-server-choice" class="wide"><p>Freigegebene Server</p><div id="access-server-inputs" class="checkboxes"></div></div><label class="check-row wide"><input id="access-user-enabled" type="checkbox" checked> Zugang freigegeben</label><div class="chronicle-actions wide"><button type="submit" class="button primary">Freigabe speichern</button><button type="button" id="access-user-cancel" class="button secondary">Zurücksetzen</button></div></fieldset></form>
+      </section><section class="panel"><h2 class="section-title">Freigegebene Personen</h2><div id="access-users"></div></section></div>
+      <section class="panel"><h2 class="section-title">Zugriffe und Änderungen</h2><p class="muted">Die letzten 100 Anmeldungen, angefragten Aktionen, Freigabeänderungen und Zugriffsfehler. Spielaufträge zeigen ihren weiteren Verlauf in der Übersicht.</p><ol id="access-audit" class="access-audit" tabindex="0" aria-label="Zugriffsprotokoll"></ol></section>
     </section>
     <section id="community" class="view" hidden>
       <div class="page-heading"><div><p class="eyebrow">DIE CHRONIK DER STURMKLINGEN</p><h1>Unsere gemeinsamen Momente.</h1><p class="subtitle" id="community-state">Chronik wird geladen …</p></div><div class="chronicle-actions"><button class="button primary" id="new-moment" data-permission="community.write">＋ Moment festhalten</button><button class="button secondary" id="refresh-community">↻ Chronik aktualisieren</button></div></div>

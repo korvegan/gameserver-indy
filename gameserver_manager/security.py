@@ -9,7 +9,7 @@ PERMISSIONS = {
     "family": READ | {"server.start"},
     "owner": READ | {"config.read", "config.write", "logs.read", "server.start", "server.stop",
                       "server.restart", "server.setup", "catalog.write", "discord.write", "updates.check", "connections.refresh",
-                      "community.write", "community.export"},
+                      "community.write", "community.export", "access.manage"},
 }
 
 
@@ -22,6 +22,7 @@ class Principal:
     id: str
     role: str
     server_ids: frozenset | None = None
+    auth_revision: int = 0
 
     def allows_server(self, server_id):
         return isinstance(server_id, str) and (self.server_ids is None or server_id in self.server_ids)
@@ -38,6 +39,6 @@ class Principal:
 
 def local_owner(_request):
     # Only LocalServer's strict loopback/Host boundary authorizes this default.
-    # Incoming identity/role/proxy headers are deliberately ignored. #17 must
-    # supply a verified identity provider before any network exposure.
+    # Incoming identity/role/proxy headers are deliberately ignored. FamilyServer
+    # has its own loopback listener and verified Serve allowlist; no fallback here.
     return Principal("local-owner", "owner")

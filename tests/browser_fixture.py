@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from gameserver_manager.core import GameServerManager, atomic_json
 from gameserver_manager.registry import ServerRegistry
 from gameserver_manager.games import GAME_TYPES
-from gameserver_manager.server import LocalServer
+from gameserver_manager.server import LocalServer, FamilyServer
+from family_proxy_fixture import FamilyProxy
 from gameserver_manager.security import Principal, local_owner
 from test_manager import FakeBridge
 from gameserver_manager.configuration import ManagerError
@@ -70,8 +71,19 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
             server.app.connections._collect()
             server.app.community.record({"id": "qa-milestone", "revision": 1, "game_id": "raft", "title": "Gemeinsamer Testmoment",
                 "source": "test", "badge_id": "qa-badge", "member_ids": ["qa-one", "qa-two", "qa-three", "qa-four"]})
+            family = FamilyServer(server.app, 'indy.example.ts.net', 8767)
+            proxy = FamilyProxy(family)
+            server.app.access.configure(Principal('local-owner', 'owner'), {'enabled': True, 'hostname': family.hostname, 'port': family.server_port})
+            server.app.access.runtime = {'active': True, 'hostname': family.hostname, 'port': family.server_port}
+            import threading
+            for listener in (family, proxy):
+                threading.Thread(target=listener.serve_forever, daemon=True).start()
             print("GameServer Indy: http://127.0.0.1:8766", flush=True)
             try:
                 server.serve_forever()
             except KeyboardInterrupt:
                 pass
+            finally:
+                for listener in (proxy, family):
+                    listener.shutdown()
+                    listener.server_close()

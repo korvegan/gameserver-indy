@@ -2,6 +2,7 @@
 import copy
 
 from .catalog import GameCatalog
+from .access import AccessService
 from .community import CommunityService
 from .chronicle import ChronicleService
 from .connections import ConnectionService
@@ -20,6 +21,7 @@ class Application:
         self.registry = registry
         self.catalog = GameCatalog(registry.settings.get("catalog_games", []))
         self.database = Database(registry.root / "data" / "platform.sqlite3")
+        self.access = AccessService(registry.root, registry)
         self.jobs = JobService(self.database)
         self.updates = UpdateService(registry)
         self.connections = ConnectionService()
@@ -70,7 +72,13 @@ class Application:
     def check_updates(self, principal, server_id):
         instance = self.instance(principal, server_id, 'updates.check', explicit=True)
         return self.jobs.submit(instance.profile['id'], 'check_updates', principal.id,
-                                lambda: self.updates.check(instance), reservation=('updates', instance.profile['id']))
+                                self.authorized_callback(principal, lambda: self.updates.check(instance)), reservation=('updates', instance.profile['id']))
+
+    def authorized_callback(self, principal, callback):
+        def authorized():
+            self.access.validate(principal)
+            return callback()
+        return authorized
 
     def start_update_checks(self):
         if self.registry.settings.get('automatic_update_checks', True) is True:
@@ -118,7 +126,7 @@ class Application:
             except ManagerError as exc:
                 raise ManagerError(redact(str(exc), values)) from None
 
-        return self.jobs.submit(instance.profile["id"], operation, principal.id, callback)
+        return self.jobs.submit(instance.profile["id"], operation, principal.id, self.authorized_callback(principal, callback))
 
     def mutate(self, principal, path, body):
         if path == "/api/servers":
@@ -128,7 +136,7 @@ class Application:
             principal.require("discord.write")
             instance = self.registry.get()
             callback = lambda: instance.save_discord(body) if path.endswith("settings") else instance.notify(body.get("message"))
-            _job, future = self.jobs.submit("@discord", path.rsplit("/", 1)[1], principal.id, callback)
+            _job, future = self.jobs.submit("@discord", path.rsplit("/", 1)[1], principal.id, self.authorized_callback(principal, callback))
             return future.result()
         operation = path.rsplit("/", 1)[-1]
         _job, future = self.submit(principal, operation, body)

@@ -32,6 +32,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./tests/test-desktop-launcher.ps1
+      - name: Private family setup with isolated mocks
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tests/test-family-setup.ps1
   browser:
     name: Browser (Chromium)
     runs-on: ubuntu-latest
