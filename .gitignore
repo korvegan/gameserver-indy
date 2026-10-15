@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 .env
 manager.local.json
+launcher.local.json
 data/
 artifacts/
 node_modules/

@@ -6,14 +6,48 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Backend (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: python -m unittest discover -s tests -v
+      - name: Windows process integration
+        if: runner.os == 'Windows'
+        run: python -m unittest discover -s tests -p test_windows_bridge.py -v
+        env:
+          ENSHROUDED_WINDOWS_TEST: '1'
+      - name: Windows launcher and shortcut installer
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tests/test-desktop-launcher.ps1
+  browser:
+    name: Browser (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --check web/app.js
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check:js
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-screenshots
+          path: artifacts/
+          if-no-files-found: ignore

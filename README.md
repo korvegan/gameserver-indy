@@ -13,15 +13,29 @@ cd /home/korvegan/projects/enshrouded-indy
 bash start.sh
 ```
 
-Danach **http://localhost:8765** im Windows-Browser öffnen. Alternativ unter Windows `start.cmd` ausführen; dieser Starter verwendet den obigen WSL-Projektpfad. Es werden keine zusätzlichen Python- oder Node-Pakete benötigt. Python und der lokale Dienst müssen laufen, solange die Oberfläche benutzt wird.
+Danach **http://127.0.0.1:8765** im Windows-Browser öffnen. Unter Windows öffnet `start.cmd` die Oberfläche automatisch und startet die Verwaltung bei Bedarf. `start.cmd` und die Desktop-Verknüpfung verwenden denselben versionierten PowerShell-Starter. Es werden keine zusätzlichen Python- oder Node-Pakete für den Betrieb benötigt. Python und der lokale Dienst müssen laufen, solange die Oberfläche benutzt wird.
 
 Direkt aus Windows PowerShell:
 
 ```powershell
-wsl.exe --cd /home/korvegan/projects/enshrouded-indy python3 -m enshrouded_manager
+wsl.exe --distribution Indy --user korvegan --cd /home/korvegan/projects/enshrouded-indy --exec python3 -m enshrouded_manager
 ```
 
 Alternativ läuft der Dienst mit einer Windows-Python-Installation (`py -3 -m enshrouded_manager`) aus einer lokalen Kopie des Projekts. Die Prozesssteuerung nutzt Windows PowerShell 5.1. Unter WSL muss Windows-Interop verfügbar sein. Verwaltung und Spielserver unter demselben Windows-Benutzer starten.
+
+### Desktop-Verknüpfung installieren oder aktualisieren
+
+In Windows PowerShell, für den aktuellen WSL-Checkout:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "\\wsl.localhost\Indy\home\korvegan\projects\enshrouded-indy\scripts\install-desktop-shortcut.ps1" -WslUser korvegan
+```
+
+Der Installer erkennt Distribution und Projektpfad aus dem WSL-Netzwerkpfad. Er kopiert `scripts/start-manager.ps1` nach `%LOCALAPPDATA%\EnshroudedIndy\Start-Manager.ps1`, speichert die Rechnerdaten daneben in `launcher.local.json` und legt **Enshrouded Indy** auf dem tatsächlichen Windows-Desktop an. Derselbe Befehl aktualisiert eine vorhandene eigene Installation. Eine fremde Verknüpfung mit demselben Namen wird nicht überschrieben.
+
+Beim Doppelklick wartet der Starter auf die lokale HTTP-Antwort, bevor er den Browser öffnet. Weitere Klicks verwenden eine bereits laufende Verwaltung. Die WSL-Konsole startet minimiert; bei Startproblemen liegt das Fehlerprotokoll unter `%LOCALAPPDATA%\EnshroudedIndy\logs\`. Der Spielserver wird durch diesen Starter nicht automatisch gestartet.
+
+Für andere Installationen können `-WslDistribution`, `-WslUser`, `-ProjectDirectory` (absoluter Linux-Pfad) und `-Port` angegeben werden. `start.cmd` erkennt diese Daten beim Aufruf aus dem WSL-Checkout ebenfalls; ein optionales `scripts/launcher.local.json` kann sie lokal vorgeben. Nach einem Update den Installer erneut ausführen, damit der Desktop-Starter dem Repository entspricht. `ExecutionPolicy Bypass` gilt ausschließlich für den aufgerufenen Prozess und ändert keine systemweite Richtlinie.
 
 ## Erstes Setup
 
@@ -74,7 +88,7 @@ node --check web/app.js
 python3 -m enshrouded_manager status
 ```
 
-Die Tests arbeiten in temporären Installationen mit einem simulierten Prozessadapter und gemocktem Discord. Sie prüfen insbesondere das Sperren laufender Konfigurationen, die Originaldatei bei fehlerhaften Änderungen, Backups, Start-/Stopp-Reihenfolgen, unbekannte Felder, lokale API-Zugriffskontrollen und Discord-Fehler. Es werden dabei weder der echte Server gestartet noch Discord-Nachrichten verschickt. Node wird nur für die optionale JavaScript-Syntaxprüfung benötigt.
+Die Tests arbeiten in temporären Installationen mit einem simulierten Prozessadapter und gemocktem Discord. Sie prüfen insbesondere das Sperren laufender Konfigurationen, die Originaldatei bei fehlerhaften Änderungen, Backups, Start-/Stopp-Reihenfolgen, unbekannte Felder, lokale API-Zugriffskontrollen und Discord-Fehler. Es werden dabei weder der echte Server gestartet noch Discord-Nachrichten verschickt. Node wird nur für die Entwicklungsprüfungen benötigt.
 
 Die Windows-Anbindung lässt sich zusätzlich mit einem temporären Testprozess prüfen:
 
@@ -82,19 +96,25 @@ Die Windows-Anbindung lässt sich zusätzlich mit einem temporären Testprozess 
 ENSHROUDED_WINDOWS_TEST=1 python3 -m unittest discover -s tests -p test_windows_bridge.py -v
 ```
 
-Für die optionale Browserprüfung in zwei Terminals:
+Unter Windows prüft dieses Skript zusätzlich Installer und Starter mit einer temporären Testinstallation, einschließlich Erststart, wiederholter Aufrufe, Pfaden mit Leerzeichen und Startfehlern:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\test-desktop-launcher.ps1
+```
+
+Für die Browserprüfung werden die Prüfwerkzeuge anhand des Lockfiles installiert. Der Prüfaufruf startet und beendet seine eigene isolierte Testinstallation auf Port 8766:
 
 ```bash
-# Terminal 1: isolierte Testinstallation auf Port 8766, ohne echten Server/Discord
-python3 tests/browser_fixture.py
-
-# Terminal 2: Playwright ausschließlich als Prüfwerkzeug installieren
-npm install --prefix /tmp/enshrouded-browser-qa --no-audit --no-fund playwright
-/tmp/enshrouded-browser-qa/node_modules/.bin/playwright install chromium
-NODE_PATH=/tmp/enshrouded-browser-qa/node_modules node tests/browser-smoke.cjs
+npm ci --no-audit --no-fund
+npx playwright install chromium
+npm run test:browser
 ```
 
 Die Browserprüfung bedient die Oberfläche einschließlich Erstkonfiguration, regulären und fehlerhaften Änderungen, Passwortanzeige, Discord, Serveraktionen und mobilen Ansichten. Screenshots liegen anschließend im ignorierten Ordner `artifacts/`. Falls Chromium bereits installiert ist, kann `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` auf dessen ausführbare Datei verweisen.
+
+GitHub Actions führt die Backend-Tests unter Linux und Windows aus, ergänzt unter Windows die Prozess- und Starterprüfungen und startet die Chromium-Browserprüfung in einem eigenen Job. Screenshots werden als Workflow-Artefakte abgelegt. Ein echter Desktop-Aufruf mit WSL und Standardbrowser wird zusätzlich lokal geprüft; der Windows-CI-Job verwendet dafür einen temporären Ersatzprozess.
+
+Für diese lokale Prüfung zuerst die Verwaltung beenden und dann unter Windows `scripts/check-desktop-start.ps1` ausführen. Das Skript ruft die installierte Desktop-Verknüpfung auf, wartet auf die HTTP-Antwort, prüft die Wiederverwendung der laufenden Verwaltung und vergleicht die Spielserver-Prozess-IDs vor und nach dem Aufruf. Die Verwaltung bleibt danach aktiv; der Standardbrowser wird durch die Verknüpfung geöffnet.
 
 ## Quellen
 
