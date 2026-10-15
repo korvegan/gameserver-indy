@@ -113,3 +113,17 @@ GAMESERVER_WINDOWS_TEST=1 python3 -m unittest discover -s tests -p test_windows_
 Unter Windows prüft `tests/test-desktop-launcher.ps1` die Starter isoliert. `scripts/check-desktop-start.ps1` ist die manuelle Kaltstartprüfung der echten Desktop-Verknüpfung. GitHub Actions prüft Backend auf Linux/Windows, Prozessanbindung, Starter und Chromium.
 
 Für weitere Arbeiten den [projektspezifischen Skill](skills/gameserver-indy/SKILL.md) verwenden und neue bestätigte Fallstricke dort pflegen.
+
+## Ausbau und Architektur
+
+Die [Bewertung aller Ausbauissues](docs/backlog.md) beschreibt Nutzen, Aufwand, Abhängigkeiten und Reihenfolge. Die [Architektur und API-Verträge](docs/architecture.md) erklären die Dienstgrenzen, Rollen, Hintergrundaufträge und den Rückweg. Der laufende Familienzugriff bleibt ein eigener Einrichtungsauftrag; die Verwaltung bindet weiterhin nur localhost.
+
+Die zusätzliche lokale Datenbank `data/platform.sqlite3` hält Aufträge und Gemeinschaftsreferenzen getrennt von bestehenden Spielkonfigurationen und technischen Logs. Vorhandene Profile, externe ASKA-Dateien und Welten werden dadurch nicht verschoben. Eine unbekannte Datenbankversion wird abgewiesen. Die bisherigen Python-Importnamen unter `gameserver_manager.core` und HTTP-Routen bleiben für den lokalen Besitzer erhalten.
+
+Ein ausführbarer Gemeinschaftstest verwendet ausschließlich temporäre Daten und einen Discord-Stub:
+
+```bash
+python3 -m gameserver_manager demo
+```
+
+Der Test verbindet einen Gruppenmoment, vier gleiche Auszeichnungen, eine stabile Szenen-ID und genau eine Stub-Mitteilung. Es werden keine echten Errungenschaften oder Discord-Nachrichten erzeugt.

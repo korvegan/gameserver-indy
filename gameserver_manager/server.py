@@ -3,10 +3,15 @@ from __future__ import annotations
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import secrets
+import sqlite3
 from urllib.parse import parse_qs, urlsplit
 
-from .core import ManagerError, ROOT
+from .api import Api, NotFound
+from .application import Application
+from .configuration import ManagerError
+from .paths import ROOT
 from .registry import ServerRegistry
+from .security import AccessDenied, local_owner
 
 STATIC = ROOT / "web"
 
@@ -14,14 +19,26 @@ STATIC = ROOT / "web"
 class LocalServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, manager, port=8765):
+    def __init__(self, manager, port=8765, identity=None):
         self.registry = manager if isinstance(manager, ServerRegistry) else ServerRegistry(manager.root, manager)
         self.token = secrets.token_urlsafe(32)
+        self.identity = identity or local_owner
         super().__init__(("127.0.0.1", port), Handler)
+        try:
+            self.app = Application(self.registry)
+            self.api = Api(self.app)
+        except BaseException:
+            super().server_close()
+            raise
+
+    def server_close(self):
+        if hasattr(self, "app"):
+            self.app.close()
+        super().server_close()
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "GameServerIndy/0.2"
+    server_version = "GameServerIndy/0.3"
 
     def setup(self):
         super().setup()
@@ -53,32 +70,27 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         try:
             if path == "/api/session":
-                return self.send(200, {"token": self.server.token})
-            if path == "/api/servers":
-                return self.send(200, self.server.registry.catalog())
-            selected = parse_qs(urlsplit(self.path).query).get("server", [None])[0]
-            manager = self.server.registry.get(selected)
-            if path == "/api/state":
-                return self.send(200, {"status": manager.status(), "config": manager.public_config(), "events": manager.events(),
-                                       "game_profile": manager.game.schema,
-                                       **self.server.registry.catalog()})
-            if path == "/api/logs":
-                source = parse_qs(urlsplit(self.path).query).get("source", [None])[0]
-                return self.send(200, manager.logs(source))
+                return self.send(200, {"token": self.server.token, "principal": self.server.identity(self).public(), "api_version": 1})
+            if path.startswith("/api/"):
+                return self.send(200, self.server.api.get(path, parse_qs(urlsplit(self.path).query), self.server.identity(self)))
             files = {
                 "/": ("index.html", "text/html; charset=utf-8"),
                 "/app.js": ("app.js", "text/javascript; charset=utf-8"),
                 "/style.css": ("style.css", "text/css; charset=utf-8"),
                 "/favicon.svg": ("favicon.svg", "image/svg+xml"),
             }
+            for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js",
+                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js"):
+                files["/" + name] = (name, "text/javascript; charset=utf-8")
             if path in files:
                 filename, content_type = files[path]
                 return self.send(200, (STATIC / filename).read_bytes(), content_type)
             return self.send(404, {"error": "Nicht gefunden."})
-        except ManagerError as exc:
-            return self.send(409, {"error": str(exc)})
-        except OSError:
-            return self.send(500, {"error": "Eine lokale Datei ist nicht zugänglich. Pfad und Berechtigungen prüfen."})
+        except (AccessDenied, NotFound, ManagerError) as exc:
+            status = 403 if isinstance(exc, AccessDenied) else 404 if isinstance(exc, NotFound) else 409
+            return self.send(status, {"error": str(exc), "code": {403: "forbidden", 404: "not_found", 409: "conflict"}[status]})
+        except (OSError, sqlite3.Error):
+            return self.send(500, {"error": "Eine lokale Datei ist nicht zugänglich. Pfad und Berechtigungen prüfen.", "code": "local_storage"})
 
     def do_POST(self):
         if not self.trusted_host():
@@ -102,26 +114,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(400, {"error": "Ungültiges JSON."})
         path = urlsplit(self.path).path
         try:
-            if path == "/api/servers":
-                return self.send(200, self.server.registry.register(body))
-            manager = self.server.registry.get(body.get("server_id"), explicit=path not in ("/api/discord/settings", "/api/discord/send"))
-            if path == "/api/setup":
-                result = manager.setup()
-            elif path in ("/api/start", "/api/stop", "/api/restart"):
-                result = manager.action(path.rsplit("/", 1)[1])
-            elif path == "/api/config":
-                result = manager.save_config(body.get("config"))
-            elif path == "/api/discord/settings":
-                result = manager.save_discord(body)
-            elif path == "/api/discord/send":
-                result = manager.notify(body.get("message"))
-            else:
-                return self.send(404, {"error": "Nicht gefunden."})
-            return self.send(200, result)
-        except ManagerError as exc:
-            return self.send(409, {"error": str(exc)})
-        except (OSError, ValueError):
-            return self.send(500, {"error": "Datei konnte nicht gespeichert werden. Pfad und Berechtigungen prüfen."})
+            status, result = self.server.api.post(path, body, self.server.identity(self))
+            return self.send(status, result)
+        except (AccessDenied, NotFound, ManagerError) as exc:
+            status = 403 if isinstance(exc, AccessDenied) else 404 if isinstance(exc, NotFound) else 409
+            return self.send(status, {"error": str(exc), "code": {403: "forbidden", 404: "not_found", 409: "conflict"}[status]})
+        except (OSError, ValueError, sqlite3.Error):
+            return self.send(500, {"error": "Datei konnte nicht gespeichert werden. Pfad und Berechtigungen prüfen.", "code": "local_storage"})
 
 
 def serve(manager, port=8765):

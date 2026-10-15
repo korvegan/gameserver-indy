@@ -1,0 +1,100 @@
+# Ausbauarchitektur und Refactoring #27
+
+Stand: 15.10.2026. Die [Bewertungsmatrix](backlog.md) ordnet sämtliche bisherigen Issues und die neue Steam-Erkennung #29 ein. Die Fachfunktionen bleiben ihren Issues zugeordnet. Dieses Refactoring schafft ausführbare gemeinsame Grenzen, keine automatische Aktivierung von Fernzugriff, Modinstallation oder Errungenschaftserkennung.
+
+## Entscheidungen
+
+Den modularen Python-Dienst und HTML/CSS/JavaScript fortführen. Vier Spieler auf einem zugleich zum Spielen genutzten Windows-Rechner brauchen aktuell weder zusätzliche Serverdienste noch einen Frameworkwechsel. Python-Standardbibliothek inklusive SQLite genügt für diese Grundlagen; Playwright bleibt eine Entwicklungsabhängigkeit.
+
+```mermaid
+flowchart LR
+  Browser[Browsermodule] --> HTTP[HTTP / CSRF / Identitätsadapter]
+  HTTP --> App[Anwendung / Rechte / Datensichten]
+  App --> Jobs[Aufträge je Ziel]
+  Jobs --> Instance[Instanzdienste]
+  Instance --> Windows[Windows-Prozessadapter]
+  Instance --> Config[Spielkonfiguration / genaue Sicherung]
+  Instance --> Logs[Bereinigte Logs / technische Historie]
+  App --> Catalog[Spielekatalog / Fähigkeiten]
+  App --> Community[Ereignis / Revision / Szene]
+  Community --> Outbox[Freigegebener Versandauftrag]
+  Outbox --> Transport[Expliziter Transport / Teststub]
+  Jobs --> DB[(SQLite)]
+  Community --> DB
+```
+
+## Verantwortlichkeiten und Verträge
+
+| Modul | Verantwortung |
+| --- | --- |
+| `server.py` | Loopback, Host/Origin, CSRF, JSON-Größenlimit, statische Dateiliste, HTTP-Fehler. |
+| `api.py` | GET-/POST-Verträge und Parameterprüfung. Keine Windows- oder Versandlogik. |
+| `application.py`, `security.py` | Identität, Rechte, gefilterte Datensichten, Auswahl einer ausdrücklichen Instanz, Operationsdispatch. |
+| `registry.py`, `catalog.py` | Installationen und gemeinsame Einstellungen gegenüber eigenständigen Spielidentitäten/Fähigkeiten. |
+| `instances.py` | Zusammensetzung genau einer Instanz. `core.py` erhält die bisherigen Importnamen als Kompatibilitätsfassade. |
+| `instance_config.py`, `games.py` | Sicherung, atomarer Konfigurationswechsel und spielspezifisches Format/Validierung. |
+| `operations.py`, `processes.py` | Lebenszyklus und native Prozesszuordnung. PowerShell-Skripte bleiben erhalten. |
+| `instance_logs.py`, `logs.py`, `history.py` | Quellenwahl, Geheimnisbereinigung und begrenzte technische Verlaufssicht. |
+| `discord.py` | Gemeinsame Webhook-Einstellungen und bestehender HTTP-Transport. ASKA behält seinen externen Starter. |
+| `jobs.py`, `storage.py` | Begrenzte Ausführung, Sperren, dauerhaftes Ergebnis, versionierte Datenbank und konsistente Sicherung. |
+| `community.py`, `prototype.py` | Ereignis-/Szenen-/Versandvertrag und ausschließlich temporärer ausführbarer Durchstich. |
+
+Spiel-ID, Serverinstanz-ID und Kampagnen-ID sind unterschiedliche Schlüssel. Die bisherige Profil-ID ist die Instanz-ID; Weltwahl erzeugt keine zweite unabhängige Instanz mit derselben EXE. Eine Kampagne bezeichnet die dauerhafte Spielgeschichte, ein Weltordner deren spielabhängigen Speicherort. Ein Modprofil erhält eine eigene ID und künftig unveränderliche Revisionen. Es gehört zum Spiel und optional zu Instanz/Kampagne. `EventContext` enthält diese Referenzen getrennt; serverlose Spiele sind im Katalog und in Gemeinschaftsereignissen zulässig.
+
+`catalog_games` in der bestehenden lokalen Managerdatei kann zusätzliche reine Spieleinträge enthalten, etwa `[{"id":"raft","label":"Raft"}]`. Dadurch wird kein Server- oder Modadapter behauptet. Nur vorhandene Spieladapter erscheinen in der Serverregistrierung. Fähigkeitszustände sind `supported`, `unsupported`, `unknown` mit Begründung. #5 ergänzt später die geprüften betrieblichen Quellen; #20 ergänzt unabhängige Quellenadapter mit Metadaten-/Downloadfähigkeiten. Eine Modquellen-ID ist weder Spiel-ID noch Dateiversion.
+
+Mitglied, Anmeldung und Spielergerät ebenfalls unterscheiden: `Principal.id` bezeichnet den lokal verifizierten Akteur; `member_ids` hält den Mitgliederkreis eines Ereignisses fest. Steam-/Discord-Konten sind spätere bewusste Verknüpfungen. Ein Gerätezugang aus #21 erhält eine eigene Geräte-ID mit begrenztem, widerrufbarem Recht und wird kein Besitzer-Login. Kampagnen-, Mitglieder-, Modprofil- und Geräteverwaltung werden in ihren Fachissues ergänzt; dieses Refactoring erzeugt dafür keine erfundenen Konten oder laufenden Synchronisierungen.
+
+## API und Rechte
+
+`/api/session` nennt `api_version: 1`, CSRF-Token und die vom Server bestimmte Identität samt Rechten. Das Token ist keine Anmeldung. Die ausgelieferte Konfiguration bindet weiterhin ausschließlich `127.0.0.1` und akzeptiert die bisherigen localhost-Hosts/Origins. Der Identitätsadapter behandelt dabei den lokalen Zugriff als Besitzer und ignoriert eingehende Rollen-/Proxyheader. Tests injizieren Familien-/Leseridentitäten über die Serverkonstruktion. #17 ersetzt diesen Adapter erst durch geprüfte private Authentifizierung; keine Netzwerkfreigabe ist Teil dieses Refactorings.
+
+| Vertrag | Inhalt / Recht |
+| --- | --- |
+| `GET /api/servers`, `/api/games` | Gefilterte Instanzen bzw. Spielidentitäten mit Fähigkeiten. Familien erhalten keine Installationspfade. |
+| `GET /api/status?server=<id>` | Prozessstatus und ausdrücklich ausgewählte Anzeigegrößen; keine allgemeine Spielkonfiguration. |
+| `GET /api/config?server=<id>` | Konfiguration und Formularschema, nur Besitzer. ASKA-Geheimnisse bleiben leer. |
+| `GET /api/events`, `/api/logs` | Technische Historie/bereinigte Logs, derzeit nur Besitzer. |
+| `POST /api/jobs` | `{server_id, operation}` für Start/Stopp/Neustart; Antwort 202 mit unveränderlicher Auftrags-ID. Intern auch Setup/Konfigurationsänderung. |
+| `GET /api/jobs?id=<id>` oder `?server=<id>` | Berechtigter Auftrag oder letzte 20 Aufträge der Instanz; Familien sehen keine Besitzerdiagnostik/Ergebnisdaten. |
+| `GET /api/community` | Letzte 20 Ereignisse mit Revision, gleichen Auszeichnungen und stabiler Szene; Instanzfreigaben werden berücksichtigt. |
+
+Bestehende POST-Routen und `/api/state` bleiben für den lokalen Besitzer kompatibel. Sie rufen dieselben Rechte und Instanzabläufe auf. `/api/state` enthält weiterhin Besitzerkonfiguration und ist für Familie gesperrt; das neue Frontend verwendet getrennte Sichten. Fehler tragen einen stabilen `code` (`forbidden`, `not_found`, `conflict`, `local_storage`) und einen deutschen Text. CSRF-/JSON-Transportfehler bleiben HTTP 4xx.
+
+Besitzer dürfen konfigurieren und betreiben. Familien dürfen freigegebene Profile sehen und starten; Stoppen/Neustart bleiben bis zur verlässlichen Belegungsprüfung aus #14 gesperrt. Leser haben ausschließlich Leserechte. Unbekannte Rollen werden abgelehnt. Versteckte UI-Schaltflächen ersetzen diese Prüfungen nicht.
+
+## Aufträge und Parallelität
+
+Vier Worker, höchstens 16 aktive/wartende Ziele. Ein Ziel besitzt höchstens einen verändernden Auftrag. Konfiguration, Setup und Prozessaktionen verwenden dieselbe Instanzsperre; Discord hat ein eigenes Verwaltungsziel. Registrierung und gemeinsame Einstellungen teilen eine kurze Metadatensperre. Weder Windows-Aufrufe noch Discord-Netzwerkzugriffe halten diese globale Sperre. Lesender Status wartet nicht auf die Instanzsperre.
+
+Zustände: `queued → running → succeeded/failed`; nach unterbrochener Verwaltung `interrupted`. Der Fortschritt nennt die tatsächliche Phase und eine Arbeitseinheit, keine erfundene Prozentzahl für ein Spiel. Diese Operationen sind ausdrücklich weder abbrechbar noch fortsetzbar. Ein Neustart der Verwaltung wiederholt keinen unklar abgeschlossenen Stopp, Download oder Dateischritt. Prozessstatus und vorhandene bereinigte Logs dienen der anschließenden Prüfung. Spätere Sicherungs-/Update-/Downloadschritte können eigene ehrliche Fortschritts- und Wiederanlaufverträge erhalten.
+
+## Persistenz, Migration und Rückweg
+
+`data/platform.sqlite3`, Schema 1, speichert Aufträge, Gemeinschaftsrevisionen, stabile Szenenpositionen und freigegebene Versandzustände. Jede Operation nutzt eine eigene Verbindung; kurze Schreibtransaktionen sind atomar. Keine Verbindung wird zwischen Threads geteilt. Der lokale Speicher verwendet das normale SQLite-Journal statt zusätzlicher Dienste. Auftragsargumente und Geheimnisse werden nicht persistiert.
+
+Die erste Initialisierung legt nur die neue Datenbank an. Bestehende Managerdatei/Schema 2, alte Einzelserverdatei, Spielkonfigurationen, Backups, technische Historie und externe ASKA-Dateien bleiben an ihren Orten. Die bisherige Einzelserverübernahme bleibt erhalten. Eine unbekannte Datenbankversion wird abgewiesen, ohne sie umzuschreiben. Vor künftigen Schemamigrationen ist eine konsistente SQLite-Sicherung erforderlich; `Database.backup(destination)` verwendet die SQLite-Backupfunktion und überschreibt keine bestehende Sicherung.
+
+Rückweg dieser Stufe: Verwaltung beenden, zuvor eingesetzte Programmversion auschecken und neu starten. Sie ignoriert die zusätzliche Plattformdatenbank und nutzt ihre unveränderten Bestandsdateien. Die Datenbank behalten, damit Gemeinschaftsdaten nicht verloren gehen. Wiederherstellen eines Datenbanksnapshots nur bei beendeter Verwaltung und mit Sicherung des aktuellen Stands. Das ist keine Weltwiederherstellung. Keine echten Welten, Windows-Einstellungen oder Kontozugänge werden migriert.
+
+## Gemeinschaftsdurchstich und Discord-Grenze
+
+```bash
+python3 -m gameserver_manager demo
+```
+
+Der Befehl verwendet ausschließlich ein temporäres Verzeichnis und einen Discord-Stub. Ein Gruppenmoment für vier synthetische Mitglieder wird doppelt eingereicht und verarbeitet: genau ein Chronikeintrag, vier gleiche Badge-Zuordnungen, eine dauerhaft zugeordnete Szene und eine Stub-Mitteilung. Es werden weder eine echte Errungenschaft erfunden noch echte Nachrichten versendet.
+
+`(event_id, revision)` ist unveränderlich und eindeutig. Korrekturen erhöhen die Revision lückenlos; die Szene und ihre Position bleiben erhalten. `(event_id, revision, target)` identifiziert den Versand. Eine bestätigte ältere Nachrichten-ID wird an einen Korrekturtransport zur Aktualisierung übergeben. Bei unklarem Versand wird nicht blind neu veröffentlicht. Auch nach Neustart oder weiterer Korrektur bleibt ein unklarer Vorgang prüfpflichtig. Live-Veröffentlichung, Medien und umfangreiche Chronikverwaltung folgen #22–#26.
+
+## Umsetzungsstufen und Prüfung
+
+1. **Backend-PR:** Dienste, Sperren, Datenbank, Rechte/Datensichten, Hintergrundaufträge und ausführbarer Gemeinschaftsdurchstich. Bisheriges Frontend läuft über die kompatiblen Routen weiter. Backend-, Browser- und native Windows-Prüfungen vor dem Merge.
+2. **Frontend-PR:** Module für Client, Zustand, Formulare, Navigation, Aufträge und Ansichten. Getrennte Status-/Besitzerabfragen, verspätete Antworten absichern, Spiele/Mods und Sturmklingen als eigenständige Bereiche vorbereiten. Desktop/Mobil, Tastatur, ungespeicherte Eingaben und reduzierte Bewegung prüfen. Bewertung/Roadmap abschließen und Messwerte dokumentieren.
+3. **Fachausbau nach Auftrag:** #5/#7/#6 für belegte Spielfähigkeiten, Zustand und Datenerhalt; danach #29/#8/#16/#17 gemäß Matrix. Das Refactoring wartet nicht auf fertige Familienidentitäten, um den Vertrag dafür zu testen; #17 setzt auf diesen geprüften Vertrag auf.
+
+Regressionen prüfen konkurrierende Ziele, Rechte auch auf alten Routen, Geheimnisse, unbekannten Wiederanlauf, externe Konfigurationen/BOM/unbekannte Felder und wiederholte Ereignisverarbeitung. Echter ASKA-Stopp/Welt-Restore und Zugriff aus externem Netz bleiben separate Betriebsprüfungen. Zeit-/Antwortgrößenmessungen mit Testprozessen dienen der Architekturprüfung, nicht als Leistungszusage für eine echte Viererrunde.
+
+### Gemessene API-Kosten
+
+`python3 tests/benchmark_platform.py` am 15.10.2026: je 30 HTTP-Abrufe auf einem lokalen Testserver mit `FakeBridge`, ohne echte Windows-/Spielbelastung. Der bisherige Besitzervertrag `/api/state` lieferte 4.013 Byte bei Median 0,921 ms; die getrennte Statussicht 663 Byte bei 0,842 ms. Während ein Teststart bewusst blockierte, antwortete dasselbe Profil im Median nach 0,869 ms (p95 1,045 ms), das andere nach 0,836 ms (p95 0,922 ms). Damit ist vor allem die fehlende Kopplung an den langen Auftrag nachgewiesen. Der Statuskörper ist in diesem Beispiel rund 83 % kleiner; zusätzliche gezielte UI-Abfragen sind darin nicht enthalten.
