@@ -10,6 +10,10 @@ import {loadGames} from './views/catalog.js';
 import {loadCommunity} from './views/community.js';
 
 let statusRequest = 0, configRequest = 0, controller;
+const jobContexts = new Map();
+const mayOpenFailureLogs = context => context && context.target === state.selectedServer
+  && context.selectionEpoch === state.selectionEpoch && context.navigationEpoch === state.navigationEpoch
+  && ['overview', 'logs'].includes(state.view) && can('logs.read');
 
 async function loadConfig() {
   if (!can('config.read') || state.dirty || state.view !== 'settings') return;
@@ -73,7 +77,7 @@ async function refresh() {
   }
 }
 
-async function selectServer(target) {
+async function selectServer(target, openOverview = false) {
   if (state.dirty && !confirm('Ungespeicherte Spieleinstellungen verwerfen und das Serverprofil wechseln?')) {
     $('#server-select').value = state.selectedServer; return false;
   }
@@ -82,7 +86,9 @@ async function selectServer(target) {
   $('#server-state').textContent = 'Status wird geprüft'; $('#status-updated').textContent = '';
   for (const id of ['slot-count', 'preset-label', 'query-port', 'process-id']) $(`#${id}`).textContent = '—';
   $('#log-source').value = 'server'; $('#log-updated').textContent = ''; $('#log-content').textContent = 'Logs werden geladen …';
-  renderEvents([]); renderJobs(); controls(); await refresh(); return true;
+  renderEvents([]); renderJobs(); controls();
+  if (openOverview) await go('overview');
+  await refresh(); return true;
 }
 
 async function go(next, {keepNotice = false} = {}) {
@@ -93,40 +99,43 @@ async function go(next, {keepNotice = false} = {}) {
   const heading = $(`#${next} h1`); heading?.setAttribute('tabindex', '-1'); heading?.focus({preventScroll: true});
   if (next === 'settings') await loadConfig();
   if (next === 'logs') await loadLogs();
-  if (next === 'games') await loadGames(async target => { if (await selectServer(target)) await go('overview'); });
+  if (next === 'games') await loadGames(target => selectServer(target, true));
   if (next === 'community') await loadCommunity();
 }
 
 async function finishJob(job) {
+  const context = jobContexts.get(job.id); jobContexts.delete(job.id);
   const label = state.catalog.servers.find(profile => profile.id === job.server_id)?.label || job.server_id;
   if (state.selectedServer === job.server_id) await refresh();
   const selected = state.selectedServer === job.server_id;
   const warning = job.result?.warning;
   notice(`${selected ? '' : `${label}: `}${job.message}${warning ? ` Hinweis: ${warning}` : ''}`, job.state !== 'succeeded' || Boolean(warning));
-  if (selected && job.state !== 'succeeded' && ['start', 'restart'].includes(job.operation) && can('logs.read')) {
+  if (mayOpenFailureLogs(context) && job.state !== 'succeeded' && ['start', 'restart'].includes(job.operation)) {
     state.logSource = 'launcher'; $('#log-source').value = 'launcher'; await go('logs', {keepNotice: true});
   }
 }
 
 async function runOperation(operation) {
   const target = state.selectedServer;
+  const context = {target, selectionEpoch: state.selectionEpoch, navigationEpoch: state.navigationEpoch};
   if (state.submitting || state.pending.has(target)) return;
   state.submitting = true; controls(); notice('Auftrag wird angelegt …');
   let job;
   try { job = (await api('/api/jobs', {operation}, target)).job; }
   catch (error) {
     notice(error.message, true);
-    if (state.selectedServer === target && ['start', 'restart'].includes(operation) && can('logs.read')) {
+    if (mayOpenFailureLogs(context) && ['start', 'restart'].includes(operation)) {
       state.logSource = 'launcher'; $('#log-source').value = 'launcher'; await go('logs', {keepNotice: true});
     }
   } finally { state.submitting = false; controls(); }
-  if (job) acceptJob(job, controls, finishJob);
+  if (job) { jobContexts.set(job.id, context); acceptJob(job, controls, finishJob); }
 }
 
 async function mutate(path, body = {}) {
   if (state.submitting) return;
   if (path === '/api/servers' && state.dirty && !confirm('Ungespeicherte Spieleinstellungen verwerfen und zum neuen Serverprofil wechseln?')) return;
   const target = state.selectedServer, epoch = state.selectionEpoch;
+  const {discordRevision, messageRevision} = state;
   state.submitting = true; controls(); notice('Wird ausgeführt …');
   try {
     const result = await api(path, body, target);
@@ -135,10 +144,10 @@ async function mutate(path, body = {}) {
     } else if ((path === '/api/config' || path === '/api/setup') && epoch === state.selectionEpoch) {
       state.dirty = false; state.rawDirty = false; state.config = null; state.schema = null;
     }
-    if (path === '/api/discord/settings') {
+    if (path === '/api/discord/settings' && discordRevision === state.discordRevision) {
       state.discordDirty = false; $('#webhook').value = ''; $('#clear-webhook').checked = false;
     }
-    if (path === '/api/discord/send') state.messageDirty = false;
+    if (path === '/api/discord/send' && messageRevision === state.messageRevision) state.messageDirty = false;
     await refresh(); notice(result.message + (result.warning ? ` Hinweis: ${result.warning}` : ''), Boolean(result.warning));
   } catch (error) { notice(error.message, true); }
   finally { state.submitting = false; controls(); }

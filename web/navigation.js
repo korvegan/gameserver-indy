@@ -6,6 +6,7 @@ const names = {overview: 'Übersicht', settings: 'Einstellungen', logs: 'Serverl
 
 export function navigate(next) {
   if (!Object.hasOwn(names, next)) return;
+  state.navigationEpoch++;
   state.view = next;
   for (const section of document.querySelectorAll('.view')) section.hidden = section.id !== next;
   for (const button of document.querySelectorAll('[data-view]')) {

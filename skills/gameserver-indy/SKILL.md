@@ -48,6 +48,8 @@ Die Dateien `docs/architecture.md` und `docs/backlog.md` im Repository beschreib
 
 Frontendzustand liegt zentral in `web/state.js`; API, Formulare, Navigation, Aufträge und fachliche Ansichten sind eigene native Module. Statuspolls dürfen keine Besitzerkonfiguration laden und keine Gemeinschaftsszene neu aufbauen. Im separaten Sub-Agent-Review wurden zwei konkrete Backendfehler gefunden und korrigiert: Ein vorübergehender Speicherfehler muss einen Auftrag als unterbrochen/unklar abgleichen, statt ihn ewig laufend anzuzeigen; alte Ereignisrevisionen dürfen neuere Discord-Korrekturen nicht zurücksetzen. Beide Fälle haben eigene Regressionen.
 
+Bei weiter bedienbaren Discord-Feldern darf eine verspätete Speicherbestätigung nur die abgeschickte Entwurfsrevision bestätigen. Automatische Navigation nach Startfehlern braucht den unveränderten Auswahl-/Navigationskontext; nach Neuladen wiederentdeckte Aufträge dürfen keine Ansicht übernehmen. Beide Frontendfehler sind mit verzögerten Browserantworten abgesichert.
+
 `python3 -m unittest discover -s tests -v`, `npm run check:js` und bei UI-Änderungen `npm run test:browser` verwenden. Prozessänderungen mit temporären Windows-Testservern prüfen. Prozess läuft, Sitzung bereit und erfolgreicher Spielerbeitritt sind unterschiedliche Prüfergebnisse. Der reguläre Stopp mit dem bestehenden ASKA-Starter muss an der echten Welt noch bestätigt werden.
 
 ## Lernen bei weiterer Arbeit

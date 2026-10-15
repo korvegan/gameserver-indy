@@ -3,9 +3,10 @@ let selectedServer = '';
 try { selectedServer = localStorage.getItem('gameserver-indy-server') || ''; } catch { /* Optional preference. */ }
 
 export const state = {
-  selectedServer, selectionEpoch: 0, view: 'overview', snapshot: null,
+  selectedServer, selectionEpoch: 0, navigationEpoch: 0, view: 'overview', snapshot: null,
   catalog: {servers: [], games: []}, principal: null,
   config: null, schema: null, dirty: false, rawDirty: false, discordDirty: false, messageDirty: false, profileDirty: false,
+  discordRevision: 0, messageRevision: 0,
   available: false, catalogAvailable: false, submitting: false, refreshing: false, configLoading: false,
   logSource: 'server', pending: new Map(), latestJobs: [],
 };

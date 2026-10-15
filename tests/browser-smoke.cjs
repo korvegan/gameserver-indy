@@ -73,6 +73,30 @@ const fs = require('node:fs');
     await page.getByRole('button', {name: 'Verbindung speichern', exact: true}).click();
     await expectNotice('Discord-Einstellungen gespeichert');
     assert.equal(await page.locator('#webhook').inputValue(), '');
+    // Editing while an earlier save is acknowledged must preserve the newer draft.
+    let releaseSave, saveArrived;
+    const saved = new Promise(resolve => { saveArrived = resolve; });
+    const saveGate = new Promise(resolve => { releaseSave = resolve; });
+    await page.route('**/api/discord/settings', async route => {
+      const response = await route.fetch(); saveArrived();
+      await saveGate; await route.fulfill({response});
+    });
+    await page.getByRole('button', {name: 'Verbindung speichern', exact: true}).click();
+    await saved;
+    await page.locator('#webhook').fill('https://discord.com/api/webhooks/123/pending_draft');
+    await page.locator('#auto-notify').uncheck();
+    await page.locator('#clear-webhook').check();
+    releaseSave();
+    await expectNotice('Discord-Einstellungen gespeichert');
+    assert.equal(await page.locator('#webhook').inputValue(), 'https://discord.com/api/webhooks/123/pending_draft');
+    assert.equal(await page.locator('#auto-notify').isChecked(), false);
+    assert.equal(await page.locator('#clear-webhook').isChecked(), true);
+    await page.unroute('**/api/discord/settings');
+    await page.locator('#webhook').fill('');
+    await page.locator('#clear-webhook').uncheck();
+    await page.locator('#auto-notify').check();
+    await page.getByRole('button', {name: 'Verbindung speichern', exact: true}).click();
+    await expectNotice('Discord-Einstellungen gespeichert');
     await page.getByRole('button', {name: 'An Discord senden', exact: false}).click();
     await expectNotice('Nachricht an Discord gesendet');
     await nav('Übersicht').click();
@@ -195,8 +219,24 @@ const fs = require('node:fs');
     await nav('Spiele / Mods').click();
     await page.getByRole('heading', {name: 'Raft', exact: true}).waitFor();
     assert.ok((await page.locator('#game-catalog').textContent()).includes('Kein Serveradapter eingerichtet'));
+    // A card's delayed status response must not reclaim navigation from the user.
+    let releaseStatus, statusArrived;
+    const statusSeen = new Promise(resolve => { statusArrived = resolve; });
+    const statusGate = new Promise(resolve => { releaseStatus = resolve; });
+    await page.route('**/api/status?server=aska', async route => {
+      const response = await route.fetch(); statusArrived();
+      await statusGate; await route.fulfill({response});
+    });
+    await page.getByRole('button', {name: 'ASKA Runde öffnen', exact: true}).click();
+    await statusSeen;
     await nav('Sturmklingen').click();
     await page.locator('#scene-qa-milestone').waitFor();
+    const statusDone = page.waitForResponse(response => response.url().endsWith('/api/status?server=aska'));
+    releaseStatus(); await statusDone;
+    await page.waitForFunction(() => document.querySelector('#job-list [data-job-id]'));
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.locator('#community').isVisible(), true);
+    await page.unroute('**/api/status?server=aska');
     assert.equal(await page.locator('#chronicle .badge-list li').count(), 4);
     await page.evaluate(() => { window.qaScene = document.querySelector('#scene-qa-milestone'); });
     const pollCount = requests.filter(request => request.path === '/api/status').length;
@@ -241,6 +281,39 @@ const fs = require('node:fs');
     await page.waitForFunction(() => document.querySelector('#log-content').textContent.includes('Serverstart angefordert'));
     await page.screenshot({path: 'artifacts/aska-logs-mobile.png', fullPage: true});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await nav('Übersicht').click();
+    // Both an immediate POST failure and a later job failure respect newer navigation.
+    let releaseFailure, failureArrived;
+    const failureSeen = new Promise(resolve => { failureArrived = resolve; });
+    const failureGate = new Promise(resolve => { releaseFailure = resolve; });
+    await page.route('**/api/jobs', async route => {
+      if (route.request().method() !== 'POST') return route.continue();
+      failureArrived(); await failureGate;
+      await route.fulfill({status: 409, contentType: 'application/json', body: JSON.stringify({error: 'Verspäteter Teststartfehler'})});
+    });
+    await page.locator('#start').click(); await failureSeen;
+    await nav('Sturmklingen').click();
+    releaseFailure(); await expectNotice('Verspäteter Teststartfehler');
+    assert.equal(await page.locator('#community').isVisible(), true);
+    await page.unroute('**/api/jobs');
+    await nav('Übersicht').click();
+    const failedJob = {id: 'qa-delayed-failure', server_id: 'aska', operation: 'start', state: 'queued',
+      message: 'Testauftrag wartet', created_at: new Date().toISOString(), updated_at: new Date().toISOString()};
+    let releaseJob, jobArrived;
+    const jobSeen = new Promise(resolve => { jobArrived = resolve; });
+    const jobGate = new Promise(resolve => { releaseJob = resolve; });
+    await page.route('**/api/jobs', route => route.request().method() === 'POST'
+      ? route.fulfill({status: 202, contentType: 'application/json', body: JSON.stringify({job: failedJob})}) : route.continue());
+    await page.route('**/api/jobs?id=qa-delayed-failure', async route => {
+      jobArrived(); await jobGate;
+      await route.fulfill({contentType: 'application/json', body: JSON.stringify({job: {...failedJob, state: 'failed', message: 'Später Auftragsfehler'}})});
+    });
+    await page.locator('#start').click(); await jobSeen;
+    await nav('Sturmklingen').click();
+    releaseJob(); await expectNotice('Später Auftragsfehler');
+    assert.equal(await page.locator('#community').isVisible(), true);
+    await page.unroute('**/api/jobs?id=qa-delayed-failure');
+    await page.unroute('**/api/jobs');
     await nav('Übersicht').click();
     await page.route('**/api/jobs', route => route.request().method() === 'POST'
       ? route.fulfill({status: 409, contentType: 'application/json', body: JSON.stringify({error: 'Teststart fehlgeschlagen'})}) : route.continue());

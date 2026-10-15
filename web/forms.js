@@ -89,13 +89,14 @@ export function bindForms(mutate) {
     try { mutate('/api/config', {config: JSON.parse($('#json-editor').value)}); }
     catch { notice('Das JSON enthält einen Syntaxfehler. Bitte die Eingabe prüfen.', true); }
   });
-  $('#discord-form').addEventListener('input', () => { state.discordDirty = true; });
+  $('#discord-form').addEventListener('input', () => { state.discordDirty = true; state.discordRevision++; });
   $('#discord-form').addEventListener('submit', event => {
     event.preventDefault();
     mutate('/api/discord/settings', {webhook_url: $('#webhook').value, auto_notify: $('#auto-notify').checked, clear_webhook: $('#clear-webhook').checked});
   });
   $('#discord-message').addEventListener('input', () => {
     state.messageDirty = true;
+    state.messageRevision++;
     $('#message-counter').textContent = `${$('#discord-message').value.length} / 2000 Zeichen`;
   });
   $('#message-form').addEventListener('submit', event => { event.preventDefault(); mutate('/api/discord/send', {message: $('#discord-message').value}); });
