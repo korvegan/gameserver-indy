@@ -89,7 +89,7 @@ class Handler(BaseHTTPRequestHandler):
                 "/favicon.svg": ("favicon.svg", "image/svg+xml"),
             }
             for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js",
-                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js"):
+                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js", "views/story.js", "views/story-art.js"):
                 files["/" + name] = (name, "text/javascript; charset=utf-8")
             if path in files:
                 filename, content_type = files[path]

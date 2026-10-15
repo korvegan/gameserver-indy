@@ -42,6 +42,8 @@ const fs = require('node:fs');
     });
     await page.locator('#save-moment').click();
     const saved = await (await saveResponse).json(), id = saved.event_id;
+    await page.locator('#scene-' + id).waitFor();
+    await page.locator('#scene-' + id).click();
     await page.waitForFunction(() => document.querySelector('#moment-detail').open);
     assert.equal(await page.locator('#moment-detail .badge-list li').first().textContent(), '✦ Erste Person · Gemeinsam angekommen');
     assert.equal(await page.locator('#moment-detail .badge-list').first().locator('li').count(), 4);

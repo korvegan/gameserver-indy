@@ -88,8 +88,9 @@ class CommunityService:
                 db.execute("INSERT INTO community_events VALUES (?, ?, ?, ?, ?, ?)",
                            (event["id"], event["revision"], context.game_id, context.instance_id, payload, utcnow()))
                 position = db.execute("SELECT COALESCE(MAX(position), -1) + 1 FROM scenes").fetchone()[0]
-                db.execute("INSERT OR IGNORE INTO scenes VALUES (?, ?, ?, 'milestone')",
-                           ("scene-" + event["id"], event["id"], position))
+                from .story import blueprint
+                db.execute("INSERT OR IGNORE INTO scenes VALUES (?, ?, ?, ?)",
+                           ("scene-" + event["id"], event["id"], position, blueprint(context.game_id)))
                 db.execute("UPDATE deliveries SET state='superseded' WHERE event_id=? AND revision<? AND state IN ('pending', 'failed')",
                            (event["id"], event["revision"]))
             if publish and (not existing or event["revision"] >= existing["revision"]):

@@ -94,7 +94,7 @@ async function submit(remove = false) {
     const result = await api('/api/community', body);
     state.communityDirty = false; editor().close(); clearPreview();
     notice(remove ? 'Moment entfernt. Die bisherigen Versionen bleiben archiviert.' : result.message);
-    await saved(remove ? null : result.event_id);
+    await saved(remove ? null : result.event_id, !editing && !remove);
   } catch (error) { $('#moment-error').textContent = error.message; }
   finally { saving = false; $('#moment-fields').disabled = false; $('#cancel-moment').disabled = false; }
 }
