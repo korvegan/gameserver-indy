@@ -19,7 +19,7 @@ Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsof
 # Credentials stay in the Windows credential prompt/task scheduler, never files
 # or command-line arguments. A Windows Hello PIN is not an account password.
 if (-not $Credential) {
-    $Credential = Get-Credential -UserName $identity.Name -Message 'GameServer Indy: Windows-Kontokennwort fuer Verwaltungsstart ohne Desktop-Anmeldung. Kein Windows-Hello-PIN. Das Kennwort wird nicht im Projekt gespeichert.'
+    $Credential = Get-Credential -UserName $identity.Name -Message 'GameServer Indy: Bereits gueltiges Windows-/Microsoft-Kontokennwort eingeben. Hier wird kein neues Kennwort festgelegt. Kein Windows-Hello-PIN. Fuer Verwaltungsstart ohne Desktop-Anmeldung.'
 }
 if (-not $Credential) { throw 'Einrichtung abgebrochen. Vorhandene Aufgaben bleiben unveraendert.' }
 $account = New-Object Security.Principal.NTAccount($Credential.UserName)
