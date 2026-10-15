@@ -19,6 +19,8 @@ class Api:
 
     def get(self, path, query, principal):
         selected = one(query, "server")
+        if path == '/api/access':
+            return self.app.access.view(principal)
         if path == "/api/servers":
             return self.app.servers(principal)
         if path == "/api/games":
@@ -53,6 +55,10 @@ class Api:
         raise NotFound("Nicht gefunden.")
 
     def post(self, path, body, principal):
+        if path == '/api/access/settings':
+            return 200, self.app.access.configure(principal, body)
+        if path == '/api/access/users':
+            return 200, self.app.access.save_user(principal, body)
         if path == '/api/community':
             return 200, self.app.chronicle.save(principal, body)
         if path == '/api/connections/refresh':

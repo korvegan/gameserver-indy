@@ -47,7 +47,7 @@ Mitglied, Anmeldung und Spielergerät ebenfalls unterscheiden: `Principal.id` be
 
 ## API und Rechte
 
-`/api/session` nennt `api_version: 1`, CSRF-Token und die vom Server bestimmte Identität samt Rechten. Das Token ist keine Anmeldung. Die ausgelieferte Konfiguration bindet weiterhin ausschließlich `127.0.0.1` und akzeptiert die bisherigen localhost-Hosts/Origins. Der Identitätsadapter behandelt dabei den lokalen Zugriff als Besitzer und ignoriert eingehende Rollen-/Proxyheader. Tests injizieren Familien-/Leseridentitäten über die Serverkonstruktion. #17 ersetzt diesen Adapter erst durch geprüfte private Authentifizierung; keine Netzwerkfreigabe ist Teil dieses Refactorings.
+`/api/session` nennt `api_version: 1`, CSRF-Token und die vom Server bestimmte Identität samt Rechten. Das Token ist keine Anmeldung. Beide Listener binden ausschließlich `127.0.0.1`. Der lokale Besitzerlistener akzeptiert weiterhin nur localhost-Hosts/Origins und ignoriert eingehende Rollen-/Proxyheader. Der optionale zweite Familienlistener aus #17 besitzt einen eigenen festen HTTPS-Host und vertraut der persönlichen Serve-Identität nur innerhalb der lokalen Proxygrenze. Er prüft pro Anfrage aktive Benutzerfreigaben aus `access.py`; kein Besitzer-Fallback. CSRF ist dort an Benutzer und Freigaberevision gebunden. Einrichtung, Rechte und erforderliche Geräte-/Neustartabnahme stehen in [Familienzugang](family-access.md).
 
 | Vertrag | Inhalt / Recht |
 | --- | --- |

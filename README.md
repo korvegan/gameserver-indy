@@ -122,7 +122,7 @@ Für weitere Arbeiten den [projektspezifischen Skill](skills/gameserver-indy/SKI
 
 ## Ausbau und Architektur
 
-Die [Bewertung aller Ausbauissues](docs/backlog.md) beschreibt Nutzen, Aufwand, Abhängigkeiten und Reihenfolge. Die [Architektur und API-Verträge](docs/architecture.md) erklären die Dienstgrenzen, Rollen, Hintergrundaufträge und den Rückweg. Der laufende Familienzugriff bleibt ein eigener Einrichtungsauftrag; die Verwaltung bindet weiterhin nur localhost.
+Die [Bewertung aller Ausbauissues](docs/backlog.md) beschreibt Nutzen, Aufwand, Abhängigkeiten und Reihenfolge. Die [Architektur und API-Verträge](docs/architecture.md) erklären Dienstgrenzen, Rollen und Hintergrundaufträge. Unter **Familienzugang** lassen sich persönliche Tailscale-Freigaben je Server verwalten. [Einrichtung und praktische Abnahme](docs/family-access.md) beschreiben den privaten HTTPS-Zugang und Start ohne Windows-Anmeldung. Beide Verwaltungslistener binden weiterhin nur localhost.
 
 Die zusätzliche lokale Datenbank `data/platform.sqlite3` hält Aufträge und Gemeinschaftsreferenzen getrennt von bestehenden Spielkonfigurationen und technischen Logs. Vorhandene Profile, externe ASKA-Dateien und Welten werden dadurch nicht verschoben. Eine unbekannte Datenbankversion wird abgewiesen. Die bisherigen Python-Importnamen unter `gameserver_manager.core` und HTTP-Routen bleiben für den lokalen Besitzer erhalten.
 

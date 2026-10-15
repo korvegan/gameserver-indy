@@ -10,6 +10,7 @@ import {loadGames} from './views/catalog.js';
 import {bindCommunity, isCommunityHash, loadCommunity} from './views/community.js';
 import {renderUpdate} from './views/updates.js';
 import {bindConnections, renderConnection} from './views/connection.js';
+import {bindAccess, loadAccess} from './views/access.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map();
@@ -97,7 +98,11 @@ async function selectServer(target, openOverview = false) {
 }
 
 async function go(next, {keepNotice = false} = {}) {
-  const permission = {settings: 'config.read', profiles: 'catalog.write', discord: 'discord.write', logs: 'logs.read'}[next];
+  if (state.accessDirty && next !== 'access') {
+    if (!confirm('Ungespeicherte Freigabe verwerfen und die Ansicht wechseln?')) return;
+    state.accessDirty = false;
+  }
+  const permission = {settings: 'config.read', profiles: 'catalog.write', discord: 'discord.write', logs: 'logs.read', access: 'access.manage'}[next];
   if (permission && !can(permission)) return notice('Für diesen Bereich fehlt die Berechtigung.', true);
   if (!navigate(next)) return;
   if (!keepNotice) notice('');
@@ -106,6 +111,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'logs') await loadLogs();
   if (next === 'games') await loadGames(target => selectServer(target, true));
   if (next === 'community') await loadCommunity();
+  if (next === 'access') await loadAccess();
 }
 
 async function finishJob(job) {
@@ -159,7 +165,7 @@ async function mutate(path, body = {}) {
   finally { state.submitting = false; controls(); }
 }
 
-bindNavigation(go); bindForms(mutate); bindConnections(); bindCommunity();
+bindNavigation(go); bindForms(mutate); bindConnections(); bindCommunity(); bindAccess();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;
@@ -186,7 +192,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ![
 (async () => {
   try {
     const session = await api('/api/session'); setToken(session.token); state.principal = session.principal;
-    $('#identity-label').textContent = {owner: 'Besitzer · lokal', family: 'Familienbediener', viewer: 'Lesezugriff'}[session.principal.role] || 'Zugriff eingeschränkt';
+    $('#identity-label').textContent = {owner: session.access_mode === 'private' ? 'Besitzer · privat' : 'Besitzer · lokal', family: 'Familienbediener', viewer: 'Lesezugriff'}[session.principal.role] || 'Zugriff eingeschränkt';
+    if (session.access_mode === 'private') $('#location-label').textContent = 'Privater Familienzugang';
     await refreshCatalog(); await refresh();
     if (isCommunityHash()) await go('community');
   } catch (error) { notice(error.message, true); }

@@ -2,6 +2,7 @@
 import copy
 
 from .catalog import GameCatalog
+from .access import AccessService
 from .community import CommunityService
 from .chronicle import ChronicleService
 from .connections import ConnectionService
@@ -20,6 +21,7 @@ class Application:
         self.registry = registry
         self.catalog = GameCatalog(registry.settings.get("catalog_games", []))
         self.database = Database(registry.root / "data" / "platform.sqlite3")
+        self.access = AccessService(registry.root, registry)
         self.jobs = JobService(self.database)
         self.updates = UpdateService(registry)
         self.connections = ConnectionService()
@@ -109,6 +111,7 @@ class Application:
             (lambda: instance.save_config(payload.get("config"))) if operation == "config" else lambda: instance.action(operation))
 
         def callback():
+            self.access.validate(principal)
             try:
                 values = secret_values(instance.config() or {}, instance.webhook())
             except (ManagerError, OSError):
