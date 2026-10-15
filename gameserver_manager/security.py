@@ -8,7 +8,8 @@ PERMISSIONS = {
     "viewer": READ,
     "family": READ | {"server.start"},
     "owner": READ | {"config.read", "config.write", "logs.read", "server.start", "server.stop",
-                      "server.restart", "server.setup", "catalog.write", "discord.write", "updates.check", "connections.refresh"},
+                      "server.restart", "server.setup", "catalog.write", "discord.write", "updates.check", "connections.refresh",
+                      "community.write", "community.export"},
 }
 
 

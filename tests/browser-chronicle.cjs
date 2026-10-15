@@ -1,0 +1,186 @@
+// Real UI contributions against the isolated fixture; never production or Discord.
+const {chromium} = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+
+(async () => {
+  const browser = await chromium.launch({headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined});
+  const page = await browser.newPage({viewport: {width: 1440, height: 960}});
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', entry => { if (entry.type() === 'error') errors.push(entry.text()); });
+  page.on('dialog', dialog => dialog.accept());
+  try {
+    await page.clock.install();
+    await page.goto('http://127.0.0.1:8766');
+    await page.getByRole('button', {name: 'Sturmklingen', exact: true}).click();
+    await page.locator('#scene-qa-milestone').waitFor();
+    await page.locator('#new-moment').click();
+    await page.waitForFunction(() => document.querySelector('#moment-editor').open);
+    await page.locator('#moment-title').fill('Unser Testlager am Fluss');
+    await page.locator('#moment-game').selectOption('enshrouded');
+    await page.locator('#moment-instance').selectOption('enshrouded');
+    await page.locator('#moment-campaign').fill('Unsere neue Kampagne');
+    await page.locator('#moment-members').fill('Erste Person\nZweite Person\nDritte Person\nVierte Person');
+    await page.locator('#moment-badge').fill('Gemeinsam angekommen');
+    await page.locator('#moment-description').fill('Vier Sturmklingen und eine Erinnerung. <script>window.badChronicle=true</script>');
+    await page.locator('#moment-image').setInputFiles({name: 'blocked.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg/>')});
+    await page.waitForFunction(() => document.querySelector('#moment-image-state').textContent.includes('höchstens 10 MiB'));
+    const png = await page.evaluate(() => {
+      const canvas = document.createElement('canvas'); canvas.width = 1500; canvas.height = 850;
+      const ctx = canvas.getContext('2d'); ctx.fillStyle = '#395b43'; ctx.fillRect(0, 0, 1500, 850);
+      ctx.fillStyle = '#e4bc83'; ctx.fillRect(200, 100, 650, 400); return canvas.toDataURL('image/png').split(',')[1];
+    });
+    await page.locator('#moment-image').setInputFiles({name: 'camp.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64')});
+    await page.waitForFunction(() => document.querySelector('#moment-image-state').textContent.includes('Vorschau bereit'));
+    assert.equal(await page.locator('#moment-preview').isVisible(), true);
+    let submitted;
+    const saveResponse = page.waitForResponse(response => response.url().endsWith('/api/community') && response.request().method() === 'POST');
+    await page.route('**/api/community', route => {
+      if (route.request().method() === 'POST') submitted = route.request().postDataJSON();
+      return route.continue();
+    });
+    await page.locator('#save-moment').click();
+    const saved = await (await saveResponse).json(), id = saved.event_id;
+    await page.waitForFunction(() => document.querySelector('#moment-detail').open);
+    assert.equal(await page.locator('#moment-detail .badge-list li').first().textContent(), '✦ Erste Person · Gemeinsam angekommen');
+    assert.equal(await page.locator('#moment-detail .badge-list').first().locator('li').count(), 4);
+    assert.equal(await page.evaluate(() => window.badChronicle), undefined);
+    await page.waitForFunction(() => document.querySelector('#moment-detail img')?.naturalWidth > 0);
+    assert.ok(await page.locator('#moment-detail img').evaluate(node => node.naturalWidth <= 1280));
+    fs.mkdirSync('artifacts', {recursive: true});
+    await page.screenshot({path: 'artifacts/chronicle-moment-desktop.png', fullPage: true});
+    const token = (await (await page.request.get('http://127.0.0.1:8766/api/session')).json()).token;
+    const post = body => page.request.post('http://127.0.0.1:8766/api/community', {data: body, headers: {'X-Manager-Token': token}});
+    const duplicate = await post(submitted); assert.equal(duplicate.status(), 200);
+    await page.unroute('**/api/community');
+    const original = (await (await page.request.get(`http://127.0.0.1:8766/api/community/event?id=${id}`)).json()).event;
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#moment-detail').open);
+    assert.equal(await page.locator('#moment-detail-title').textContent(), 'Unser Testlager am Fluss');
+    await page.locator('#edit-moment').click();
+    await page.waitForFunction(() => document.querySelector('#moment-editor').open);
+    await page.locator('#moment-title').fill('Unser Lager an der Brücke');
+    await page.locator('#moment-reason').fill('Den richtigen Ort ergänzt.');
+    await page.locator('#moment-clear-image').check();
+    await page.locator('#save-moment').click();
+    await page.waitForFunction(() => document.querySelector('#moment-detail').open && document.querySelector('#moment-detail-title').textContent.includes('Brücke'));
+    const corrected = (await (await page.request.get(`http://127.0.0.1:8766/api/community/event?id=${id}`)).json()).event;
+    assert.deepEqual(corrected.scene, original.scene);
+    assert.equal(corrected.media_id, undefined);
+    assert.equal(await page.locator('#moment-detail summary').textContent(), 'Versionsverlauf (2)');
+    await page.locator('#close-moment-detail').click();
+    await page.waitForFunction(() => !location.hash);
+    await page.getByLabel('Spiel filtern', {exact: true}).selectOption('enshrouded');
+    await page.getByRole('button', {name: 'Filter anwenden', exact: true}).click();
+    await page.waitForFunction(() => document.querySelectorAll('#chronicle article').length === 1);
+    await page.getByLabel('Kampagne filtern', {exact: true}).selectOption(corrected.campaign_id);
+    await page.getByLabel('Beteiligte filtern', {exact: true}).selectOption(corrected.member_ids[0]);
+    await page.getByRole('button', {name: 'Filter anwenden', exact: true}).click();
+    await page.locator('#chronicle [data-event-id="' + id + '"]').waitFor();
+    await page.waitForFunction(() => document.querySelector('#chronicle-filters').getAttribute('aria-busy') === 'false');
+    // Arrival notification preserves the reader's scene, focus and list until explicitly refreshed.
+    await page.locator(`#chronicle [data-event-id="${id}"] a`).focus();
+    await page.evaluate(id => { window.qaChronicleScene = document.getElementById('scene-' + id); window.qaReadingFocus = document.activeElement; window.qaReadingY = scrollY; }, id);
+    const extra = {...submitted, id: 'arrival-' + id, title: 'Ein späterer Testmoment', image: undefined};
+    assert.equal((await post(extra)).status(), 200);
+    await page.clock.fastForward(31000);
+    await page.waitForFunction(() => !document.querySelector('#community-news').hidden);
+    assert.equal(await page.locator('#chronicle article').count(), 1);
+    assert.equal(await page.evaluate(id => window.qaChronicleScene === document.getElementById('scene-' + id), id), true);
+    assert.equal(await page.evaluate(() => window.qaReadingFocus === document.activeElement && Math.abs(scrollY - window.qaReadingY) < 1), true);
+    await page.locator('#refresh-community').click();
+    await page.waitForFunction(() => document.querySelectorAll('#chronicle article').length === 2);
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#chronicle-export').click();
+    const download = await downloadPromise;
+    fs.mkdirSync('artifacts', {recursive: true}); await download.saveAs('artifacts/chronicle-archive.zip');
+    assert.equal(fs.readFileSync('artifacts/chronicle-archive.zip').subarray(0, 2).toString(), 'PK');
+    for (let index = 0; index < 24; index++) {
+      assert.equal((await post({...extra, id: `qa-archive-${index}`, title: `Älterer Testmoment ${index}`, campaign: 'Archivtest', members: ['Archivtest'], occurred_at: `2025-01-${String(index + 1).padStart(2, '0')}T12:00:00Z`})).status(), 200);
+    }
+    await page.getByRole('button', {name: 'Filter zurücksetzen', exact: true}).click();
+    await page.waitForFunction(() => document.querySelector('#chronicle-filters').getAttribute('aria-busy') === 'false' && document.querySelectorAll('#chronicle article').length === 20);
+    assert.equal(await page.locator('#chronicle-more').isVisible(), true);
+    const newest = {...extra, id: 'newest-' + id, title: 'Neuer Moment während der Archivsuche', occurred_at: '2026-10-16T22:00:00Z'};
+    assert.equal((await post(newest)).status(), 200);
+    await page.clock.fastForward(31000);
+    await page.waitForFunction(() => !document.querySelector('#community-news').hidden);
+    await page.locator('#chronicle-more').click();
+    await page.waitForFunction(() => document.querySelector('#chronicle-filters').getAttribute('aria-busy') === 'false');
+    assert.equal(await page.locator('#community-news').isVisible(), true);
+    assert.equal(await page.locator(`[data-event-id="${newest.id}"]`).count(), 0);
+    await page.clock.fastForward(31000);
+    assert.equal(await page.locator('#community-news').isVisible(), true);
+    await page.locator('#refresh-community').click();
+    await page.waitForFunction(id => document.querySelector(`#chronicle [data-event-id="${id}"]`), newest.id);
+    await page.goto('http://127.0.0.1:8766/#moment-qa-archive-0');
+    await page.waitForFunction(() => document.querySelector('#moment-detail').open);
+    assert.equal(await page.locator('#moment-detail-title').textContent(), 'Älterer Testmoment 0');
+    await page.locator('#close-moment-detail').click();
+    await page.locator('#chronicle-more').click();
+    await page.waitForFunction(() => document.querySelectorAll('#chronicle article').length === 28);
+    assert.equal(await page.locator('#chronicle-more').isHidden(), true);
+    await page.goto('http://127.0.0.1:8766/#scene-qa-archive-0');
+    await page.waitForFunction(() => document.activeElement.id === 'scene-qa-archive-0');
+    assert.equal(await page.locator('#scene-qa-archive-0').evaluate(scene => { const rect = scene.getBoundingClientRect(); return rect.bottom > 0 && rect.top < innerHeight; }), true);
+    // A delayed detail must not cover or replace a newer draft.
+    let releaseDetail, detailArrived;
+    const detailGate = new Promise(resolve => { releaseDetail = resolve; });
+    const detailSeen = new Promise(resolve => { detailArrived = resolve; });
+    await page.route(`**/api/community/event?id=${id}`, async route => {
+      const response = await route.fetch(); detailArrived(); await detailGate; await route.fulfill({response});
+    });
+    await page.locator(`#chronicle [data-event-id="${id}"] a`).click(); await detailSeen;
+    await page.locator('#new-moment').click();
+    await page.waitForFunction(() => document.querySelector('#moment-editor').open);
+    await page.locator('#moment-title').fill('Dieser neuere Entwurf bleibt erhalten');
+    const detailDone = page.waitForResponse(response => response.url().endsWith('/api/community/event?id=' + id));
+    releaseDetail(); await detailDone;
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.locator('#moment-detail').evaluate(dialog => dialog.open), false);
+    assert.equal(await page.locator('#moment-title').inputValue(), 'Dieser neuere Entwurf bleibt erhalten');
+    await page.unroute(`**/api/community/event?id=${id}`);
+    await page.locator('#cancel-moment').click();
+    await page.setViewportSize({width: 1440, height: 1000});
+    await page.screenshot({path: 'artifacts/chronicle-desktop.png', fullPage: true});
+    for (const size of [1440, 390, 320]) {
+      await page.setViewportSize({width: size, height: 900});
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.locator(`#chronicle [data-event-id="${id}"] button`).click();
+    assert.equal(await page.evaluate(id => document.getElementById('scene-' + id).getAnimations({subtree: true}).length, id), 0);
+    await page.screenshot({path: 'artifacts/chronicle-mobile.png', fullPage: true});
+    // Independent family identity only sees authorized instances; no writer/export controls.
+    const family = await browser.newContext({extraHTTPHeaders: {'X-QA-Identity': 'family'}});
+    try {
+      const reader = await family.newPage(); await reader.goto('http://127.0.0.1:8766/#moment-' + id);
+      await reader.waitForFunction(() => document.querySelector('#identity-label').textContent === 'Familienbediener');
+      await reader.getByRole('button', {name: 'Sturmklingen', exact: true}).click();
+      assert.equal(await reader.locator('#new-moment').isHidden(), true);
+      assert.equal(await reader.locator('#chronicle-export').isHidden(), true);
+      assert.equal((await reader.request.get(`http://127.0.0.1:8766/api/community/media?event=${id}`)).status(), 403);
+      assert.equal((await reader.request.post('http://127.0.0.1:8766/api/community', {data: extra, headers: {'X-Manager-Token': token}})).status(), 403);
+    } finally { await family.close(); }
+    await page.locator(`#chronicle [data-event-id="${id}"] a`).click();
+    await page.waitForFunction(() => document.querySelector('#moment-detail').open);
+    await page.locator('#edit-moment').click();
+    await page.locator('#moment-reason').fill('Testmoment ausblenden');
+    await page.locator('#remove-moment').click();
+    await page.waitForFunction(id => !document.querySelector(`#chronicle [data-event-id="${id}"]`), id);
+    const removed = await (await page.request.get(`http://127.0.0.1:8766/api/community/event?id=${id}`)).json();
+    assert.equal(removed.event.removed, true); assert.equal(removed.history.length, 3);
+    const oldImage = await page.request.get(`http://127.0.0.1:8766/api/community/media?event=${id}&revision=1`);
+    assert.equal(oldImage.status(), 200);
+    await page.locator('#new-moment').click();
+    await page.waitForFunction(() => document.querySelector('#moment-editor').open);
+    assert.equal(await page.locator('#moment-editor').evaluate(dialog => dialog.scrollWidth > dialog.clientWidth), false);
+    await page.locator('#moment-title').fill('Nicht gespeicherter Entwurf');
+    await page.screenshot({path: 'artifacts/chronicle-editor-mobile.png', fullPage: true});
+    await page.locator('#cancel-moment').click();
+    await page.waitForFunction(() => !document.querySelector('#moment-editor').open);
+    assert.deepEqual(errors, []);
+    console.log('Chronicle browser QA passed: create/upload, equal awards, retry, deep link/reload, correction/removal, filters, quiet updates, export, scoped permissions, mobile/reduced motion.');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

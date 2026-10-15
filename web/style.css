@@ -635,6 +635,23 @@ pre {
 .job-row strong { font-size:12px; }
 .job-row span,.job-row small { font-size:11px; }
 .catalog-grid,.community-layout { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }
+.chronicle-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.chronicle-actions .button { white-space:normal; }
+dialog { color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:26px; width:min(760px,calc(100% - 32px)); max-height:90dvh; overflow:auto; }
+dialog::backdrop { background:#0009; }
+dialog p,dialog li { font-size:13px; overflow-wrap:anywhere; }
+dialog h2 { overflow-wrap:anywhere; }
+.moment-image { display:block; max-width:100%; max-height:360px; object-fit:contain; margin:14px 0; border-radius:6px; }
+.chronicle-card { overflow-wrap:anywhere; }
+.chronicle-card .chronicle-actions { margin-top:16px; }
+.chronicle-history { border-top:1px solid var(--border); margin-top:20px; padding-top:16px; }
+.chronicle-history summary { cursor:pointer; color:var(--accent); }
+#chronicle-more { margin-bottom:22px; }
+#moment-error { color:var(--red); }
+@media(prefers-reduced-motion:no-preference) {
+  .scene-celebrate .scene-mark { animation:celebrate-banner 1.1s ease-out; }
+  @keyframes celebrate-banner { 0% { transform:translateY(14px) scale(.7); opacity:.3; } 60% { transform:translateY(-5px) scale(1.12); } 100% { transform:none; opacity:1; } }
+}
 .catalog-grid .button { margin:8px 8px 0 0; white-space:normal; }
 .capability-list { padding-left:18px; color:var(--muted); font-size:12px; }
 .section-title { font-size:25px; margin-bottom:20px; }

@@ -1,6 +1,8 @@
 """Durable event/scene/outbox contracts; no automatic awards or live Discord sender."""
 from dataclasses import asdict, dataclass
 import json
+import hashlib
+import re
 
 from .catalog import identifier
 from .configuration import ManagerError
@@ -26,9 +28,10 @@ class CommunityService:
         with database.connect(write=True) as db:
             db.execute("UPDATE deliveries SET state='uncertain' WHERE state='sending'")
 
-    def record(self, event, publish=False, target="discord-stub"):
+    def record(self, event, publish=False, target="discord-stub", media=None):
         allowed = {"id", "revision", "title", "description", "member_ids", "badge_id", "source", "occurred_at",
-                   "game_id", "instance_id", "campaign_id", "mod_profile_id"}
+                   "game_id", "instance_id", "campaign_id", "mod_profile_id", "member_names", "campaign_label",
+                   "badge_label", "actor_id", "correction_reason", "removed", "media_id"}
         if not isinstance(event, dict) or set(event) - allowed:
             raise ManagerError("Unbekannte Felder im Gemeinschaftsereignis.")
         context = EventContext(**{key: event[key] for key in ("game_id", "instance_id", "campaign_id", "mod_profile_id") if key in event}) if "game_id" in event else None
@@ -53,8 +56,25 @@ class CommunityService:
             raise ManagerError("Der Gruppenmoment benötigt einen Titel.")
         if not identifier(target):
             raise ManagerError("Ungültiges Veröffentlichungsziel.")
+        names = event.get('member_names', {})
+        if (not isinstance(names, dict) or set(names) - set(members)
+                or any(not isinstance(name, str) or not 1 <= len(name) <= 80 for name in names.values())
+                or ('removed' in event and type(event['removed']) is not bool)):
+            raise ManagerError('Ungültige Mitgliedernamen oder Archivierung.')
+        for field, maximum in [('campaign_label', 100), ('badge_label', 80), ('actor_id', 160), ('correction_reason', 300)]:
+            if field in event and (not isinstance(event[field], str) or len(event[field]) > maximum):
+                raise ManagerError('Ungültige Chronikmetadaten.')
+        if 'media_id' in event and (not isinstance(event['media_id'], str) or not re.fullmatch('[0-9a-f]{64}', event['media_id'])):
+            raise ManagerError('Ungültige Screenshotreferenz.')
         payload = json.dumps({**event, **asdict(context)}, ensure_ascii=False, sort_keys=True)
         with self.database.connect(write=True) as db:
+            if media is not None:
+                if hashlib.sha256(media[0]).hexdigest() != event.get('media_id'):
+                    raise ManagerError('Screenshot und Referenz stimmen nicht überein.')
+                db.execute('INSERT OR IGNORE INTO community_media VALUES (?, ?, ?, ?)',
+                           (event['media_id'], media[0], media[1], media[2]))
+            if event.get('media_id') and db.execute('SELECT 1 FROM community_media WHERE id=?', [event['media_id']]).fetchone() is None:
+                raise ManagerError('Der referenzierte Screenshot fehlt.')
             existing = db.execute("SELECT revision, payload FROM community_events WHERE id=? ORDER BY revision DESC LIMIT 1",
                                   (event["id"],)).fetchone()
             if existing and event["revision"] <= existing["revision"]:
@@ -78,25 +98,8 @@ class CommunityService:
         return {"event_id": event["id"], "revision": event["revision"], "scene_id": "scene-" + event["id"]}
 
     def recent(self, principal):
-        principal.require("community.read")
-        parameters = []
-        visibility = ""
-        if principal.server_ids is not None:
-            ids = sorted(principal.server_ids)
-            visibility = " AND (e.instance_id IS NULL" + (" OR e.instance_id IN (" + ",".join("?" for _ in ids) + ")" if ids else "") + ")"
-            parameters.extend(ids)
-        with self.database.connect() as db:
-            rows = db.execute("""SELECT e.payload, e.recorded_at, s.id AS scene_id, s.position, s.template
-                FROM community_events e JOIN scenes s ON s.event_id=e.id
-                WHERE NOT EXISTS (SELECT 1 FROM community_events n WHERE n.id=e.id AND n.revision>e.revision)"""
-                + visibility + " ORDER BY s.position DESC LIMIT 20", parameters).fetchall()
-        events = []
-        for row in rows:
-            event = json.loads(row["payload"])
-            events.append({**event, "recorded_at": row["recorded_at"],
-                           "scene": {"id": row["scene_id"], "position": row["position"], "template": row["template"]},
-                           "awards": [{"member_id": member, "badge_id": event["badge_id"]} for member in event["member_ids"]]})
-        return events
+        from .chronicle import ChronicleService
+        return ChronicleService(self).page(principal)['events']
 
     def deliver_pending(self, sender):
         """Explicit injected transport only. Never replay an ambiguous send."""

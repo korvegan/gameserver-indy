@@ -7,6 +7,7 @@ export const state = {
   catalog: {servers: [], games: []}, principal: null,
   config: null, schema: null, dirty: false, rawDirty: false, discordDirty: false, messageDirty: false, profileDirty: false,
   discordRevision: 0, messageRevision: 0,
+  communityDirty: false,
   available: false, catalogAvailable: false, submitting: false, refreshing: false, configLoading: false,
   logSource: 'server', pending: new Map(), latestJobs: [],
 };

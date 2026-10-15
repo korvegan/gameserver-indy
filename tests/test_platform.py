@@ -160,7 +160,7 @@ class PlatformTests(ManagerFixture):
         self.assertEqual(restored_events[0]["scene"]["id"], "scene-snapshot-event")
         self.assertEqual(self.app.community.recent(OWNER)[0]["title"], "Nach Sicherung")
         with restored.connect() as db:
-            self.assertEqual(db.execute("PRAGMA user_version").fetchone()[0], 1)
+            self.assertEqual(db.execute("PRAGMA user_version").fetchone()[0], 2)
         self.assertEqual(self.aska.config_path.read_bytes(), original)
         self.assertEqual(self.registry.path.read_bytes(), settings)
         self.assertEqual(self.aska.config()["future setting"], "keep me")
