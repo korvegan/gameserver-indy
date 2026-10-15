@@ -33,6 +33,8 @@ Installation: `D:\SteamLibrary\steamapps\common\EnshroudedServer`.
 
 **Weltordner** steuert `saveDirectory`: Ein neuer, leerer Ordner erzeugt beim nächsten Spielserverstart eine neue Welt; ein bestehender setzt dessen Welt fort. Die alte Welt wird nicht gelöscht. Neue Felder und Grenzen nach Spielupdates müssen anhand der ausgelieferten Version abgeglichen werden.
 
+**Mitspielen** in der Übersicht zeigt kopierbare Beitrittsadressen für denselben PC, das Heimnetz und externe Mitspieler. Die öffentliche IPv4 wird im Hintergrund ermittelt; ihre Anzeige bestätigt keine Erreichbarkeit von außen. Details zu Router, Firewall und weiteren Spielen stehen unter [Beitrittsinformationen](docs/connection-info.md).
+
 Für 1.0 sind die Flammenstufe zum Bauen im Miasma (`gameSettings.flameLevelFogRemoval`, 0–20, Standard 11) und die Gegneranzahl einschließlich `Automatic` im Formular verfügbar. Vorhandene Spielregeln werden erhalten; Details und Quellen stehen unter [Steam-Updates und Enshrouded 1.0](docs/steam-updates.md).
 
 ### ASKA

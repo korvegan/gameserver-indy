@@ -30,6 +30,23 @@ const fs = require('node:fs');
     await expectNotice('Server vorbereitet');
     assert.equal(await page.locator('#start').isEnabled(), true);
     assert.equal(requests.some(request => request.path === '/api/state' || request.path === '/api/config'), false);
+    assert.equal(await page.locator('[data-scope="local"] code').textContent(), '127.0.0.1:15637');
+    assert.equal(await page.locator('[data-scope="lan"] code').textContent(), '192.168.1.20:15637');
+    assert.equal(await page.locator('[data-scope="external"] code').textContent(), '8.8.8.8:15637');
+    assert.match(await page.locator('#join-network-note').textContent(), /Externer Zugang ungeprüft/);
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.locator('[data-scope="external"] button').click();
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), '8.8.8.8:15637');
+    await page.evaluate(() => {
+      window.qaClipboardWrite = navigator.clipboard.writeText;
+      navigator.clipboard.writeText = async () => { throw new Error('Fixture: clipboard unavailable'); };
+    });
+    await page.locator('[data-scope="external"] button').click();
+    await expectNotice('Adresse markiert');
+    assert.equal(await page.evaluate(() => window.getSelection().toString()), '8.8.8.8:15637');
+    await page.evaluate(() => { navigator.clipboard.writeText = window.qaClipboardWrite; delete window.qaClipboardWrite; });
+    await page.locator('#refresh-connections').click();
+    assert.equal(await page.locator('#start').isEnabled(), true);
     assert.equal(await page.locator('#installed-build').textContent(), '100');
     assert.equal(await page.locator('#update-state').textContent(), 'Unbekannt');
     await page.locator('#check-updates').click();
@@ -39,9 +56,10 @@ const fs = require('node:fs');
     assert.equal(await page.locator('#update-state').textContent(), 'Update verfügbar');
     assert.equal(await page.locator('#available-build').textContent(), '200');
     // Global views keep profile selection and menu geometry stable on desktop/mobile.
-    for (const viewport of [{width: 1440, height: 960}, {width: 390, height: 844}]) {
+    for (const viewport of [{width: 1440, height: 960}, {width: 390, height: 844}, {width: 320, height: 800}]) {
       await page.setViewportSize(viewport);
       await nav('Übersicht').click();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       const before = await page.locator('nav').boundingBox();
       const selected = await page.locator('#server-select').inputValue();
       for (const name of ['Sturmklingen', 'Spiele / Mods', 'Übersicht']) {
@@ -193,6 +211,26 @@ const fs = require('node:fs');
     const privateState = await page.request.get('http://127.0.0.1:8766/api/state?server=aska');
     assert.equal((await privateState.text()).includes('browser-private-token'), false);
     await nav('Übersicht').click();
+    assert.equal(await page.locator('#join-addresses').isHidden(), true);
+    assert.match(await page.locator('#join-instructions').textContent(), /Serverliste/);
+    // An address lookup for the previous profile cannot replace current join instructions.
+    let releaseAddresses, addressesArrived;
+    const addressGate = new Promise(resolve => { releaseAddresses = resolve; });
+    const addressRequest = new Promise(resolve => { addressesArrived = resolve; });
+    await page.route('**/api/connections/refresh', async route => {
+      const response = await route.fetch(); addressesArrived();
+      await addressGate; await route.fulfill({response});
+    });
+    await page.locator('#refresh-connections').click();
+    await addressRequest;
+    await page.locator('#server-select').selectOption('enshrouded');
+    await page.waitForFunction(() => !document.querySelector('#join-addresses').hidden);
+    releaseAddresses();
+    await page.waitForFunction(() => !document.querySelector('#refresh-connections').disabled);
+    assert.equal(await page.locator('[data-scope="external"] code').textContent(), '8.8.8.8:15637');
+    await page.unroute('**/api/connections/refresh');
+    await page.locator('#server-select').selectOption('aska');
+    await page.waitForFunction(() => document.querySelector('#join-addresses').hidden && !document.querySelector('#check-updates').disabled);
     await page.locator('#check-updates').click();
     await page.waitForFunction(() => document.querySelector('#job-list').textContent.includes('Steam-Update prüfen'));
     await page.locator('#server-select').selectOption('enshrouded');
@@ -217,6 +255,7 @@ const fs = require('node:fs');
     await expectNotice('ASKA-Testkonfiguration nicht lesbar');
     await page.locator('#server-select').selectOption('enshrouded');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Indy Browser Test');
+    await page.waitForFunction(() => !document.querySelector('#stop').disabled);
     assert.equal(await page.locator('#stop').isEnabled(), true);
     await page.unroute('**/api/status?server=aska');
     await page.locator('#server-select').selectOption('aska');
@@ -308,6 +347,7 @@ const fs = require('node:fs');
       await familyPage.waitForFunction(() => !document.querySelector('#start').disabled);
       assert.equal(await familyPage.getByRole('button', {name: 'Einstellungen', exact: true}).count(), 0);
       assert.equal(await familyPage.getByRole('button', {name: 'Steam-Updates prüfen', exact: true}).count(), 0);
+      assert.equal(await familyPage.getByRole('button', {name: 'Adressen aktualisieren', exact: true}).count(), 0);
       assert.equal(await familyPage.locator('#server-select option').count(), 1);
       assert.equal(await familyPage.locator('#stop').isDisabled(), true);
       const denied = await familyPage.request.get('http://127.0.0.1:8766/api/config?server=aska');

@@ -66,6 +66,8 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
     with patch("gameserver_manager.discord.send_discord"), patch("gameserver_manager.operations.send_discord"), patch("gameserver_manager.instances.WindowsServerBridge", side_effect=lambda *args: BrowserBridge(str(user_profile))), patch.object(GAME_TYPES["aska"], "default_directory", str(aska)):
         with LocalServer(ServerRegistry(root, GameServerManager(root, BrowserBridge())), 8766, identity=identity) as server:
             server.app.updates.provider = BrowserSteam()
+            server.app.connections.provider = lambda: {'lan': ['192.168.1.20'], 'public': '8.8.8.8'}
+            server.app.connections._collect()
             server.app.community.record({"id": "qa-milestone", "revision": 1, "game_id": "raft", "title": "Gemeinsamer Testmoment",
                 "source": "test", "badge_id": "qa-badge", "member_ids": ["qa-one", "qa-two", "qa-three", "qa-four"]})
             print("GameServer Indy: http://127.0.0.1:8766", flush=True)

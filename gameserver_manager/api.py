@@ -47,6 +47,8 @@ class Api:
         raise NotFound("Nicht gefunden.")
 
     def post(self, path, body, principal):
+        if path == '/api/connections/refresh':
+            return 202, self.app.refresh_connections(principal, body.get('server_id'))
         if path == '/api/updates/check':
             job, _future = self.app.check_updates(principal, body.get('server_id'))
             return 202, {'job': self.app.job_view(principal, job)}

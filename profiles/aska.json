@@ -11,6 +11,7 @@
   "windows_log_directory": "AppData/LocalLow/Sand Sailor Studio/Aska",
   "log_files": ["Player.log", "Player-prev.log"],
   "external_launcher": true,
+  "connection": {"mode": "server_browser"},
   "fields": [
     {"key": "server name", "label": "Servername", "type": "text", "required": true, "wide": true},
     {"key": "display name", "label": "Name einer neuen Welt", "type": "text", "required": true},
