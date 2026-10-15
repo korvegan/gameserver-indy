@@ -14,6 +14,7 @@ let refreshing = false;
 let available = false;
 let catalogAvailable = false;
 let selectedServer = '';
+let logSource = 'server';
 try { selectedServer = localStorage.getItem('gameserver-indy-server') || ''; } catch { /* Storage may be unavailable. */ }
 
 function notice(message, error = false) {
@@ -25,7 +26,7 @@ function notice(message, error = false) {
 
 async function api(path, body) {
   if (body !== undefined) body = {...body, server_id: selectedServer || undefined};
-  else if (selectedServer && (path === '/api/state' || path === '/api/logs')) path += `?server=${encodeURIComponent(selectedServer)}`;
+  else if (selectedServer && (path.split('?')[0] === '/api/state' || path.split('?')[0] === '/api/logs')) path += `${path.includes('?') ? '&' : '?'}server=${encodeURIComponent(selectedServer)}`;
   const options = {cache: 'no-store'};
   if (body !== undefined) Object.assign(options, {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Manager-Token': token}, body: JSON.stringify(body),
@@ -43,15 +44,15 @@ function controls() {
   const locked = busy || !available;
   $('#server-select').disabled = busy || refreshing || !catalogAvailable;
   $('#profile-fields').disabled = locked;
-  $('#start').disabled = locked || !status?.installed || !status?.configured || status.running;
+  $('#start').disabled = locked || !status?.installed || !status?.configured || status.running || status.starting;
   $('#stop').disabled = locked || !status?.running;
   $('#restart').disabled = locked || !status?.running;
-  $('#setup').disabled = locked || !status?.installed || status.running;
-  $('#config-fields').disabled = locked || !config || status?.running;
+  $('#setup').disabled = locked || !status?.installed || status.running || status.starting;
+  $('#config-fields').disabled = locked || !config || status?.running || status?.starting;
   $('#refresh').disabled = busy;
   $('#refresh-logs').disabled = busy;
   for (const button of document.querySelectorAll('#discord button')) button.disabled = busy || !token;
-  if (status) $('#settings-hint').textContent = status.running
+  if (status) $('#settings-hint').textContent = status.starting ? 'Der Serverstarter arbeitet noch. Fortschritt unter Serverlog → Starter / Startfehler.' : status.running
     ? 'Der Server läuft. Stoppe ihn vor dem Bearbeiten, damit er deine Änderungen nicht überschreibt.'
     : !config ? 'Bitte den Server zuerst unter Übersicht vorbereiten.'
       : 'Der Server ist gestoppt. Du kannst seine Einstellungen jetzt bearbeiten.';
@@ -161,9 +162,9 @@ function render(data) {
     }
   }
   $('#process-id').textContent = status.processes.map(p => p.pid).join(', ') || '—';
-  $('#server-state').textContent = status.running ? '● Prozess läuft' : '○ Gestoppt';
+  $('#server-state').textContent = status.starting ? '◌ Starter arbeitet' : status.running ? '● Prozess läuft' : '○ Gestoppt';
   $('#server-state').className = 'pill' + (status.running ? ' running' : '');
-  $('#process-note').textContent = status.running ? 'Verbindungsbereitschaft im Serverlog prüfen.' : 'Bereit, wenn du es bist.';
+  $('#process-note').textContent = status.starting ? 'Fortschritt im Starterprotokoll prüfen.' : status.running ? 'Verbindungsbereitschaft im Serverlog prüfen.' : 'Bereit, wenn du es bist.';
   $('#setup-panel').hidden = status.configured;
   $('#installation-check').textContent = status.installed ? 'Server gefunden' : 'Serverprogramm fehlt';
   $('#configuration-check').textContent = status.configured ? 'Konfiguration vorhanden' : 'Erstes Setup ausstehend';
@@ -223,16 +224,25 @@ async function mutate(path, body = {}) {
     }
     await refresh();
     notice(result.message + (result.warning ? ` Hinweis: ${result.warning}` : ''), Boolean(result.warning));
-  } catch (error) { notice(error.message, true); }
+  } catch (error) {
+    notice(error.message, true);
+    if (path === '/api/start' || path === '/api/restart') {
+      logSource = 'launcher'; $('#log-source').value = logSource; go('logs');
+    }
+  }
   finally { busy = false; controls(); }
 }
 
 async function loadLogs() {
+  const server = selectedServer;
+  const source = logSource;
   try {
-    const data = await api('/api/logs');
+    const data = await api(`/api/logs?source=${encodeURIComponent(source)}`);
+    if (selectedServer !== server || logSource !== source) return;
     $('#log-file').textContent = data.file || 'Serverkonsole';
+    $('#log-updated').textContent = data.updated_at ? `Dateistand: ${new Date(data.updated_at).toLocaleString('de-DE')}` : '';
     $('#log-content').textContent = data.text;
-  } catch (error) { notice(error.message, true); }
+  } catch (error) { if (selectedServer === server && logSource === source) notice(error.message, true); }
 }
 
 function go(next) {
@@ -253,6 +263,7 @@ $('#server-select').addEventListener('change', async () => {
   const next = $('#server-select').value;
   if (dirty && !confirm('Ungespeicherte Spieleinstellungen verwerfen und das Serverprofil wechseln?')) { $('#server-select').value = selectedServer; return; }
   selectedServer = next; rememberServer(); dirty = false; rawDirty = false; config = null; available = false;
+  logSource = 'server'; $('#log-source').value = logSource; $('#log-updated').textContent = '';
   $('#json-editor').value = ''; $('#game-fields').replaceChildren(); $('#groups').replaceChildren();
   $('#log-content').textContent = 'Logs werden geladen …';
   controls(); await refresh();
@@ -269,6 +280,7 @@ $('#profile-form').addEventListener('submit', event => {
 });
 $('#refresh').addEventListener('click', refresh);
 $('#refresh-logs').addEventListener('click', loadLogs);
+$('#log-source').addEventListener('change', () => { logSource = $('#log-source').value; loadLogs(); });
 $('#setup').addEventListener('click', () => mutate('/api/setup'));
 $('#start').addEventListener('click', () => mutate('/api/start'));
 for (const action of ['stop', 'restart']) $(`#${action}`).addEventListener('click', () => {

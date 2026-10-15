@@ -22,5 +22,9 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
     aska = root / "ASKA Server"
     aska.mkdir()
     (aska / "AskaServer.exe").touch()
-    with patch("gameserver_manager.core.send_discord"), patch("gameserver_manager.core.WindowsServerBridge", side_effect=lambda *args: FakeBridge()), patch.object(GAME_TYPES["aska"], "default_directory", str(aska)):
+    user_profile = root / "WindowsUser"
+    logs = user_profile / "AppData/LocalLow/Sand Sailor Studio/Aska"
+    logs.mkdir(parents=True)
+    (logs / "Player.log").write_text("password = browser-secret-from-log\nThe session is now open!\n")
+    with patch("gameserver_manager.core.send_discord"), patch("gameserver_manager.core.WindowsServerBridge", side_effect=lambda *args: FakeBridge(str(user_profile))), patch.object(GAME_TYPES["aska"], "default_directory", str(aska)):
         serve(ServerRegistry(root, GameServerManager(root, FakeBridge())), 8766)
