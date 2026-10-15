@@ -10,7 +10,7 @@ import {loadGames} from './views/catalog.js';
 import {bindCommunity, isCommunityHash, loadCommunity} from './views/community.js';
 import {renderUpdate} from './views/updates.js';
 import {bindConnections, renderConnection} from './views/connection.js';
-import {bindAccess, loadAccess} from './views/access.js';
+import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map();
@@ -100,7 +100,7 @@ async function selectServer(target, openOverview = false) {
 async function go(next, {keepNotice = false} = {}) {
   if (state.accessDirty && next !== 'access') {
     if (!confirm('Ungespeicherte Freigabe verwerfen und die Ansicht wechseln?')) return;
-    state.accessDirty = false;
+    discardAccessDrafts();
   }
   const permission = {settings: 'config.read', profiles: 'catalog.write', discord: 'discord.write', logs: 'logs.read', access: 'access.manage'}[next];
   if (permission && !can(permission)) return notice('Für diesen Bereich fehlt die Berechtigung.', true);

@@ -72,7 +72,13 @@ class Application:
     def check_updates(self, principal, server_id):
         instance = self.instance(principal, server_id, 'updates.check', explicit=True)
         return self.jobs.submit(instance.profile['id'], 'check_updates', principal.id,
-                                lambda: self.updates.check(instance), reservation=('updates', instance.profile['id']))
+                                self.authorized_callback(principal, lambda: self.updates.check(instance)), reservation=('updates', instance.profile['id']))
+
+    def authorized_callback(self, principal, callback):
+        def authorized():
+            self.access.validate(principal)
+            return callback()
+        return authorized
 
     def start_update_checks(self):
         if self.registry.settings.get('automatic_update_checks', True) is True:
@@ -111,7 +117,6 @@ class Application:
             (lambda: instance.save_config(payload.get("config"))) if operation == "config" else lambda: instance.action(operation))
 
         def callback():
-            self.access.validate(principal)
             try:
                 values = secret_values(instance.config() or {}, instance.webhook())
             except (ManagerError, OSError):
@@ -121,7 +126,7 @@ class Application:
             except ManagerError as exc:
                 raise ManagerError(redact(str(exc), values)) from None
 
-        return self.jobs.submit(instance.profile["id"], operation, principal.id, callback)
+        return self.jobs.submit(instance.profile["id"], operation, principal.id, self.authorized_callback(principal, callback))
 
     def mutate(self, principal, path, body):
         if path == "/api/servers":
@@ -131,7 +136,7 @@ class Application:
             principal.require("discord.write")
             instance = self.registry.get()
             callback = lambda: instance.save_discord(body) if path.endswith("settings") else instance.notify(body.get("message"))
-            _job, future = self.jobs.submit("@discord", path.rsplit("/", 1)[1], principal.id, callback)
+            _job, future = self.jobs.submit("@discord", path.rsplit("/", 1)[1], principal.id, self.authorized_callback(principal, callback))
             return future.result()
         operation = path.rsplit("/", 1)[-1]
         _job, future = self.submit(principal, operation, body)

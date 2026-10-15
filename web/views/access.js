@@ -5,6 +5,7 @@ import {can, state} from '../state.js';
 let request = 0, editing, saving = false, loading = false;
 let connectionDirty = false, userDirty = false;
 const updateDirty = () => { state.accessDirty = connectionDirty || userDirty; };
+export function discardAccessDrafts() { connectionDirty = false; userDirty = false; updateDirty(); }
 const roles = {owner: 'Besitzer · voller Zugriff', family: 'Familie · ansehen und starten', viewer: 'Nur ansehen'};
 const operations = {'/api/session': 'Anmeldung', '/api/access': 'Freigaben ansehen', '/api/access/users': 'Zugang ändern', '/api/access/settings': 'Private Verbindung ändern',
   'access.configure': 'Private Verbindung speichern', 'access.user': 'Zugang ändern', '/api/jobs': 'Serveraktion', 'server.start': 'Server starten', 'server.stop': 'Server stoppen', 'server.restart': 'Server neu starten',
@@ -88,19 +89,20 @@ export async function loadAccess(preserveDrafts = false) {
 
 async function save(path, body) {
   if (saving) return;
-  const epoch = state.navigationEpoch; saving = true;
+  saving = true;
   for (const input of document.querySelectorAll('#access fieldset,#access button')) input.disabled = true;
   try {
     const result = await api(path, body);
-    if (epoch !== state.navigationEpoch || state.view !== 'access') return;
     if (path === '/api/access/users') userDirty = false; else connectionDirty = false;
-    updateDirty(); notice(result.message);
+    updateDirty();
     if (body.id === state.principal.id) { location.reload(); return; }
-    saving = false; await loadAccess(true);
+    saving = false;
+    if (state.view === 'access') { notice(result.message); await loadAccess(true); }
   } catch (error) { if (state.view === 'access') notice(error.message, true); }
   finally {
     saving = false;
-    for (const input of document.querySelectorAll('#access fieldset,#access button')) input.disabled = false;
+    for (const fieldset of document.querySelectorAll('#access fieldset')) fieldset.disabled = loading;
+    for (const button of document.querySelectorAll('#access button')) button.disabled = false;
   }
 }
 
@@ -113,7 +115,7 @@ export function bindAccess() {
   });
   $('#access-refresh').addEventListener('click', () => {
     if (state.accessDirty && !confirm('Ungespeicherte Freigabe verwerfen und neu laden?')) return;
-    state.accessDirty = false; loadAccess();
+    discardAccessDrafts(); loadAccess();
   });
   $('#family-settings').addEventListener('submit', event => {
     event.preventDefault();

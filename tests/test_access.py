@@ -3,6 +3,8 @@ import json
 import threading
 import urllib.error
 import urllib.request
+from unittest.mock import patch
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from gameserver_manager.access import settings
@@ -178,6 +180,33 @@ class AccessTests(ManagerFixture):
         self.assertEqual(self.bridge.calls.count('Start'), 1)
         self.assertTrue(any(row['actor'] == self.user_id and row['resource'] == 'enshrouded' and row['outcome'] == '202'
                             for row in self.access.view(OWNER)['audit']))
+
+    def test_revoked_remote_owner_cannot_run_queued_update_or_discord_work(self):
+        remote_body = {**self.body, 'login': 'owner@example.test', 'name': 'Remote owner', 'role': 'owner', 'server_ids': None}
+        remote_id = self.access.save_user(OWNER, remote_body)['id']
+        principal = self.access.principal(remote_body['login'])
+        gate = threading.Event()
+        blockers = [self.local.app.jobs.executor.submit(gate.wait) for _ in range(4)]
+        with patch.object(self.local.app.updates, 'check') as update, patch.object(self.manager, 'save_discord') as discord:
+            with ThreadPoolExecutor(1) as caller:
+                try:
+                    _job, update_future = self.local.app.check_updates(principal, 'enshrouded')
+                    discord_future = caller.submit(self.local.app.mutate, principal, '/api/discord/settings', {'server_id': 'enshrouded'})
+                    deadline = time.monotonic() + 3
+                    while not self.local.app.jobs.recent('@discord'):
+                        self.assertLess(time.monotonic(), deadline)
+                        time.sleep(.01)
+                    user = next(user for user in self.access.view(OWNER)['users'] if user['id'] == remote_id)
+                    self.access.save_user(OWNER, {**remote_body, 'id': user['id'], 'revision': user['revision'], 'enabled': False})
+                finally:
+                    gate.set()
+                for future in (update_future, discord_future):
+                    with self.assertRaises(AccessDenied):
+                        future.result(timeout=3)
+                update.assert_not_called()
+                discord.assert_not_called()
+        for blocker in blockers:
+            blocker.result(timeout=3)
 
     def test_strict_configuration_and_invalid_grants(self):
         for hostname in ('evil.invalid', 'https://' + HOST, HOST + ':443', HOST + '/path', 'a..ts.net', 'a.ts.net', 'a.-b.ts.net'):

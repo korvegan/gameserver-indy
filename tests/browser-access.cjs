@@ -28,11 +28,31 @@ const fs = require('node:fs');
     await page.getByRole('button', {name: 'Übersicht', exact: true}).click();
     assert.equal(await page.locator('#access').isVisible(), true);
     assert.equal(await page.locator('#access-user-name').inputValue(), 'Entwurf bleibt');
+    assert.equal(await page.evaluate(() => { const event = new Event('beforeunload', {cancelable: true}); window.dispatchEvent(event); return event.defaultPrevented; }), true);
     page.on('dialog', dialog => dialog.accept());
     await page.locator('#access-user-cancel').click();
     assert.equal(await page.locator('#family-hostname').inputValue(), 'draft.example.ts.net');
     await page.locator('#access-refresh').click();
     await page.waitForFunction(() => document.querySelector('#access').getAttribute('aria-busy') === 'false');
+    // A completed grant is adopted after reselecting the active view or returning.
+    for (const leave of [false, true]) {
+      const name = leave ? 'Rückkehr nach Speichern' : 'Gleiche Ansicht während Speichern';
+      await page.locator('#access-user-name').fill(name);
+      await page.locator('#access-user-login').fill(`qa-late-${leave}@example.test`);
+      let release, arrived;
+      const gate = new Promise(resolve => { release = resolve; });
+      const seen = new Promise(resolve => { arrived = resolve; });
+      await page.route('**/api/access/users', async route => {
+        const response = await route.fetch(); arrived(); await gate; await route.fulfill({response});
+      });
+      await page.getByRole('button', {name: 'Freigabe speichern', exact: true}).click(); await seen;
+      if (leave) await page.getByRole('button', {name: 'Übersicht', exact: true}).click();
+      await page.getByRole('button', {name: 'Familienzugang', exact: true}).click();
+      release();
+      await page.waitForFunction(name => document.querySelector('#access-users').textContent.includes(name), name);
+      assert.equal(await page.locator('#access-user-name').inputValue(), '');
+      await page.unroute('**/api/access/users');
+    }
     const family = await browser.newContext({extraHTTPHeaders: {'X-QA-Login': 'qa-family@example.test'}, viewport: {width: 390, height: 844}});
     try {
       const remote = await family.newPage(); remote.on('pageerror', error => errors.push(error.message));
@@ -66,7 +86,7 @@ const fs = require('node:fs');
       await remote.screenshot({path: 'artifacts/family-mobile.png', fullPage: true});
       assert.equal(await remote.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       // Revocation takes effect even with an already loaded browser and CSRF token.
-      await page.getByRole('button', {name: 'Freigabe bearbeiten', exact: true}).click();
+      await page.locator('#access-users .access-user').filter({hasText: 'Schwester im Test'}).getByRole('button', {name: 'Freigabe bearbeiten', exact: true}).click();
       await page.locator('#access-user-enabled').uncheck();
       const revoked = page.waitForResponse(response => response.url().endsWith('/api/access/users') && response.request().method() === 'POST');
       await page.getByRole('button', {name: 'Freigabe speichern', exact: true}).click();
