@@ -1,8 +1,8 @@
 {
-  "name": "enshrouded-indy",
-  "version": "0.1.0",
+  "name": "gameserver-indy",
+  "version": "0.2.0",
   "private": true,
-  "description": "Development checks for the local Enshrouded manager",
+  "description": "Development checks for GameServer Indy",
   "scripts": {
     "check:js": "node --check web/app.js",
     "test:browser": "node tests/run-browser-check.cjs"

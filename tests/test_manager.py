@@ -7,8 +7,8 @@ from unittest.mock import patch
 import urllib.error
 import urllib.request
 
-from enshrouded_manager.core import Manager, ManagerError, atomic_json, initial_config, send_discord, validate_config
-from enshrouded_manager.server import LocalServer
+from gameserver_manager.core import GameServerManager, ManagerError, atomic_json, initial_config, send_discord, validate_config
+from gameserver_manager.server import LocalServer
 
 
 class FakeBridge:
@@ -35,7 +35,7 @@ class ManagerFixture(unittest.TestCase):
         (self.install / "enshrouded_server.exe").touch()
         atomic_json(self.root / "manager.local.json", {"server_directory": str(self.install), "discord": {"webhook_url": "", "auto_notify": False}})
         self.bridge = FakeBridge()
-        self.manager = Manager(self.root, self.bridge)
+        self.manager = GameServerManager(self.root, self.bridge)
 
 
 class ManagerTests(ManagerFixture):
@@ -108,7 +108,7 @@ class ManagerTests(ManagerFixture):
     def test_discord_failure_does_not_misreport_a_successful_start(self):
         self.manager.setup()
         self.manager.save_discord({"webhook_url": "https://discord.com/api/webhooks/123/secret", "auto_notify": True})
-        with patch("enshrouded_manager.core.send_discord", side_effect=ManagerError("Discord nicht erreichbar")):
+        with patch("gameserver_manager.core.send_discord", side_effect=ManagerError("Discord nicht erreichbar")):
             result = self.manager.action("start")
         self.assertTrue(self.bridge.running)
         self.assertIn("Discord", result["warning"])
@@ -145,7 +145,7 @@ class ManagerTests(ManagerFixture):
                     validate_config(config)
 
 
-class HTTPTests(ManagerFixture):
+class HTTPFixture(ManagerFixture):
     def setUp(self):
         super().setUp()
         self.manager.setup()
@@ -165,6 +165,7 @@ class HTTPTests(ManagerFixture):
         request = urllib.request.Request(self.url + path, data=json.dumps(body).encode(), headers=headers)
         return urllib.request.urlopen(request)
 
+class HTTPTests(HTTPFixture):
     def test_no_csrf_token_and_foreign_origin_are_blocked(self):
         for token, origin in ((None, None), (self.server.token, "https://example.com")):
             with self.assertRaises(urllib.error.HTTPError) as result:

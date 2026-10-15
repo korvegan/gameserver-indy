@@ -12,8 +12,9 @@ let discordDirty = false;
 let busy = false;
 let refreshing = false;
 let available = false;
-
-const presetNames = {Default: 'Standard', Relaxed: 'Entspannt', Hard: 'Schwer', Survival: 'Überleben', Custom: 'Eigene Regeln'};
+let catalogAvailable = false;
+let selectedServer = '';
+try { selectedServer = localStorage.getItem('gameserver-indy-server') || ''; } catch { /* Storage may be unavailable. */ }
 
 function notice(message, error = false) {
   const box = $('#notice');
@@ -23,6 +24,8 @@ function notice(message, error = false) {
 }
 
 async function api(path, body) {
+  if (body !== undefined) body = {...body, server_id: selectedServer || undefined};
+  else if (selectedServer && (path === '/api/state' || path === '/api/logs')) path += `?server=${encodeURIComponent(selectedServer)}`;
   const options = {cache: 'no-store'};
   if (body !== undefined) Object.assign(options, {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Manager-Token': token}, body: JSON.stringify(body),
@@ -38,6 +41,8 @@ async function api(path, body) {
 function controls() {
   const status = snapshot?.status;
   const locked = busy || !available;
+  $('#server-select').disabled = busy || refreshing || !catalogAvailable;
+  $('#profile-fields').disabled = locked;
   $('#start').disabled = locked || !status?.installed || !status?.configured || status.running;
   $('#stop').disabled = locked || !status?.running;
   $('#restart').disabled = locked || !status?.running;
@@ -60,10 +65,37 @@ function markDirty() {
 function populateConfig(value) {
   config = structuredClone(value);
   if (!config) return;
-  for (const key of ['name', 'slotCount', 'queryPort', 'gameSettingsPreset', 'voiceChatMode']) {
-    form.elements.namedItem(key).value = config[key] ?? '';
+  $('#game-fields').replaceChildren();
+  for (const field of snapshot.game_profile.fields) {
+    const label = document.createElement('label');
+    if (field.wide) label.className = 'wide';
+    label.append(document.createTextNode(field.label));
+    const input = document.createElement(field.type === 'select' ? 'select' : 'input');
+    input.name = field.key;
+    if (field.type === 'select') {
+      for (const [value, text] of Object.entries(field.options)) {
+        const option = document.createElement('option'); option.value = value; option.textContent = text; input.append(option);
+      }
+      if (config[field.key] && !Object.hasOwn(field.options, config[field.key])) {
+        const option = document.createElement('option'); option.value = config[field.key]; option.textContent = config[field.key]; input.append(option);
+      }
+    } else {
+      input.type = field.type; input.autocomplete = field.type === 'password' ? 'new-password' : 'off';
+    }
+    if (field.min !== undefined) input.min = field.min;
+    if (field.max !== undefined) input.max = field.max;
+    input.required = Boolean(field.required);
+    if (field.type === 'checkbox') input.checked = Boolean(config[field.key]);
+    else input.value = config[field.key] ?? '';
+    if (field.lock_with_external_launcher && snapshot.status.external_launcher) input.readOnly = true;
+    label.append(input);
+    $('#game-fields').append(label);
+    if (field.help) {
+      const help = document.createElement('small'); help.className = 'field-help'; help.textContent = field.help;
+      const helpId = `field-help-${$('#game-fields').children.length}`; help.id = helpId; input.setAttribute('aria-describedby', helpId); label.append(help);
+    }
   }
-  for (const key of ['enableVoiceChat', 'enableTextChat']) form.elements.namedItem(key).checked = Boolean(config[key]);
+  $('#roles-section').hidden = !snapshot.game_profile.role_groups;
   $('#groups').replaceChildren();
   (config.userGroups || []).forEach((group, index) => {
     const row = document.createElement('div'); row.className = 'group-row';
@@ -88,9 +120,11 @@ function populateConfig(value) {
 
 function fromForm() {
   const result = structuredClone(config);
-  for (const key of ['name', 'gameSettingsPreset', 'voiceChatMode']) result[key] = form.elements.namedItem(key).value;
-  for (const key of ['slotCount', 'queryPort']) result[key] = Number(form.elements.namedItem(key).value);
-  for (const key of ['enableVoiceChat', 'enableTextChat']) result[key] = form.elements.namedItem(key).checked;
+  for (const field of snapshot.game_profile.fields) {
+    const input = form.elements.namedItem(field.key);
+    result[field.key] = field.type === 'checkbox' ? input.checked
+      : field.type === 'number' && field.value_type !== 'string' ? Number(input.value) : input.value;
+  }
   for (const input of document.querySelectorAll('[data-group]')) result.userGroups[Number(input.dataset.group)].password = input.value;
   return result;
 }
@@ -98,10 +132,34 @@ function fromForm() {
 function render(data) {
   snapshot = data;
   const {status, config: current, events} = data;
-  $('#server-name').textContent = current?.name || 'Enshrouded Indy';
-  $('#slot-count').textContent = current?.slotCount ?? '—';
-  $('#preset-label').textContent = presetNames[current?.gameSettingsPreset] || '—';
-  $('#query-port').textContent = current?.queryPort ?? '—';
+  selectedServer = status.server_id;
+  $('#server-name').textContent = current?.name || current?.['server name'] || status.profile_label;
+  $('#game-label').textContent = `${status.game_label.toUpperCase()} · DEDICATED SERVER`;
+  $('#profile-caption').textContent = status.profile_label + (status.external_launcher ? ' · Start und Discord über deinen vorhandenen Starter.' : '');
+  for (const [index, id] of ['slot-count', 'preset-label', 'query-port'].entries()) {
+    const metric = data.game_profile.metrics[index]; const value = current?.[metric.key];
+    $(`#metric-label-${index}`).textContent = metric.label.toUpperCase();
+    $(`#${id}`).textContent = (metric.options?.[value] ?? value) || '—';
+  }
+  const selector = $('#server-select');
+  if (JSON.stringify(data.servers) !== selector.dataset.profiles) {
+    selector.replaceChildren(); $('#profile-list').replaceChildren();
+    for (const profile of data.servers) {
+      const option = document.createElement('option'); option.value = profile.id; option.textContent = profile.label; selector.append(option);
+      const row = document.createElement('div'); row.className = 'profile-entry';
+      const name = document.createElement('strong'); name.textContent = profile.label;
+      const path = document.createElement('small'); path.textContent = `${profile.game} · ${profile.server_directory}`;
+      row.append(name, path); $('#profile-list').append(row);
+    }
+    selector.dataset.profiles = JSON.stringify(data.servers);
+  }
+  selector.value = selectedServer;
+  if (!$('#profile-game').options.length) {
+    for (const game of data.games) {
+      const option = document.createElement('option'); option.value = game.id; option.textContent = game.label;
+      option.dataset.directory = game.default_directory; option.dataset.launcher = String(game.external_launcher); $('#profile-game').append(option);
+    }
+  }
   $('#process-id').textContent = status.processes.map(p => p.pid).join(', ') || '—';
   $('#server-state').textContent = status.running ? '● Prozess läuft' : '○ Gestoppt';
   $('#server-state').className = 'pill' + (status.running ? ' running' : '');
@@ -149,7 +207,7 @@ async function refresh() {
     $('#server-state').className = 'pill error';
     $('#process-note').textContent = 'Windows-/WSL-Verbindung prüfen.';
     notice(error.message, true); controls();
-  } finally { refreshing = false; }
+  } finally { refreshing = false; controls(); }
 }
 
 async function mutate(path, body = {}) {
@@ -157,7 +215,8 @@ async function mutate(path, body = {}) {
   busy = true; controls(); notice('Wird ausgeführt …');
   try {
     const result = await api(path, body);
-    if (path === '/api/config' || path === '/api/setup') { dirty = false; rawDirty = false; }
+    if (path === '/api/servers') { selectedServer = result.server_id; dirty = false; rawDirty = false; config = null; rememberServer(); }
+    if (path === '/api/config' || path === '/api/setup') { dirty = false; rawDirty = false; config = null; }
     if (path === '/api/discord/settings') {
       discordDirty = false; $('#webhook').value = ''; $('#clear-webhook').checked = false;
     }
@@ -182,12 +241,31 @@ function go(next) {
     button.classList.toggle('active', button.dataset.view === view);
     if (button.dataset.view === view) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
   }
-  $('#breadcrumb').textContent = {overview: 'Übersicht', settings: 'Einstellungen', logs: 'Serverlog', discord: 'Discord'}[view];
+  $('#breadcrumb').textContent = {overview: 'Übersicht', settings: 'Einstellungen', logs: 'Serverlog', discord: 'Discord', profiles: 'Serverprofile'}[view];
   if (view === 'logs') loadLogs();
 }
 
 for (const button of document.querySelectorAll('[data-view]')) button.addEventListener('click', () => go(button.dataset.view));
 for (const button of document.querySelectorAll('[data-go]')) button.addEventListener('click', () => go(button.dataset.go));
+function rememberServer() { try { localStorage.setItem('gameserver-indy-server', selectedServer); } catch { /* Optional preference. */ } }
+$('#server-select').addEventListener('change', async () => {
+  const next = $('#server-select').value;
+  if (dirty && !confirm('Ungespeicherte Spieleinstellungen verwerfen und das Serverprofil wechseln?')) { $('#server-select').value = selectedServer; return; }
+  selectedServer = next; rememberServer(); dirty = false; rawDirty = false; config = null; available = false;
+  $('#json-editor').value = ''; $('#game-fields').replaceChildren(); $('#groups').replaceChildren();
+  $('#log-content').textContent = 'Logs werden geladen …';
+  controls(); await refresh();
+});
+$('#profile-game').addEventListener('change', () => {
+  $('#profile-directory').value = $('#profile-game').selectedOptions[0].dataset.directory;
+  $('#profile-launcher').disabled = $('#profile-game').selectedOptions[0].dataset.launcher !== 'true';
+});
+$('#profile-form').addEventListener('submit', event => {
+  event.preventDefault();
+  mutate('/api/servers', {id: $('#profile-id').value, game: $('#profile-game').value, label: $('#profile-label').value,
+    server_directory: $('#profile-directory').value, config_path: $('#profile-config').value,
+    launcher_script: $('#profile-game').selectedOptions[0].dataset.launcher === 'true' ? $('#profile-launcher').value : ''});
+});
 $('#refresh').addEventListener('click', refresh);
 $('#refresh-logs').addEventListener('click', loadLogs);
 $('#setup').addEventListener('click', () => mutate('/api/setup'));
@@ -219,7 +297,17 @@ $('#message-form').addEventListener('submit', (event) => { event.preventDefault(
 window.addEventListener('beforeunload', (event) => { if (dirty || discordDirty) { event.preventDefault(); event.returnValue = ''; } });
 
 (async () => {
-  try { token = (await api('/api/session')).token; await refresh(); }
+  try {
+    token = (await api('/api/session')).token;
+    const catalog = await api('/api/servers');
+    if (!catalog.servers.some(profile => profile.id === selectedServer)) selectedServer = catalog.servers[0].id;
+    $('#server-select').replaceChildren(...catalog.servers.map(profile => {
+      const option = document.createElement('option'); option.value = profile.id; option.textContent = profile.label; return option;
+    }));
+    $('#server-select').value = selectedServer;
+    catalogAvailable = true;
+    await refresh();
+  }
   catch (error) { notice(error.message, true); }
   controls();
   setInterval(() => { if (!busy && !refreshing) refresh(); }, 8000);

@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
 $launcher = Join-Path $project 'scripts\start-manager.ps1'
 $installer = Join-Path $project 'scripts\install-desktop-shortcut.ps1'
-$temporary = Join-Path $env:TEMP ('enshrouded-launcher-' + [Guid]::NewGuid().ToString('N'))
+$temporary = Join-Path $env:TEMP ('gameserver-launcher-' + [Guid]::NewGuid().ToString('N'))
 $testProcess = $null
 New-Item -ItemType Directory -Path $temporary | Out-Null
 
@@ -50,7 +50,7 @@ using System.Text;
 using System.Threading;
 public static class StandIn {
     public static void Main(string[] args) {
-        if (Environment.GetEnvironmentVariable("ENSHROUDED_TEST_FAIL_START") == "1") {
+        if (Environment.GetEnvironmentVariable("GAMESERVER_TEST_FAIL_START") == "1") {
             Console.Error.WriteLine("Expected test startup failure.");
             return;
         }
@@ -67,7 +67,7 @@ public static class StandIn {
                 var buffer = new byte[8192];
                 stream.Read(buffer, 0, buffer.Length);
                 string body = "{\"token\":\"test\"}";
-                byte[] response = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nServer: EnshroudedIndy/0.1\r\nContent-Type: application/json\r\nContent-Length: " + body.Length + "\r\nConnection: close\r\n\r\n" + body);
+                byte[] response = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nServer: GameServerIndy/0.2\r\nContent-Type: application/json\r\nContent-Length: " + body.Length + "\r\nConnection: close\r\n\r\n" + body);
                 stream.Write(response, 0, response.Length);
             }
             GC.KeepAlive(timer);
@@ -101,13 +101,13 @@ public static class StandIn {
     Stop-Process -Id $testProcess -Force
     Wait-Process -Id $testProcess -ErrorAction SilentlyContinue
     $testProcess = $null
-    $env:ENSHROUDED_TEST_FAIL_START = '1'
+    $env:GAMESERVER_TEST_FAIL_START = '1'
     $rejected = $false
     try { & $launcher @arguments -NoBrowser | Out-Null } catch { $rejected = $_.Exception.Message.Contains('stderr.log') }
     Assert-True $rejected 'An exited manager was not reported with a diagnostic log.'
     Write-Output 'PASS: startup failure reports the diagnostic log.'
 } finally {
-    Remove-Item Env:\ENSHROUDED_TEST_FAIL_START -ErrorAction SilentlyContinue
+    Remove-Item Env:\GAMESERVER_TEST_FAIL_START -ErrorAction SilentlyContinue
     if ($testProcess) { Stop-Process -Id $testProcess -Force -ErrorAction SilentlyContinue }
     Remove-Item -LiteralPath $temporary -Recurse -Force
 }

@@ -1,0 +1,40 @@
+---
+name: gameserver-indy
+description: GameServer Indy auf korvegans Windows-/WSL-Rechner weiterentwickeln und betreiben; Spielprofile und Dedicated-Server-Adapter ergänzen und lokale Betriebserkenntnisse pflegen. Verwenden für dieses Repository und seine Enshrouded-/ASKA-Integration.
+---
+
+# GameServer Indy
+
+Das Projekt verwaltet native Windows-Dedicated-Server über einen lokalen Python-Dienst in WSL. Den bestehenden Python-/HTML-/JS-Aufbau fortführen. Quellen mit gezielten Patches ändern; Python für Backend, Datenverarbeitung und Prüfungen verwenden, nicht als spontanen Texteditor.
+
+## Umgebung
+
+- Repository `korvegan/gameserver-indy`; Python-Paket `gameserver_manager`, Einstieg `python3 -m gameserver_manager`. Browser: `http://127.0.0.1:8765`. `localhost` kann hier zuerst IPv6 versuchen und scheitern.
+- WSL-Distribution `Indy`, Linux- und Windows-Benutzer `korvegan`. Launcher unter `%LOCALAPPDATA%\GameServerIndy`; nach Launcher- oder Checkout-Pfadänderungen den versionierten Shortcut-Installer ausführen.
+- Spielprofile unter `profiles/`, lokale Instanzen in der ignorierten `manager.local.json`. Profilwahl pro Browser; schreibende Aktionen mit ausdrücklicher Profil-ID. Kein globaler aktiver Server als Prozessziel.
+- Die Profilauswahl unabhängig von der Statusabfrage laden und bedienbar halten: Eine defekte Spielkonfiguration darf den Wechsel zu gesunden Serverprofilen nicht sperren. Dafür existiert eine Browser-Regression.
+- Windows-Prozesse anhand des vollständigen kanonischen EXE-Pfads erkennen. Windows kann 8.3-Pfade melden; der Prozessadapter normalisiert diese. Kein Stopp allein anhand des Prozessnamens.
+- Bereits umgewandelte Windows-Pfade erkennen, einschließlich UNC-Pfaden wie `\\wsl.localhost\Indy\...`. Erneutes `wslpath -w` auf einem solchen UNC-Pfad führte im Integrationstest zu „Serverprogramm nicht gefunden“.
+- WSL-Argumentnamen beim Windows-Start unquoted lassen; nur Werte mit Leerzeichen quoten. Ein vorheriger Kaltstart scheiterte an gequotetem `--distribution`.
+
+## Spiele
+
+Enshrouded: `D:\SteamLibrary\steamapps\common\EnshroudedServer`. Die Gruppe möchte mit 1.0 eine neue Welt beginnen. Dafür einen neuen Weltordner verwenden, bestehende Welten nicht löschen. Nach Updates Felder und Grenzen mit der installierten Version abgleichen; unbekannte Felder erhalten.
+
+ASKA: `D:\SteamLibrary\steamapps\common\ASKA Dedicated Server`. Die aktive Konfiguration liegt **außerhalb** von Steam unter `C:\Users\korvegan\Documents\workspace\Aska\config\server properties.txt`. `ASKA starten.cmd` auf dem Desktop verweist auf `start-aska-discord.ps1` in diesem Projekt. Die Vorlage im Steam-Ordner gehört nicht zur bestätigten Bestandswelt.
+
+Der vorhandene ASKA-Starter prüft eine feste Save-ID und den Weltordner im Windows-Benutzerprofil; diese Welt erhalten. Er übergibt `-propertiesPath`, setzt SteamAppId/SteamGameId 1898300 und sendet selbst eine Discord-Meldung nach `The session is now open!`. Keine zweite Dashboard-Startmeldung senden. Die Windows-DPAPI-Anbindung bleibt getrennt und wird nicht importiert oder ausgegeben. Rohe Unity-Logs können Zugangsdaten enthalten.
+
+Konfigurationssicherungen sind keine Weltsicherungen. Spielstände erst sichern, nachdem deren Schreibvorgänge regulär beendet wurden; bei ASKA liegt die Welt im Windows-Benutzerprofil.
+
+Leistungsstand vom 15.10.2026: i9-12900KF, rund 96 GB RAM, RTX 3080 mit 10 GB VRAM, Desktop 5120×1440. Vier Spieler einschließlich Host; Spielclient und Server teilen den Rechner. Native Windows-Server werden nicht durch die WSL-Grenzen von 32 GB/12 vCPUs begrenzt. Ein Speedtest ergab 10,6 Mbit/s Upload und 9 ms Leerlauflatenz; das ist keine dauerhafte Zusicherung. Vor weiteren Performance-Eingriffen unter echter Mehrspielerlast messen.
+
+## Erweiterung und Prüfung
+
+Bei neuen Spielen zuerst Herstelleranleitung, Konfiguration, EXE, Speichern und Stoppverfahren prüfen. Das Spielprofil beschreibt Formularfelder und Startmetadaten; der Adapter implementiert Dateiformat, Validierung und Sonderfälle. Einstellungen eines Spiels nicht auf andere übertragen.
+
+`python3 -m unittest discover -s tests -v`, `npm run check:js` und bei UI-Änderungen `npm run test:browser` verwenden. Prozessänderungen mit temporären Windows-Testservern prüfen. Prozess läuft, Sitzung bereit und erfolgreicher Spielerbeitritt sind unterschiedliche Prüfergebnisse. Der reguläre Stopp mit dem bestehenden ASKA-Starter muss an der echten Welt noch bestätigt werden.
+
+## Lernen bei weiterer Arbeit
+
+Beim Abschluss relevanter Arbeiten neue **beobachtete** Fehlerursachen, wirksame Abhilfe und verbleibende Prüflücken kurz ergänzen oder bestehende Aussagen korrigieren. Passende Regressionstests im Projekt vorziehen; keine Sammlung bloßer Vermutungen anlegen. Veraltete Hinweise entfernen, sobald aktuelle Belege sie widerlegen. Die Repository-Datei ist die Quelle; ihre installierte Kopie unter `~/.codex/skills/gameserver-indy/SKILL.md` nach Änderungen synchronisieren. Das geschieht während beauftragter Arbeiten, nicht durch einen Hintergrunddienst, und erweitert deren Berechtigungen nicht.

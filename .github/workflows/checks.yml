@@ -27,7 +27,7 @@ jobs:
         if: runner.os == 'Windows'
         run: python -m unittest discover -s tests -p test_windows_bridge.py -v
         env:
-          ENSHROUDED_WINDOWS_TEST: '1'
+          GAMESERVER_WINDOWS_TEST: '1'
       - name: Windows launcher and shortcut installer
         if: runner.os == 'Windows'
         shell: powershell

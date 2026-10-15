@@ -5,7 +5,7 @@ param(
     [string]$ProjectDirectory,
     [ValidateRange(1, 65535)][int]$Port = 8765,
     [string]$WslExecutable = (Join-Path $env:WINDIR 'System32\wsl.exe'),
-    [string]$LogDirectory = (Join-Path $env:LOCALAPPDATA 'EnshroudedIndy\logs'),
+    [string]$LogDirectory = (Join-Path $env:LOCALAPPDATA 'GameServerIndy\logs'),
     [switch]$Describe,
     [switch]$CheckOnly,
     [switch]$NoBrowser,
@@ -45,7 +45,7 @@ try {
     function Test-Manager {
         try {
             $response = Invoke-WebRequest -Uri ($managerUrl + '/api/session') -UseBasicParsing -TimeoutSec 2
-            return ($response.StatusCode -eq 200 -and $response.Headers['Server'] -like 'EnshroudedIndy/*')
+            return ($response.StatusCode -eq 200 -and $response.Headers['Server'] -like 'GameServerIndy/*')
         } catch { return $false }
     }
 
@@ -54,7 +54,7 @@ try {
     $started = $false
     $processId = $null
     if (-not $ready) {
-        $mutex = New-Object System.Threading.Mutex($false, ('Local\EnshroudedIndy-' + $settings.Port))
+        $mutex = New-Object System.Threading.Mutex($false, ('Local\GameServerIndy-' + $settings.Port))
         $ownsMutex = $mutex.WaitOne(65000)
         if (-not $ownsMutex) { throw 'Ein anderer Startvorgang dauert noch an. Bitte erneut versuchen.' }
         # A second click may have arrived while the first launcher was starting WSL.
@@ -62,7 +62,7 @@ try {
         if (-not $ready) {
             $arguments = @('--distribution', [string]$settings.WslDistribution)
             if ($settings.WslUser) { $arguments += @('--user', [string]$settings.WslUser) }
-            $arguments += @('--cd', [string]$settings.ProjectDirectory, '--exec', 'python3', '-m', 'enshrouded_manager', '--port', [string]$settings.Port)
+            $arguments += @('--cd', [string]$settings.ProjectDirectory, '--exec', 'python3', '-m', 'gameserver_manager', '--port', [string]$settings.Port)
             # WSL parses its option names literally; quote only values with whitespace.
             $argumentLine = ($arguments | ForEach-Object {
                 if ($_ -match '\s') { '"' + $_ + '"' } else { $_ }
@@ -89,7 +89,7 @@ try {
 } catch {
     if ($Describe -or $CheckOnly -or $NoBrowser) { throw }
     Add-Type -AssemblyName System.Windows.Forms
-    [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'Enshrouded Indy', 'OK', 'Error') | Out-Null
+    [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'GameServer Indy', 'OK', 'Error') | Out-Null
     exit 1
 } finally {
     if ($ownsMutex) { $mutex.ReleaseMutex() }
