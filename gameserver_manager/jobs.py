@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import json
+import sqlite3
 import threading
 from uuid import uuid4
 
@@ -17,6 +18,7 @@ class JobService:
         self.database = database
         self.lock = threading.Lock()
         self.active = {}
+        self.unsettled = {}
         self.closed = False
         self.executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gameserver-job")
         with database.connect(write=True) as db:
@@ -62,19 +64,38 @@ class JobService:
                 raise ManagerError("Auftrag fehlgeschlagen. Lokale Dateien und Windows-Anbindung prüfen.") from None
             self._update(job_id, "succeeded", result.get("message", "Auftrag abgeschlossen."), result)
             return result
+        except (sqlite3.Error, OSError):
+            message = "Auftragsergebnis konnte nicht gespeichert werden. Ausgang unbekannt; Prozessstatus und Protokoll prüfen. Kein automatischer Wiederholungsversuch."
+            with self.lock:
+                self.unsettled[job_id] = {"state": "interrupted", "message": message, "result": None}
+            self._reconcile()
+            raise ManagerError(message) from None
         finally:
             with self.lock:
                 self.active.pop(server_id, None)
 
-    @staticmethod
-    def _public(row):
+    def _reconcile(self):
+        with self.lock:
+            unsettled = dict(self.unsettled)
+        for job_id, outcome in unsettled.items():
+            try:
+                self._update(job_id, outcome["state"], outcome["message"])
+            except (sqlite3.Error, OSError):
+                continue
+            with self.lock:
+                self.unsettled.pop(job_id, None)
+
+    def _public(self, row):
         result = dict(row)
+        with self.lock:
+            result.update(self.unsettled.get(result["id"], {}))
         result["result"] = json.loads(result["result"]) if result["result"] else None
         result.update(cancellable=False, resumable=False, progress={"phase": result["state"],
                       "completed": 1 if result["state"] == "succeeded" else 0, "total": 1, "unit": "Auftrag"})
         return result
 
     def get(self, job_id):
+        self._reconcile()
         with self.database.connect() as db:
             row = db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
         if row is None:
@@ -82,6 +103,7 @@ class JobService:
         return self._public(row)
 
     def recent(self, server_id):
+        self._reconcile()
         with self.database.connect() as db:
             rows = db.execute("SELECT * FROM jobs WHERE server_id=? ORDER BY created_at DESC LIMIT 20", (server_id,)).fetchall()
         return [self._public(row) for row in rows]

@@ -39,6 +39,7 @@ a {
   display:none!important;
 }
 .sidebar {
+  overflow-y:auto;
   position:fixed;
   inset:0 auto 0 0;
   width:258px;
@@ -449,6 +450,10 @@ footer span {
   font-size:10px;
 }
 #notice {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
   position:sticky;
   top:10px;
   z-index:5;
@@ -465,6 +470,7 @@ footer span {
   border-color:#955c4f;
   color:#f5c7b5;
 }
+.notice-close { background:none; border:0; color:inherit; padding:0 3px; font-size:19px; line-height:1.2; }
 .inline-info {
   border:1px solid #3b493b;
   background:#1c2a20;
@@ -615,6 +621,19 @@ pre {
 #message-form h3 {
   margin-bottom:20px;
 }
+.job-row { display:grid; gap:4px; border-top:1px solid var(--border); padding:12px 0; overflow-wrap:anywhere; }
+.job-row strong { font-size:12px; }
+.job-row span,.job-row small { font-size:11px; }
+.catalog-grid,.community-layout { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }
+.catalog-grid .button { margin:8px 8px 0 0; white-space:normal; }
+.capability-list { padding-left:18px; color:var(--muted); font-size:12px; }
+.section-title { font-size:25px; margin-bottom:20px; }
+.badge-list { list-style:none; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
+.badge-list li { padding:4px 8px; color:var(--accent); background:#282d21; border:1px solid #4b4d32; border-radius:5px; font-size:11px; overflow-wrap:anywhere; }
+#story-scenes { display:grid; gap:16px; }
+.story-scene { border:1px solid #655b3c; background:linear-gradient(140deg,#293222,#18251e); border-radius:8px; padding:24px; overflow-wrap:anywhere; }
+.story-scene:focus { outline:2px solid var(--accent); outline-offset:4px; }
+.scene-mark { color:var(--accent); font-size:40px; display:block; }
 @media(min-width:1450px) {
   main {
     padding:0 65px;
@@ -665,6 +684,7 @@ pre {
   }
 }
 @media(max-width:700px) {
+  .catalog-grid,.community-layout { grid-template-columns:1fr; }
   .sidebar {
     position:relative;
     width:100%;
@@ -687,7 +707,7 @@ pre {
   }
   nav {
     display:grid;
-    grid-template-columns:repeat(5,minmax(0,1fr));
+    grid-template-columns:repeat(4,minmax(0,1fr));
     gap:4px;
     margin-top:18px;
   }
