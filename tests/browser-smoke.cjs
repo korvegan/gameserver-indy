@@ -145,6 +145,16 @@ const fs = require('node:fs');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'ASKA Browser Test');
     await page.screenshot({path: 'artifacts/aska-mobile.png', fullPage: true});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.route('**/api/state?server=aska', async route => {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await route.continue();
+    });
+    await page.locator('#server-select').selectOption('aska');
+    await page.locator('#server-select').selectOption('enshrouded');
+    await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Indy Browser Test');
+    await page.locator('#server-select').selectOption('aska');
+    await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'ASKA Browser Test');
+    await page.unroute('**/api/state?server=aska');
     assert.deepEqual(errors, []);
     console.log('Browser QA passed: Enshrouded + ASKA profiles, isolated actions, secret replacement, configuration, Discord, desktop/mobile.');
   } finally {

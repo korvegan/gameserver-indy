@@ -197,6 +197,7 @@ function render(data) {
 async function refresh() {
   if (refreshing) return;
   refreshing = true;
+  controls();
   try {
     const data = await api('/api/state');
     available = true; render(data);
