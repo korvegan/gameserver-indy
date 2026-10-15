@@ -42,6 +42,10 @@ Leistungsstand vom 15.10.2026: i9-12900KF, rund 96 GB RAM, RTX 3080 mit 10 GB VR
 
 Bei neuen Spielen zuerst Herstelleranleitung, Konfiguration, EXE, Speichern und Stoppverfahren prüfen. Das Spielprofil beschreibt Formularfelder und Startmetadaten; der Adapter implementiert Dateiformat, Validierung und Sonderfälle. Einstellungen eines Spiels nicht auf andere übertragen.
 
+Die Dateien `docs/architecture.md` und `docs/backlog.md` im Repository beschreiben den Ausbau ab #27. Instanzdienste liegen getrennt unter `instances.py`, `instance_config.py`, `operations.py`, `processes.py`, `instance_logs.py` und `discord.py`; `core.py` erhält die bisherigen Importnamen. In Tests das tatsächlich verwendete Modul patchen, nicht die Kompatibilitätsimporte. Die globale Registry-Sperre schützt nur gemeinsame Metadaten; lange Operationen verwenden eigene Instanzsperren und die Auftragsverwaltung.
+
+`/api/status` ist eine begrenzte Datensicht, `/api/config` und das kompatible `/api/state` sind Besitzerzugriffe. Der lokale Besitzeradapter ist keine fertige Familienanmeldung; Proxy-/Rollenheader werden nicht vertraut. SQLite unter `data/platform.sqlite3` hält Aufträge und Ereignis-/Szenen-/Versandzuordnungen getrennt von Bestandsdateien. Unterbrochene Aufträge nicht automatisch erneut ausführen, unklaren Discord-Versand nicht blind wiederholen. `python3 -m gameserver_manager demo` prüft den Gemeinschaftsvertrag ausschließlich mit temporären Daten und einem Stub.
+
 `python3 -m unittest discover -s tests -v`, `npm run check:js` und bei UI-Änderungen `npm run test:browser` verwenden. Prozessänderungen mit temporären Windows-Testservern prüfen. Prozess läuft, Sitzung bereit und erfolgreicher Spielerbeitritt sind unterschiedliche Prüfergebnisse. Der reguläre Stopp mit dem bestehenden ASKA-Starter muss an der echten Welt noch bestätigt werden.
 
 ## Lernen bei weiterer Arbeit

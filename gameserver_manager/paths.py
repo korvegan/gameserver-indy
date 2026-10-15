@@ -1,0 +1,5 @@
+"""Repository-owned paths, independent of the runtime settings directory."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+BRIDGE = ROOT / "scripts" / "windows-server.ps1"

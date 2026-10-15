@@ -1,5 +1,7 @@
 import argparse
 import json
+from pathlib import Path
+import tempfile
 
 from .core import ManagerError
 from .server import serve
@@ -9,7 +11,7 @@ from .games import GAME_TYPES
 
 def main():
     parser = argparse.ArgumentParser(description="GameServer Indy: lokale Dedicated-Server-Verwaltung")
-    parser.add_argument("command", nargs="?", default="serve", choices=("serve", "setup", "status", "register"))
+    parser.add_argument("command", nargs="?", default="serve", choices=("serve", "setup", "status", "register", "demo"))
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--server", help="Profil-ID; bei setup/status mit mehreren Profilen erforderlich")
     parser.add_argument("--game", choices=tuple(GAME_TYPES))
@@ -21,6 +23,11 @@ def main():
     if not 1 <= args.port <= 65535:
         parser.error("Port muss zwischen 1 und 65535 liegen.")
     try:
+        if args.command == "demo":
+            from .prototype import demonstrate
+            with tempfile.TemporaryDirectory(prefix="gameserver-prototype-") as temporary:
+                print(json.dumps(demonstrate(Path(temporary)), ensure_ascii=False, indent=2))
+            return
         registry = ServerRegistry()
         if args.command == "serve":
             serve(registry, args.port)

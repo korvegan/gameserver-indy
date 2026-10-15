@@ -109,7 +109,7 @@ class ManagerTests(ManagerFixture):
     def test_discord_failure_does_not_misreport_a_successful_start(self):
         self.manager.setup()
         self.manager.save_discord({"webhook_url": "https://discord.com/api/webhooks/123/secret", "auto_notify": True})
-        with patch("gameserver_manager.core.send_discord", side_effect=ManagerError("Discord nicht erreichbar")):
+        with patch("gameserver_manager.operations.send_discord", side_effect=ManagerError("Discord nicht erreichbar")):
             result = self.manager.action("start")
         self.assertTrue(self.bridge.running)
         self.assertIn("Discord", result["warning"])

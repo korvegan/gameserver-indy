@@ -5,7 +5,8 @@ import re
 import threading
 
 from .configuration import ManagerError, atomic_json, local_path, read_json
-from .core import GameServerManager, ROOT
+from .instances import GameServerManager
+from .paths import ROOT
 from .games import GAME_TYPES
 
 
@@ -33,9 +34,10 @@ class ServerRegistry:
             if profile["id"] in self.managers or identity in directories:
                 raise ManagerError("Serverprofile benötigen eindeutige IDs und getrennte Installationsordner.")
             directories.add(identity)
-            self.managers[profile["id"]] = manager or GameServerManager(self.root, profile=profile, settings=self.settings, lock=self.lock)
-            if manager:
-                manager.lock = self.lock
+            supplied = manager if manager and manager.profile["id"] == profile["id"] else None
+            self.managers[profile["id"]] = supplied or GameServerManager(self.root, profile=profile, settings=self.settings, settings_lock=self.lock)
+            if supplied:
+                manager.settings_lock = self.lock
 
     @staticmethod
     def directory_identity(directory):
@@ -93,5 +95,5 @@ class ServerRegistry:
             atomic_json(self.path, updated)
             self.settings.clear()
             self.settings.update(updated)
-            self.managers[profile["id"]] = GameServerManager(self.root, profile=profile, settings=self.settings, lock=self.lock)
+            self.managers[profile["id"]] = GameServerManager(self.root, profile=profile, settings=self.settings, settings_lock=self.lock)
         return {"message": "Serverprofil hinzugefügt. Spieldateien und Welten wurden nicht verändert.", "server_id": profile["id"]}

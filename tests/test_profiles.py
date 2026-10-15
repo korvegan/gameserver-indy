@@ -80,7 +80,7 @@ class ProfileTests(ManagerFixture):
         config["save id"] = "different_world"
         with self.assertRaisesRegex(ManagerError, "Save-ID"):
             self.aska.save_config(config)
-        with patch("gameserver_manager.core.send_discord") as send:
+        with patch("gameserver_manager.operations.send_discord") as send:
             self.aska.action("start")
             send.assert_not_called()
         self.assertTrue(self.aska.bridge.running)
