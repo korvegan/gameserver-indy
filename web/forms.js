@@ -1,6 +1,9 @@
 import {$, notice} from './dom.js';
 import {state} from './state.js';
 
+const fieldPath = field => field.path || [field.key];
+const fieldValue = (config, field) => fieldPath(field).reduce((value, key) => value?.[key], config) ?? field.default;
+
 export function clearConfig() {
   $('#json-editor').value = '';
   $('#game-fields').replaceChildren();
@@ -14,6 +17,7 @@ export function populateConfig(value, schema) {
   clearConfig();
   if (!value) return;
   for (const field of schema.fields) {
+    const current = fieldValue(state.config, field);
     const label = document.createElement('label');
     if (field.wide) label.className = 'wide';
     label.append(document.createTextNode(field.label));
@@ -23,8 +27,8 @@ export function populateConfig(value, schema) {
       for (const [value, text] of Object.entries(field.options)) {
         const option = document.createElement('option'); option.value = value; option.textContent = text; input.append(option);
       }
-      if (state.config[field.key] && !Object.hasOwn(field.options, state.config[field.key])) {
-        const option = document.createElement('option'); option.value = state.config[field.key]; option.textContent = state.config[field.key]; input.append(option);
+      if (current && !Object.hasOwn(field.options, current)) {
+        const option = document.createElement('option'); option.value = current; option.textContent = current; input.append(option);
       }
     } else {
       input.type = field.type; input.autocomplete = field.type === 'password' ? 'new-password' : 'off';
@@ -32,8 +36,8 @@ export function populateConfig(value, schema) {
     if (field.min !== undefined) input.min = field.min;
     if (field.max !== undefined) input.max = field.max;
     input.required = Boolean(field.required);
-    if (field.type === 'checkbox') input.checked = Boolean(state.config[field.key]);
-    else input.value = state.config[field.key] ?? '';
+    if (field.type === 'checkbox') input.checked = Boolean(current);
+    else input.value = current ?? '';
     if (field.lock_with_external_launcher && state.snapshot?.status.external_launcher) input.readOnly = true;
     label.append(input); $('#game-fields').append(label);
     if (field.help) {
@@ -67,7 +71,10 @@ export function fromForm() {
   const result = structuredClone(state.config);
   for (const field of state.schema.fields) {
     const input = $('#config-form').elements.namedItem(field.key);
-    result[field.key] = field.type === 'checkbox' ? input.checked
+    const path = fieldPath(field), key = path.at(-1);
+    let target = result;
+    for (const parent of path.slice(0, -1)) target = target[parent] ??= {};
+    target[key] = field.type === 'checkbox' ? input.checked
       : field.type === 'number' && field.value_type !== 'string' ? Number(input.value) : input.value;
   }
   for (const input of document.querySelectorAll('[data-group]')) result.userGroups[Number(input.dataset.group)].password = input.value;

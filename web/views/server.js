@@ -1,5 +1,6 @@
 import {$, element} from '../dom.js';
 import {can, state} from '../state.js';
+import {renderUpdate} from './updates.js';
 
 export function controls() {
   const status = state.snapshot?.status;
@@ -15,6 +16,7 @@ export function controls() {
   $('#config-fields').disabled = locked || state.configLoading || !can('config.write') || !state.config || status?.running || status?.starting;
   $('#refresh').disabled = state.submitting;
   $('#refresh-logs').disabled = state.submitting;
+  $('#check-updates').disabled = state.submitting || !state.selectedServer || !can('updates.check') || state.pending.has(`updates:${state.selectedServer}`);
   for (const node of document.querySelectorAll('[data-permission]')) node.hidden = !can(node.dataset.permission);
   for (const button of document.querySelectorAll('#discord button')) button.disabled = state.submitting || !can('discord.write');
   $('#access-note').hidden = state.principal?.role === 'owner';
@@ -55,6 +57,7 @@ export function renderCatalog(catalog) {
 export function renderStatus(data) {
   state.snapshot = data;
   const {status, summary} = data;
+  renderUpdate(data.update);
   $('#server-name').textContent = summary.title;
   $('#game-label').textContent = `${status.game_label.toUpperCase()} · DEDICATED SERVER`;
   $('#profile-caption').textContent = status.profile_label + (status.external_launcher ? ' · Start und Discord über deinen vorhandenen Starter.' : '');

@@ -6,8 +6,9 @@ from .community import CommunityService
 from .configuration import ManagerError
 from .jobs import JobService
 from .logs import redact, secret_values
-from .security import AccessDenied
+from .security import AccessDenied, Principal
 from .storage import Database
+from .updates import UpdateService
 
 PUBLIC_STATUS = {"installed", "configured", "running", "server_id", "game", "game_label", "profile_label", "starting"}
 
@@ -18,6 +19,7 @@ class Application:
         self.catalog = GameCatalog(registry.settings.get("catalog_games", []))
         self.database = Database(registry.root / "data" / "platform.sqlite3")
         self.jobs = JobService(self.database)
+        self.updates = UpdateService(registry)
         self.community = CommunityService(self.database, self.catalog, registry)
 
     def instance(self, principal, server_id=None, permission="status.read", explicit=False):
@@ -38,6 +40,7 @@ class Application:
     def status(self, principal, server_id):
         instance = self.instance(principal, server_id)
         status = instance.status()
+        update = self.updates.view(instance, status)
         if principal.role != "owner":
             status = {key: value for key, value in status.items() if key in PUBLIC_STATUS}
         # Only specifically selected display values, never arbitrary config keys.
@@ -49,7 +52,16 @@ class Application:
                                   for metric in instance.game.schema["metrics"]]
         except (ManagerError, OSError):
             error = "Die Spielkonfiguration ist nicht lesbar. Andere Profile bleiben erreichbar."
-        return {"status": status, "summary": summary, "config_error": error}
+        return {"status": status, "summary": summary, "config_error": error, "update": update}
+
+    def check_updates(self, principal, server_id):
+        instance = self.instance(principal, server_id, 'updates.check', explicit=True)
+        return self.jobs.submit(instance.profile['id'], 'check_updates', principal.id,
+                                lambda: self.updates.check(instance), reservation=('updates', instance.profile['id']))
+
+    def start_update_checks(self):
+        if self.registry.settings.get('automatic_update_checks', True) is True:
+            self.updates.start(lambda server_id: self.check_updates(Principal('update-scheduler', 'owner'), server_id))
 
     def configuration(self, principal, server_id):
         instance = self.instance(principal, server_id, "config.read")
@@ -110,4 +122,5 @@ class Application:
         return future.result()
 
     def close(self):
+        self.updates.close()
         self.jobs.close()

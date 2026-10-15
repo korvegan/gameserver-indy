@@ -15,7 +15,9 @@
     {"key": "voiceChatMode", "label": "Sprachchat-Modus", "type": "select", "options": {"Proximity": "Umgebungsnah", "Global": "Serverweit"}},
     {"key": "saveDirectory", "label": "Weltordner", "type": "text", "required": true, "wide": true, "help": "Ein neuer, leerer Ordner erzeugt beim nächsten Start eine neue Welt. Vorhandene Weltordner weiterverwenden, um fortzusetzen."},
     {"key": "enableVoiceChat", "label": "Sprachchat aktivieren", "type": "checkbox"},
-    {"key": "enableTextChat", "label": "Textchat aktivieren", "type": "checkbox"}
+    {"key": "enableTextChat", "label": "Textchat aktivieren", "type": "checkbox"},
+    {"key": "flameLevelFogRemoval", "path": ["gameSettings", "flameLevelFogRemoval"], "label": "Flammenstufe für Bauen im Miasma", "type": "number", "min": 0, "max": 20, "default": 11, "required": true, "help": "Neu in 1.0. Standard: 11. Eigene Spielregeln werden mit der Vorlage Benutzerdefiniert verwendet."},
+    {"key": "randomSpawnerAmount", "path": ["gameSettings", "randomSpawnerAmount"], "label": "Gegneranzahl", "type": "select", "default": "Automatic", "options": {"Few": "Wenige", "Normal": "Normal", "Automatic": "Automatisch", "Many": "Viele", "Extreme": "Extrem"}, "help": "Version 1.0 ergänzt Automatic. Eigene Spielregeln werden mit der Vorlage Benutzerdefiniert verwendet."}
   ],
   "metrics": [
     {"key": "slotCount", "label": "Spielerplätze"},

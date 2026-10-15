@@ -8,6 +8,7 @@ from .configuration import ManagerError, atomic_json, local_path, read_json
 from .instances import GameServerManager
 from .paths import ROOT
 from .games import GAME_TYPES
+from .steam import branch_name
 
 
 class ServerRegistry:
@@ -51,12 +52,14 @@ class ServerRegistry:
             raise ManagerError("Die Profil-ID benötigt 1–48 kleine Buchstaben, Zahlen, Unterstriche oder Bindestriche.")
         if not isinstance(profile.get("label"), str) or not 1 <= len(profile["label"].strip()) <= 80:
             raise ManagerError("Bitte einen Profilnamen mit höchstens 80 Zeichen angeben.")
-        for key in ("server_directory", "config_path", "launcher_script", "log_directory"):
+        for key in ("server_directory", "config_path", "launcher_script", "log_directory", "steam_manifest"):
             value = profile.get(key, "")
             if key == "server_directory" or value:
                 if (not isinstance(value, str) or not value.strip() or any(c in value for c in '\r\n\0"')
                         or not local_path(value).is_absolute()):
                     raise ManagerError(f"{key}: Bitte einen absoluten lokalen Pfad angeben.")
+        if 'steam_branch' in profile:
+            branch_name(profile['steam_branch'])
         if profile.get("launcher_script") and not GAME_TYPES[profile["game"]].schema.get("external_launcher"):
             raise ManagerError("Dieses Spielprofil unterstützt noch keine externen PowerShell-Starter.")
         if profile.get("launcher_script") and not profile["launcher_script"].lower().endswith(".ps1"):
@@ -81,7 +84,7 @@ class ServerRegistry:
             }
 
     def register(self, body):
-        profile = {key: body[key] for key in ("id", "game", "label", "server_directory", "config_path", "launcher_script", "log_directory") if key in body}
+        profile = {key: body[key] for key in ("id", "game", "label", "server_directory", "config_path", "launcher_script", "log_directory", "steam_manifest", "steam_branch") if key in body}
         self.validate_profile(profile)
         with self.lock:
             if profile["id"] in self.managers:

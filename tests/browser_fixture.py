@@ -12,6 +12,7 @@ from gameserver_manager.games import GAME_TYPES
 from gameserver_manager.server import LocalServer
 from gameserver_manager.security import Principal, local_owner
 from test_manager import FakeBridge
+from gameserver_manager.configuration import ManagerError
 
 
 class BrowserBridge(FakeBridge):
@@ -19,6 +20,21 @@ class BrowserBridge(FakeBridge):
         if action == "Start":
             time.sleep(1.2)
         return super().call(action)
+
+
+class BrowserSteam:
+    def query(self, app_id, branch):
+        time.sleep(1.2)
+        if branch != 'public' or app_id not in (2278520, 3246670):
+            raise ManagerError('Kein Steam-Testbranch eingerichtet.')
+        return '200' if app_id == 2278520 else '300'
+
+
+def steam_manifest(directory, app_id, build):
+    steamapps = directory / 'steamapps'
+    steamapps.mkdir()
+    (steamapps / f'appmanifest_{app_id}.acf').write_text(
+        f'"AppState" {{"appid" "{app_id}" "installdir" "{directory.name}" "buildid" "{build}" "StateFlags" "4"}}')
 
 
 def identity(request):
@@ -33,6 +49,8 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
     installation = root / "EnshroudedServer"
     installation.mkdir()
     (installation / "enshrouded_server.exe").touch()
+    steam_manifest(installation, 2278520, '100')
+    (installation / 'enshrouded_server_readme.txt').write_text('Version: 1.0.0.0\n')
     atomic_json(root / "manager.local.json", {
         "server_directory": str(installation), "discord": {"webhook_url": "", "auto_notify": False},
         "catalog_games": [{"id": "raft", "label": "Raft"}],
@@ -40,12 +58,14 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
     aska = root / "ASKA Server"
     aska.mkdir()
     (aska / "AskaServer.exe").touch()
+    steam_manifest(aska, 3246670, '300')
     user_profile = root / "WindowsUser"
     logs = user_profile / "AppData/LocalLow/Sand Sailor Studio/Aska"
     logs.mkdir(parents=True)
     (logs / "Player.log").write_text("password = browser-secret-from-log\nThe session is now open!\n")
     with patch("gameserver_manager.discord.send_discord"), patch("gameserver_manager.operations.send_discord"), patch("gameserver_manager.instances.WindowsServerBridge", side_effect=lambda *args: BrowserBridge(str(user_profile))), patch.object(GAME_TYPES["aska"], "default_directory", str(aska)):
         with LocalServer(ServerRegistry(root, GameServerManager(root, BrowserBridge())), 8766, identity=identity) as server:
+            server.app.updates.provider = BrowserSteam()
             server.app.community.record({"id": "qa-milestone", "revision": 1, "game_id": "raft", "title": "Gemeinsamer Testmoment",
                 "source": "test", "badge_id": "qa-badge", "member_ids": ["qa-one", "qa-two", "qa-three", "qa-four"]})
             print("GameServer Indy: http://127.0.0.1:8766", flush=True)

@@ -8,6 +8,7 @@ import {controls, renderCatalog, renderEvents, renderStatus} from './views/serve
 import {loadLogs} from './views/logs.js';
 import {loadGames} from './views/catalog.js';
 import {loadCommunity} from './views/community.js';
+import {renderUpdate} from './views/updates.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map();
@@ -87,6 +88,7 @@ async function selectServer(target, openOverview = false) {
   for (const id of ['slot-count', 'preset-label', 'query-port', 'process-id']) $(`#${id}`).textContent = '—';
   $('#log-source').value = 'server'; $('#log-updated').textContent = ''; $('#log-content').textContent = 'Logs werden geladen …';
   renderEvents([]); renderJobs(); controls();
+  renderUpdate();
   if (openOverview) await go('overview');
   await refresh(); return true;
 }
@@ -106,6 +108,7 @@ async function go(next, {keepNotice = false} = {}) {
 async function finishJob(job) {
   const context = jobContexts.get(job.id); jobContexts.delete(job.id);
   const label = state.catalog.servers.find(profile => profile.id === job.server_id)?.label || job.server_id;
+  if (state.selectedServer === job.server_id && job.result?.update) renderUpdate(job.result.update);
   if (state.selectedServer === job.server_id) await refresh();
   const selected = state.selectedServer === job.server_id;
   const warning = job.result?.warning;
@@ -154,6 +157,16 @@ async function mutate(path, body = {}) {
 }
 
 bindNavigation(go); bindForms(mutate);
+$('#check-updates').addEventListener('click', async () => {
+  const target = state.selectedServer;
+  if (state.submitting || state.pending.has(`updates:${target}`)) return;
+  state.submitting = true; controls();
+  try {
+    const {job} = await api('/api/updates/check', {}, target);
+    acceptJob(job, controls, finishJob);
+  } catch (error) { notice(error.message, true); }
+  finally { state.submitting = false; controls(); }
+});
 $('#server-select').addEventListener('change', () => selectServer($('#server-select').value));
 $('#refresh').addEventListener('click', refresh);
 $('#refresh-logs').addEventListener('click', loadLogs);

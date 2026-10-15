@@ -59,6 +59,11 @@ class EnshroudedGame:
             raise ManagerError("voiceChatMode: Erlaubt sind Proximity oder Global.")
         if "gameSettings" in config and not isinstance(config["gameSettings"], dict):
             raise ManagerError("gameSettings muss ein Objekt sein.")
+        settings = config.get('gameSettings', {})
+        if 'flameLevelFogRemoval' in settings and (type(settings['flameLevelFogRemoval']) is not int or not 0 <= settings['flameLevelFogRemoval'] <= 20):
+            raise ManagerError('gameSettings.flameLevelFogRemoval: Erlaubt sind ganze Zahlen von 0 bis 20.')
+        if 'randomSpawnerAmount' in settings and settings['randomSpawnerAmount'] not in ('Few', 'Normal', 'Automatic', 'Many', 'Extreme'):
+            raise ManagerError('gameSettings.randomSpawnerAmount: Unbekannte Gegneranzahl.')
         if "tags" in config and (not isinstance(config["tags"], list) or
                                  any(not isinstance(tag, str) for tag in config["tags"])):
             raise ManagerError("tags muss eine Liste von Texten sein.")
@@ -100,6 +105,7 @@ class EnshroudedGame:
             "ip": "0.0.0.0", "queryPort": 15637, "slotCount": 16, "tags": ["German"],
             "voiceChatMode": "Proximity", "enableVoiceChat": False, "enableTextChat": False,
             "gameSettingsPreset": "Default", "userGroups": groups, "bannedAccounts": [],
+            "gameSettings": {"flameLevelFogRemoval": 11, "randomSpawnerAmount": "Automatic"},
         }
 
     @staticmethod

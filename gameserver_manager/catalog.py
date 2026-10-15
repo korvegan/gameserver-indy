@@ -44,6 +44,8 @@ class GameCatalog:
                 "Windows-Prozessadapter; regulärer Stopp an Testprozessen geprüft."
                 + (" Echter ASKA-Weltstopp steht noch aus." if entry["id"] == "aska" else "")
                 if hosted else "Kein Prozessadapter eingerichtet.")
+            if hosted:
+                capabilities['update_detection'] = Capability('supported', 'Lokales Steam-Appmanifest und anonymer SteamCMD-Branchvergleich; Online-Prüfung benötigt eingerichtetes SteamCMD.')
             result.append({**entry, "server_adapter": hosted,
                            "capabilities": {name: asdict(value) for name, value in capabilities.items()}})
         return result
