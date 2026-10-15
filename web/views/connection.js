@@ -2,7 +2,7 @@ import {api} from '../api.js';
 import {$, element, notice} from '../dom.js';
 import {can, state} from '../state.js';
 
-let submitting = false, currentConnection;
+let submitting = false, currentConnection, renderRevision = 0;
 
 function addressCard(label, addresses, empty, id) {
   const card = element('div', undefined, 'join-card');
@@ -29,6 +29,7 @@ function addressCard(label, addresses, empty, id) {
 }
 
 export function renderConnection(connection) {
+  renderRevision += 1;
   currentConnection = connection;
   const data = connection || {}, container = $('#join-addresses');
   const direct = data.mode === 'ip_query';
@@ -56,11 +57,11 @@ export function renderConnection(connection) {
 export function bindConnections() {
   $('#refresh-connections').addEventListener('click', async () => {
     if (submitting) return;
-    const target = state.selectedServer, epoch = state.selectionEpoch;
+    const target = state.selectedServer, epoch = state.selectionEpoch, revision = renderRevision;
     submitting = true; $('#refresh-connections').disabled = true;
     try {
       const {connection} = await api('/api/connections/refresh', {}, target);
-      if (epoch === state.selectionEpoch) renderConnection(connection);
+      if (epoch === state.selectionEpoch && revision === renderRevision) renderConnection(connection);
     } catch (error) { notice(error.message, true); }
     finally {
       submitting = false;

@@ -47,6 +47,33 @@ const fs = require('node:fs');
     await page.evaluate(() => { navigator.clipboard.writeText = window.qaClipboardWrite; delete window.qaClipboardWrite; });
     await page.locator('#refresh-connections').click();
     assert.equal(await page.locator('#start').isEnabled(), true);
+    // A delayed lookup in the same profile must not undo newer status/configuration data.
+    let releaseOldAddress, oldAddressArrived;
+    const oldAddressGate = new Promise(resolve => { releaseOldAddress = resolve; });
+    const oldAddressRequest = new Promise(resolve => { oldAddressArrived = resolve; });
+    await page.route('**/api/connections/refresh', async route => {
+      const response = await route.fetch(); oldAddressArrived();
+      await oldAddressGate; await route.fulfill({response});
+    });
+    await page.locator('#refresh-connections').click();
+    await oldAddressRequest;
+    await page.route('**/api/status?server=enshrouded', async route => {
+      const response = await route.fetch(), body = await response.json();
+      body.connection.local = '127.0.0.1:24567'; body.connection.port = 24567;
+      body.connection.lan = ['192.168.1.20:24567']; body.connection.external = '8.8.8.8:24567';
+      body.summary.metrics[2].value = 24567;
+      await route.fulfill({response, json: body});
+    });
+    await page.locator('#refresh').click();
+    await page.waitForFunction(() => document.querySelector('#query-port').textContent === '24567');
+    releaseOldAddress();
+    await page.waitForFunction(() => !document.querySelector('#refresh-connections').disabled);
+    assert.equal(await page.locator('[data-scope="local"] code').textContent(), '127.0.0.1:24567');
+    assert.equal(await page.locator('[data-scope="external"] code').textContent(), '8.8.8.8:24567');
+    await page.unroute('**/api/connections/refresh');
+    await page.unroute('**/api/status?server=enshrouded');
+    await page.locator('#refresh').click();
+    await page.waitForFunction(() => document.querySelector('#query-port').textContent === '15637');
     assert.equal(await page.locator('#installed-build').textContent(), '100');
     assert.equal(await page.locator('#update-state').textContent(), 'Unbekannt');
     await page.locator('#check-updates').click();
