@@ -1,11 +1,13 @@
 ---
 name: gameserver-indy
-description: GameServer Indy auf korvegans Windows-/WSL-Rechner weiterentwickeln und betreiben; Spielprofile und Dedicated-Server-Adapter ergänzen und lokale Betriebserkenntnisse pflegen. Verwenden für dieses Repository und seine Enshrouded-/ASKA-Integration.
+description: GameServer Indy auf korvegans Windows-/WSL-Rechner weiterentwickeln und betreiben; Spieladapter, Mods, Discord, Familienzugriff und Sturmklingen-Gemeinschaft planen und ergänzen. Verwenden für dieses Repository sowie seine Enshrouded-/ASKA-Integration; bestätigte Betriebserkenntnisse pflegen.
 ---
 
 # GameServer Indy
 
 Das Projekt verwaltet native Windows-Dedicated-Server über einen lokalen Python-Dienst in WSL. Den bestehenden Python-/HTML-/JS-Aufbau fortführen. Quellen mit gezielten Patches ändern; Python für Backend, Datenverarbeitung und Prüfungen verwenden, nicht als spontanen Texteditor.
+
+Die dauerhafte Freigabe für autonomes Arbeiten einschließlich Mergen steht in `AGENTS.md`. Bei Werkzeug-, Plugin- und Ablaufentscheidungen sowie vor Arbeiten an den neuen Themen [Werkzeugstand und Arbeitsmethoden](references/tooling.md) hinzuziehen. Dort zwischen tatsächlich geprüften Fähigkeiten, verfügbaren Werkzeugen und noch einzurichtenden Integrationen unterscheiden.
 
 ## Umgebung
 
@@ -26,6 +28,8 @@ ASKA: `D:\SteamLibrary\steamapps\common\ASKA Dedicated Server`. Die aktive Konfi
 
 Der vorhandene ASKA-Starter prüft eine feste Save-ID und den Weltordner im Windows-Benutzerprofil; diese Welt erhalten. Er übergibt `-propertiesPath`, setzt SteamAppId/SteamGameId 1898300 und sendet selbst eine Discord-Meldung nach `The session is now open!`. Keine zweite Dashboard-Startmeldung senden. Die Windows-DPAPI-Anbindung bleibt getrennt und wird nicht importiert oder ausgegeben. Rohe Unity-Logs können Zugangsdaten enthalten.
 
+Am 15.10.2026 hat der Nutzer den erfolgreichen Beitritt und die richtige Bestandswelt im Spiel bestätigt. Die wiederholten Shader-Meldungen traten auch bei diesem erfolgreichen Start auf; sie allein belegen keinen Startfehler. Ihre Zusammenfassung ist als Issue #12 geplant.
+
 - Der Windows-PowerShell-5.1-Prozess erbt hier PowerShell-7-Pfade in `PSModulePath`. `ConvertTo-SecureString` scheiterte mit `CouldNotAutoloadMatchingModule`, ein Import nur nach Modulnamen mit doppelten Typdaten. Der explizite Import von `$PSHOME\Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1` ermöglicht die Entschlüsselung des bestehenden Webhooks im selben Konto. Diesen Import im Dashboard-Runner erhalten; keine neue Discord-Einrichtung daraus ableiten.
 - Der bestehende ASKA-Starter leitet Unity-Ausgaben um und verwirft sie nach der Markerprüfung. `scripts/enable-aska-logs.ps1` ergänzt mit Sicherung einen optionalen Hook; dieser ist auf Indy eingerichtet. Der Dashboard-Runner schreibt nur bereinigte Ausgaben in profilbezogene `logs/server.log` und `logs/launcher.log`, mit Rotation. Ungefilterte Ausgaben nicht mit Transcript oder einfachen Redirects speichern. Das alte `Player.log` kann von einem früheren Lauf stammen; Datum und Starterprotokoll prüfen.
 - Ein externer Starter kann länger als zwei Sekunden vorbereiten. Auf tatsächlichen Serverprozess, Starterende oder den Status „Starter arbeitet“ prüfen. Ein laufender Starter sperrt doppelte Starts und Konfigurationsänderungen; nur seine aufgezeichnete PID mit passender Startzeit übernehmen. Prozessbeginn bestätigt weiterhin keine offene Spielsitzung.
@@ -42,4 +46,4 @@ Bei neuen Spielen zuerst Herstelleranleitung, Konfiguration, EXE, Speichern und 
 
 ## Lernen bei weiterer Arbeit
 
-Beim Abschluss relevanter Arbeiten neue **beobachtete** Fehlerursachen, wirksame Abhilfe und verbleibende Prüflücken kurz ergänzen oder bestehende Aussagen korrigieren. Passende Regressionstests im Projekt vorziehen; keine Sammlung bloßer Vermutungen anlegen. Veraltete Hinweise entfernen, sobald aktuelle Belege sie widerlegen. Die Repository-Datei ist die Quelle; ihre installierte Kopie unter `~/.codex/skills/gameserver-indy/SKILL.md` nach Änderungen synchronisieren. Das geschieht während beauftragter Arbeiten, nicht durch einen Hintergrunddienst, und erweitert deren Berechtigungen nicht.
+Beim Abschluss relevanter Arbeiten neue **beobachtete** Fehlerursachen, wirksame Abhilfe und verbleibende Prüflücken kurz ergänzen oder bestehende Aussagen korrigieren. Passende Regressionstests im Projekt vorziehen; keine Sammlung bloßer Vermutungen anlegen. Veraltete Hinweise entfernen, sobald aktuelle Belege sie widerlegen. Das Repository ist die Quelle; `SKILL.md` und verwendete Referenzen nach Änderungen nach `~/.codex/skills/gameserver-indy/` synchronisieren. Das geschieht während beauftragter Arbeiten, nicht durch einen Hintergrunddienst, und erweitert deren Berechtigungen nicht.
