@@ -15,15 +15,29 @@ $hostname = ([string]$state.Self.DNSName).TrimEnd('.')
 $target = 'http://127.0.0.1:' + $BackendPort
 Import-Module (Join-Path $PSHOME 'Modules\NetSecurity\NetSecurity.psd1')
 $ruleNames = @('GameServerIndy-Tailnet-BlockOtherTCP', 'GameServerIndy-Tailnet-BlockUDP')
+$firewallProfiles = @(Get-NetFirewallProfile)
+$firewallReady = ($firewallProfiles.Count -ge 3 -and @($firewallProfiles | Where-Object { [string]$_.Enabled -notin @('True','1') }).Count -eq 0 -and (Get-Service -Name 'MpsSvc').Status -eq 'Running')
 function Test-FamilyRule($rule, $protocol) {
     if (-not $rule -or [string]$rule.Enabled -ne 'True' -or [string]$rule.Action -ne 'Block' -or [string]$rule.Direction -ne 'Inbound' -or [string]$rule.Profile -ne 'Any' -or $rule.Group -ne 'GameServer Indy Familienzugang') { return $false }
     $interface = $rule | Get-NetFirewallInterfaceFilter
     $ports = $rule | Get-NetFirewallPortFilter
+    $address = $rule | Get-NetFirewallAddressFilter
+    $application = $rule | Get-NetFirewallApplicationFilter
+    $service = $rule | Get-NetFirewallServiceFilter
+    $interfaceType = $rule | Get-NetFirewallInterfaceTypeFilter
+    $security = $rule | Get-NetFirewallSecurityFilter
     if (@($interface.InterfaceAlias).Count -ne 1 -or $interface.InterfaceAlias -ne 'Tailscale') { return $false }
+    foreach($value in @($address.LocalAddress,$address.RemoteAddress,$ports.RemotePort,$application.Program,$service.Service,$security.LocalUser,$security.RemoteUser,$security.RemoteMachine)) {
+        if (($value -join ',') -ne 'Any') { return $false }
+    }
+    if ($application.Package -and $application.Package -ne 'Any') { return $false }
+    if ([string]$interfaceType.InterfaceType -notin @('Any','0') -or [string]$ports.DynamicTarget -notin @('Any','0')) { return $false }
+    if ([string]$security.Authentication -notin @('NotRequired','0') -or [string]$security.Encryption -notin @('NotRequired','0')) { return $false }
     $expected = if($protocol -eq 'TCP') { '1-442,444-65535' } else { 'Any' }
     return ([string]$ports.Protocol -eq $protocol -and (($ports.LocalPort | Sort-Object) -join ',') -eq $expected)
 }
 if ($Mode -eq 'Configure') {
+    if (-not $firewallReady) { throw 'Windows-Firewalldienst und alle Firewallprofile muessen aktiv sein. Keine automatische Umstellung.' }
     if ($state.BackendState -ne 'Running' -or -not $hostname) { throw 'Tailscale zuerst mit dem eigenen Konto anmelden.' }
     if (-not (Get-NetAdapter -Name 'Tailscale' -ErrorAction SilentlyContinue)) { throw 'Der Tailscale-Adapter wurde nicht gefunden. Keine Netzregeln geaendert.' }
     # Refuse to overwrite another application or a public Funnel configuration.
@@ -70,6 +84,6 @@ $service = Get-Service -Name Tailscale
     ServiceRunning = ($service.Status -eq 'Running')
     ServiceStartType = [string]$service.StartType
     FirewallRuleCount = $rules.Count
-    FirewallProtected = ((Test-FamilyRule ($rules | Where-Object Name -eq $ruleNames[0]) 'TCP') -and (Test-FamilyRule ($rules | Where-Object Name -eq $ruleNames[1]) 'UDP'))
+    FirewallProtected = ($firewallReady -and (Test-FamilyRule ($rules | Where-Object Name -eq $ruleNames[0]) 'TCP') -and (Test-FamilyRule ($rules | Where-Object Name -eq $ruleNames[1]) 'UDP'))
     Backend = $target
 } | ConvertTo-Json -Compress

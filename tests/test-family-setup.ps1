@@ -6,6 +6,7 @@ $global:familyQaRules = @{}
 $global:familyQaCommands = New-Object System.Collections.Generic.List[string]
 $global:familyQaRegistered = $null
 $global:familyQaServeJSON = '{}'
+$global:familyQaFirewallEnabled = $true
 function Assert($condition, $message) { if (-not $condition) { throw $message } }
 function Import-Module { param($Name) Assert ($Name -match '\\(NetSecurity|ScheduledTasks|Microsoft.PowerShell.Security)\\') 'Unexpected module import'; }
 function Get-NetAdapter { param($Name) return [pscustomobject]@{Name=$Name} }
@@ -16,10 +17,16 @@ function New-NetFirewallRule {
     Assert ($Direction -eq 'Inbound' -and $Action -eq 'Block' -and $Profile -eq 'Any') 'Wrong firewall boundary'
     if($Protocol -eq 'TCP'){ Assert (($LocalPort -join ',') -eq '1-442,444-65535') 'TCP/443 must remain the sole service' }
     else { Assert ($Protocol -eq 'UDP') 'Unexpected protocol' }
-    $global:familyQaRules[$Name] = [pscustomobject]@{Name=$Name;Enabled='True';Group=$Group;Direction=$Direction;Action=$Action;Profile=$Profile;InterfaceAlias=$InterfaceAlias;Protocol=$Protocol;LocalPort=if($Protocol -eq 'UDP'){'Any'}else{$LocalPort}}
+    $global:familyQaRules[$Name] = [pscustomobject]@{Name=$Name;Enabled='True';Group=$Group;Direction=$Direction;Action=$Action;Profile=$Profile;InterfaceAlias=$InterfaceAlias;Protocol=$Protocol;LocalPort=if($Protocol -eq 'UDP'){'Any'}else{$LocalPort};LocalAddress='Any';RemoteAddress='Any';RemotePort='Any';Program='Any';Package=$null;Service='Any';InterfaceType='Any';DynamicTarget='Any';Authentication='NotRequired';Encryption='NotRequired';LocalUser='Any';RemoteUser='Any';RemoteMachine='Any'}
 }
 function Get-NetFirewallInterfaceFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return [pscustomobject]@{InterfaceAlias=$InputObject.InterfaceAlias} } }
-function Get-NetFirewallPortFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return [pscustomobject]@{Protocol=$InputObject.Protocol;LocalPort=$InputObject.LocalPort} } }
+function Get-NetFirewallPortFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return $InputObject } }
+function Get-NetFirewallAddressFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return $InputObject } }
+function Get-NetFirewallApplicationFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return $InputObject } }
+function Get-NetFirewallServiceFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return $InputObject } }
+function Get-NetFirewallInterfaceTypeFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return $InputObject } }
+function Get-NetFirewallSecurityFilter { param([Parameter(ValueFromPipeline=$true)]$InputObject) process { return $InputObject } }
+function Get-NetFirewallProfile { foreach($name in @('Domain','Private','Public')) { [pscustomobject]@{Name=$name;Enabled=$global:familyQaFirewallEnabled} } }
 function Get-Service { param($Name) return [pscustomobject]@{Status='Running';StartType='Automatic'} }
 function Register-ScheduledTask {
     param($TaskName,$InputObject,$User,$Password,[switch]$Force)
@@ -53,13 +60,18 @@ elseif($command -eq 'debug prefs'){ '{"ForceDaemon":true}' }
     Assert ($global:familyQaCommands.Contains('serve --bg --https=443 http://127.0.0.1:8767')) 'Wrong Serve backend'
     Assert (-not ($global:familyQaCommands -match 'funnel|advertise-routes|advertise-exit-node')) 'Unexpected network exposure'
     $tcpRule = $global:familyQaRules['GameServerIndy-Tailnet-BlockOtherTCP']
-    foreach($entry in @(@('Enabled','False'),@('Action','Allow'),@('Direction','Outbound'),@('InterfaceAlias','Ethernet'),@('LocalPort','Any'))) {
+    foreach($entry in @(@('Enabled','False'),@('Action','Allow'),@('Direction','Outbound'),@('InterfaceAlias','Ethernet'),@('LocalPort','Any'),@('RemoteAddress','192.0.2.1'),@('LocalAddress','192.0.2.2'),@('RemotePort','8080'),@('Program','restricted.exe'),@('Package','restricted-package'),@('Service','restricted-service'),@('InterfaceType','Wireless'),@('DynamicTarget','ProximityCasting'),@('Authentication','Required'),@('LocalUser','restricted-sid'))) {
         $key=$entry[0]; $previous=$tcpRule.$key; $tcpRule.$key=$entry[1]; $global:familyQaCommands.Clear(); $rejected=$false
         try { $null = & $network -Mode Configure -TailscaleExecutable $stub } catch { $rejected=$true }
         Assert $rejected ('Changed rule accepted: ' + $key)
         Assert (-not ($global:familyQaCommands -match '^set |^serve --bg')) 'Network changed before rule validation'
         $tcpRule.$key=$previous
     }
+    $global:familyQaFirewallEnabled=$false; $global:familyQaCommands.Clear(); $rejected=$false
+    try { $null = & $network -Mode Configure -TailscaleExecutable $stub } catch { $rejected=$true }
+    Assert $rejected 'Disabled firewall profile accepted'
+    Assert (-not ($global:familyQaCommands -match '^set |^serve --bg')) 'Network changed with disabled firewall'
+    $global:familyQaFirewallEnabled=$true
     foreach($foreign in @(
         '{"TCP":{"8443":{"HTTPS":true}},"Web":{"indy.example.ts.net:8443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:9999"}}}}}',
         '{"Foreground":{"temporary":{"TCP":{"8443":{"HTTPS":true}}}}}',
@@ -86,4 +98,4 @@ elseif($command -eq 'debug prefs'){ '{"ForceDaemon":true}' }
     $null = & $startup -LauncherPath $launcher -TaskName 'Isolated GameServer Test' -Credential $credential
     Assert ($global:familyQaRegistered -eq 'Isolated GameServer Test') 'Task registration not requested'
     'Family setup tests passed: isolated network rules, idempotence, private backend, same-user password task, no game actions.'
-} finally { Remove-Item -LiteralPath $temporary -Recurse -Force; Remove-Variable familyQaCommands,familyQaRules,familyQaRegistered,familyQaServeJSON -Scope Global -ErrorAction SilentlyContinue }
+} finally { Remove-Item -LiteralPath $temporary -Recurse -Force; Remove-Variable familyQaCommands,familyQaRules,familyQaRegistered,familyQaServeJSON,familyQaFirewallEnabled -Scope Global -ErrorAction SilentlyContinue }
