@@ -43,6 +43,12 @@ class InstanceConfiguration:
             config = m.game.merge_config(config, previous)
             m.game.validate_config(config)
             m.game.validate_edit(config, previous, m.profile)
+            try:
+                binding = m.backups.plan(config)[2]
+            except ManagerError:
+                binding = None
+            if binding is not None:
+                m.backups.exclusive(binding)
             backup = m.data / "backups" / (datetime.now().strftime("%Y%m%d-%H%M%S-") + secrets.token_hex(3) + m.config_path.suffix)
             backup.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(m.config_path, backup)

@@ -69,6 +69,8 @@ Auf Indy ist dieser Schritt eingerichtet. Die neuen Protokolle liegen im jeweili
 
 Bearbeiten nur bei gestopptem Server. Zuerst wird die Konfiguration exakt gesichert, dann atomar ersetzt. Enshrouded behält `data/backups/`; weitere Profile verwenden `data/servers/<id>/backups/`.
 
+**Weltsicherungen** sichert den vollständigen Weltordner mit seiner Konfiguration, prüft SHA-256 und bewahrt nicht angeheftete Stände drei Tage rollend auf. Optional nach regulärem Dashboard-Stopp sichern. Wiederherstellen bleibt eine Besitzeraktion mit Zielvorschau und vorheriger Rückwegsicherung. [Bedienung, Speicherorte und Wiederherstellung](docs/world-backups.md).
+
 **Konfigurationssicherungen enthalten keine Weltspielstände.** Für eine Weltsicherung regulär stoppen und den vollständigen Spielstandordner kopieren. ASKA speichert im Windows-Benutzerprofil.
 
 Stoppen sendet Ctrl+C an die Konsole der ausgewählten Installation und wartet bis zu 45 Sekunden. Kein erzwungener Abbruch. Ist die Konsole nicht erreichbar, im Serverfenster stoppen. Neustart erst nach erfolgreichem Stopp.

@@ -11,6 +11,7 @@ import {bindCommunity, isCommunityHash, loadCommunity} from './views/community.j
 import {renderUpdate} from './views/updates.js';
 import {bindConnections, renderConnection} from './views/connection.js';
 import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
+import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map();
@@ -64,6 +65,7 @@ async function refresh() {
     })());
     if (state.view === 'logs' && can('logs.read')) tasks.push(loadLogs());
     if (state.view === 'settings') tasks.push(loadConfig());
+    if (state.view === 'backups') tasks.push(loadBackups());
     const results = await Promise.allSettled(tasks);
     if (current()) for (const result of results) {
       if (result.status === 'rejected' && result.reason.name !== 'AbortError') notice(result.reason.message, true);
@@ -93,6 +95,7 @@ async function selectServer(target, openOverview = false) {
   renderEvents([]); renderJobs(); controls();
   renderUpdate();
   renderConnection();
+  resetBackups();
   if (openOverview) await go('overview');
   await refresh(); return true;
 }
@@ -102,7 +105,7 @@ async function go(next, {keepNotice = false} = {}) {
     if (!confirm('Ungespeicherte Freigabe verwerfen und die Ansicht wechseln?')) return;
     discardAccessDrafts();
   }
-  const permission = {settings: 'config.read', profiles: 'catalog.write', discord: 'discord.write', logs: 'logs.read', access: 'access.manage'}[next];
+  const permission = {settings: 'config.read', profiles: 'catalog.write', discord: 'discord.write', logs: 'logs.read', access: 'access.manage', backups: 'backups.manage'}[next];
   if (permission && !can(permission)) return notice('Für diesen Bereich fehlt die Berechtigung.', true);
   if (!navigate(next)) return;
   if (!keepNotice) notice('');
@@ -112,6 +115,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'games') await loadGames(target => selectServer(target, true));
   if (next === 'community') await loadCommunity();
   if (next === 'access') await loadAccess();
+  if (next === 'backups') await loadBackups();
 }
 
 async function finishJob(job) {
@@ -127,13 +131,13 @@ async function finishJob(job) {
   }
 }
 
-async function runOperation(operation) {
+async function runOperation(operation, payload = {}) {
   const target = state.selectedServer;
   const context = {target, selectionEpoch: state.selectionEpoch, navigationEpoch: state.navigationEpoch};
   if (state.submitting || state.pending.has(target)) return;
   state.submitting = true; controls(); notice('Auftrag wird angelegt …');
   let job;
-  try { job = (await api('/api/jobs', {operation}, target)).job; }
+  try { job = (await api('/api/jobs', {...payload, operation}, target)).job; }
   catch (error) {
     notice(error.message, true);
     if (mayOpenFailureLogs(context) && ['start', 'restart'].includes(operation)) {
@@ -165,7 +169,7 @@ async function mutate(path, body = {}) {
   finally { state.submitting = false; controls(); }
 }
 
-bindNavigation(go); bindForms(mutate); bindConnections(); bindCommunity(); bindAccess();
+bindNavigation(go); bindForms(mutate); bindConnections(); bindCommunity(); bindAccess(); bindBackups(runOperation);
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;

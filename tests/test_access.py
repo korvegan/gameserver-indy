@@ -80,7 +80,9 @@ class AccessTests(ManagerFixture):
         self.assertEqual([p['id'] for p in catalog['servers']], ['aska'])
         self.assertNotIn('server_directory', catalog['servers'][0])
         for route in ('/api/state?server=aska', '/api/config?server=aska', '/api/logs?server=aska',
-                      '/api/events?server=aska', '/api/access', '/api/status?server=enshrouded', '/api/community/export'):
+                      '/api/events?server=aska', '/api/access', '/api/status?server=enshrouded', '/api/community/export',
+                      '/api/backups?server=aska', '/api/backups?server=aska&id=' + 'a' * 32,
+                      '/api/backups?server=aska&recovery=true'):
             with self.subTest(route=route):
                 self.assertEqual(self.request(route)[0], 403)
         code, status = self.request('/api/status?server=aska')

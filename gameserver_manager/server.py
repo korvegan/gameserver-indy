@@ -111,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
             '/api/servers', '/api/jobs', '/api/status', '/api/state', '/api/config', '/api/start', '/api/stop',
             '/api/restart', '/api/setup', '/api/logs', '/api/events', '/api/discord/settings', '/api/discord/send',
             '/api/community', '/api/community/options', '/api/community/event', '/api/community/story',
-            '/api/community/media', '/api/community/export', '/api/connections/refresh', '/api/updates/check') else 'request.unknown'
+            '/api/community/media', '/api/community/export', '/api/connections/refresh', '/api/updates/check', '/api/backups') else 'request.unknown'
 
     def do_GET(self):
         if not self.trusted_host():
@@ -140,7 +140,7 @@ class Handler(BaseHTTPRequestHandler):
                 "/favicon.svg": ("favicon.svg", "image/svg+xml"),
             }
             for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js",
-                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js", "views/story.js", "views/story-art.js", "views/access.js"):
+                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js", "views/story.js", "views/story-art.js", "views/access.js", "views/backups.js"):
                 files["/" + name] = (name, "text/javascript; charset=utf-8")
             if path in files:
                 filename, content_type = files[path]
@@ -187,6 +187,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.audit_resource = resource
             if path == '/api/jobs' and body.get('operation') in ('start', 'stop', 'restart', 'setup', 'config'):
                 self.audit_operation = 'server.' + body['operation']
+            if path == '/api/jobs' and body.get('operation') in ('backup', 'backup_verify', 'backup_pin', 'backup_settings', 'backup_restore', 'backup_recover'):
+                self.audit_operation = body['operation']
             self.server.app.access.audit(principal.id, self.audit_operation, getattr(self, 'audit_resource', ''), 'requested')
             self.server.app.access.validate(principal)
             status, result = self.server.api.post(path, body, principal)

@@ -13,7 +13,7 @@ from .security import AccessDenied, Principal
 from .storage import Database
 from .updates import UpdateService
 
-PUBLIC_STATUS = {"installed", "configured", "running", "server_id", "game", "game_label", "profile_label", "starting"}
+PUBLIC_STATUS = {"installed", "configured", "running", "server_id", "game", "game_label", "profile_label", "starting", "recovery_required"}
 
 
 class Application:
@@ -88,6 +88,14 @@ class Application:
         instance = self.instance(principal, server_id, "config.read")
         return {"config": instance.public_config(), "game_profile": copy.deepcopy(instance.game.schema)}
 
+    def backups(self, principal, server_id, identifier=None, recovery=False):
+        service = self.instance(principal, server_id, 'backups.manage', explicit=True).backups
+        if recovery:
+            return {'preview': service.recovery_preview()}
+        if identifier is not None:
+            return {'preview': service.preview(identifier)}
+        return service.view()
+
     def legacy_state(self, principal, server_id):
         instance = self.instance(principal, server_id, "config.read")
         return {"status": instance.status(), "config": instance.public_config(), "events": instance.events(),
@@ -107,7 +115,8 @@ class Application:
 
     def submit(self, principal, operation, body):
         permissions = {"start": "server.start", "stop": "server.stop", "restart": "server.restart",
-                       "setup": "server.setup", "config": "config.write"}
+                       "setup": "server.setup", "config": "config.write",
+                       **{key: 'backups.manage' for key in ('backup', 'backup_verify', 'backup_pin', 'backup_settings', 'backup_restore', 'backup_recover')}}
         if not isinstance(operation, str) or operation not in permissions:
             raise ManagerError("Unbekannte Serveraktion.")
         instance = self.instance(principal, body.get("server_id"), permissions[operation], explicit=True)
@@ -115,6 +124,15 @@ class Application:
         payload = copy.deepcopy(body)
         operation_callback = (lambda: instance.setup()) if operation == "setup" else (
             (lambda: instance.save_config(payload.get("config"))) if operation == "config" else lambda: instance.action(operation))
+        backup_operations = {
+            'backup': lambda: instance.backups.create(),
+            'backup_verify': lambda: instance.backups.verify(payload.get('backup_id')),
+            'backup_pin': lambda: instance.backups.pin(payload.get('backup_id'), payload.get('pinned')),
+            'backup_settings': lambda: instance.backups.configure(payload.get('automatic_after_stop')),
+            'backup_restore': lambda: instance.backups.restore(payload.get('backup_id'), payload.get('token'), payload.get('confirmation')),
+            'backup_recover': lambda: instance.backups.restore(payload.get('backup_id'), payload.get('token'), payload.get('confirmation'), recovery=True),
+        }
+        operation_callback = backup_operations.get(operation, operation_callback)
 
         def callback():
             try:

@@ -29,6 +29,7 @@ flowchart LR
 | --- | --- |
 | `server.py` | Loopback, Host/Origin, CSRF, JSON-Größenlimit, statische Dateiliste, HTTP-Fehler. |
 | `api.py` | GET-/POST-Verträge und Parameterprüfung. Keine Windows- oder Versandlogik. |
+| `worlds.py`, `backups.py` | Explizite Spielstand-Speicheradapter, private geprüfte Offline-Sicherungen, 72h-Aufbewahrung und Wiederherstellung mit Rückweg; [Details](world-backups.md). |
 | `application.py`, `security.py` | Identität, Rechte, gefilterte Datensichten, Auswahl einer ausdrücklichen Instanz, Operationsdispatch. |
 | `registry.py`, `catalog.py` | Installationen und gemeinsame Einstellungen gegenüber eigenständigen Spielidentitäten/Fähigkeiten. |
 | `instances.py` | Zusammensetzung genau einer Instanz. `core.py` erhält die bisherigen Importnamen als Kompatibilitätsfassade. |
@@ -55,8 +56,10 @@ Mitglied, Anmeldung und Spielergerät ebenfalls unterscheiden: `Principal.id` be
 | `GET /api/status?server=<id>` | Prozessstatus und ausdrücklich ausgewählte Anzeigegrößen; keine allgemeine Spielkonfiguration. |
 | `POST /api/updates/check` | Besitzerrecht `updates.check`, `{server_id}`; Antwort 202 mit lesendem Steam-Prüfauftrag. Der begrenzte Befund steht unter `update` in `/api/status`. |
 | `GET /api/config?server=<id>` | Konfiguration und Formularschema, nur Besitzer. ASKA-Geheimnisse bleiben leer. |
+| `GET /api/backups?server=<id>` | Besitzerliste und Arbeitsphase; `id=<backup-id>` liefert eine Zielvorschau, `recovery=true` den anstehenden Rückweg. Keine Archivdownloads. |
 | `GET /api/events`, `/api/logs` | Technische Historie/bereinigte Logs, derzeit nur Besitzer. |
 | `POST /api/jobs` | `{server_id, operation}` für Start/Stopp/Neustart; Antwort 202 mit unveränderlicher Auftrags-ID. Intern auch Setup/Konfigurationsänderung. |
+| `POST /api/jobs` für Weltsicherungen | Besitzeroperationen `backup`, `backup_verify`, `backup_pin`, `backup_settings`, `backup_restore`, `backup_recover`; Ersetzung benötigt zusätzlich Vorschau-Token und ausdrückliche Bestätigung. |
 | `GET /api/jobs?id=<id>` oder `?server=<id>` | Berechtigter Auftrag oder letzte 20 Aufträge der Instanz; Familien sehen keine Besitzerdiagnostik/Ergebnisdaten. |
 | `GET /api/community` | Letzte 20 Ereignisse mit Revision, gleichen Auszeichnungen und stabiler Szene; Instanzfreigaben werden berücksichtigt. |
 

@@ -1,0 +1,35 @@
+# Weltsicherungen
+
+Unter **Weltsicherungen** kann der Besitzer Welt und zugehörige Konfiguration gemeinsam sichern, prüfen, anheften und wiederherstellen. Familienbediener und Leser haben weder auf diese API noch auf Archivdateien Zugriff. Die Dateien bleiben privat unter `data/world-backups/<server-id>/` außerhalb der Steam-Installation. Die Archive enthalten auch Spielpasswörter und gegebenenfalls ASKA-Authentifizierungstokens; nicht weitergeben. Manager-/Discord-Zugänge und Familienfreigaben werden nicht zurückgesetzt.
+
+## Alltag und Aufbewahrung
+
+Den Spielserver regulär stoppen, dann **Welt jetzt sichern**. Die optionale Einstellung **Nach regulärem Dashboard-Stopp automatisch sichern** gilt je Profil und ist zunächst aus. Sie ergänzt auch einen Dashboard-Neustart: Erst stoppen, dann sichern und vollständig prüfen, anschließend starten. Schlägt die Sicherung fehl, bleibt der Server gestoppt. Ein außerhalb des Dashboards beendeter Server löst keine automatische Sicherung aus. Es gibt keinen Zeitplan, der eine laufende Spielrunde beendet.
+
+Die vom Nutzer gewählte Aufbewahrung beträgt **72 Stunden rollend**. Erst nach einer neuen erfolgreich verifizierten Sicherung werden ältere, nicht angeheftete Stände entfernt. Ohne neue erfolgreiche Sicherung bleiben auch ältere Stände erhalten. **Anheften** schützt einen Stand unabhängig von seinem Alter; **Lösen** unterstellt ihn wieder der nächsten Bereinigung. Bei Speicherknappheit schlägt der neue Auftrag fehl, bevor alte Sicherungen gelöscht werden. Mindestens 512 MiB Reserve und Platz für die Arbeitsschritte werden vorausgesetzt. Obergrenzen: 16 GiB Quelldaten, 100.000 Dateien/Ordner und 16 MiB je Konfigurations-/Vorlagendatei.
+
+Die Ansicht zeigt Quelle, letzte verifizierte Sicherung, tatsächliche Arbeitsphase, Dateizahl und Ergebnisse. Ein Manifest im ZIP enthält Spiel, Profil, Weltpfad/Save-ID, UTC-Zeit, installierten Steam-Build soweit eindeutig bekannt, Dateiliste und SHA-256-Prüfsummen. Auch das gesamte ZIP erhält eine Prüfsumme. Nach dem Kopieren werden sämtliche Archivdateien erneut gelesen und geprüft; ein begonnenes oder unvollständiges Archiv wird nicht als Erfolg angeboten. **Prüfen** liest alle Prüfsummen erneut. Ein Prüffehler entfernt die Verifikationsmarkierung.
+
+## Spieladapter und Konsistenz
+
+- **Enshrouded:** Gesamter tatsächlich eingestellter `saveDirectory`, relativ zum Installationsordner oder absolut. Keine Beschränkung auf frühere hexadezimale Dateinamen: Die installierte 1.0-Welt auf Indy verwendet `world0.ksd`; Unterordner wie `backup` und `migrated` gehören ebenfalls dazu. Die Serverkonfiguration wird bytegenau mitgesichert. Charakterstände auf Spieler-PCs sind nicht enthalten.
+- **ASKA:** Native Windows-Benutzeridentität aus dem Prozessadapter, dann `AppData/LocalLow/Sand Sailor Studio/Aska/data/server/savegame_<save id>`, wie vom vorhandenen Starter für die Bestandswelt bestätigt. Der daneben mögliche ältere Ordner unter `data/savegame_*` ist ein anderes Ziel. Die feste Save-ID ist erforderlich. Die aktive externe `server properties.txt` und eine eingerichtete benutzerdefinierte Spielvorlage mit absolutem Pfad werden bytegenau übernommen. Weder die Steam-Vorlage noch das Linux-Benutzerprofil ersetzen diese Quelle. Der vorhandene Starter und seine DPAPI-Daten werden nicht umgeschrieben.
+
+Vor der Sicherung müssen Serverprozess und Starter eindeutig beendet sein. Zwei vollständige Dateibestandsaufnahmen mit Ruheabstand sowie eine Prüfung nach dem Kopieren erkennen noch laufende Schreibvorgänge. Links, NTFS-Junctions, andere Reparse Points und Dateien mit mehreren Hardlinks werden abgewiesen. Eine Dateiänderung, ein neu auftauchender Prozess oder ein geändertes Weltziel verwirft die Sicherung. Das bestätigt einen konsistenten Dateistand; nach einem früheren Absturz kann es keinen fehlenden Spiel-Fortschritt rekonstruieren. Der reguläre Stopp des echten ASKA-Servers bleibt separat abzunehmen.
+
+## Wiederherstellen und Rückweg
+
+1. Server regulär stoppen und während der gesamten Operation auch keinen Desktop-Starter benutzen.
+2. **Wiederherstellen** zeigt Profil, Sicherungszeit, konkreten Weltordner und Konfiguration. Mit `WIEDERHERSTELLEN` ausdrücklich bestätigen. Ein zwischenzeitlich geändertes Konfigurationsziel benötigt eine neue Vorschau.
+3. Das Archiv wird vollständig geprüft. Der aktuelle Welt-/Konfigurationsstand wird vor der ersten Ersetzung ebenfalls gesichert, geprüft und angeheftet.
+4. Die Wiederherstellung wird neben der Zielwelt vorbereitet, dort geprüft und durch Umbenennen des gesamten Weltordners übernommen. Dadurch bleiben keine später hinzugekommenen Weltdateien zurück. Danach werden die passenden Konfigurationsdateien atomar ersetzt und die übernommenen Dateien erneut geprüft. Der Server bleibt gestoppt.
+
+Eine Sicherung ist an Spiel, Profil, Save-ID und konkrete Zielpfade gebunden. Die Funktion wechselt keine Welt und stellt kein anderes Profil wieder her. Archivpfade werden begrenzt und validiert; es gibt weder ZIP-Upload noch `extractall` oder einen öffentlich erreichbaren Archivdownload.
+
+Vor der ersten Ersetzung wird `restore-pending.json` geschrieben. Ein Fehler versucht den zuvor gesicherten Stand zurückzuholen. Bleibt der Ausgang unklar oder endet die Verwaltung währenddessen, sperrt diese Markierung Start/Neustart, Setup und Konfigurationsänderungen auch nach einem Verwaltungsneustart. **Vorherigen Stand zurückholen** verwendet die angeheftete Rückwegsicherung und braucht erneut Vorschau und Bestätigung. Die Markierung nicht eigenmächtig löschen. Bei einem Fehler können verschobene `.indy-previous-*`-Ordner zusätzlich erhalten bleiben; erst nach geklärter Wiederherstellung lokal aufräumen. Ein Stromausfall oder Datenträgerdefekt bleibt eine Grenze der lokalen Sicherung; eine unabhängige zweite Kopie auf anderem Datenträger/NAS bleibt sinnvoll.
+
+## Entwicklung und Nachweise
+
+`worlds.py` enthält explizite Speicheradapter für die beiden Spiele; weitere Spiele ergänzen einen Resolver in `WORLD_ADAPTERS`. `backups.py` implementiert die private Dateitransaktion. Überlappende Welten/Konfigurationsziele mehrerer eingerichteter Profile sperren Sicherungen, Wiederherstellungen und Starts; Profile erhalten getrennte Speicherorte. Die Anwendung verlangt für alle Backup-Lese- und Schreibwege `backups.manage` und eine ausdrückliche Instanz. Sicherung, Prüfung, Anheften, Einstellungen und Wiederherstellung laufen in derselben Auftragsreservierung wie Start/Stopp/Konfigurationsänderung; Freigaben werden im Worker erneut geprüft.
+
+`tests/test_backups.py` prüft vollständige Enshrouded-/ASKA-Kopien, unveränderte Konfigurationen, Retention-Grenzen, beschädigte Archive, Rollen, konkurrierende Aufträge, Rückweg und einen simulierten Verwaltungsabbruch. `tests/test_windows_backups.py` prüft optional eine ausschließlich temporäre NTFS-Welt, Ersetzung und Junction-Ablehnung. `tests/browser-backups.cjs` prüft Bedienung, Bestätigung, verspätete Antworten, eingeschränkten Familienzugriff und mobile Breiten. Das ersetzt keine Wiederherstellung einer echten Kampagne; reale Welten werden nicht als Testziel verwendet.
