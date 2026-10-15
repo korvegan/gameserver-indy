@@ -106,6 +106,7 @@ export async function loadCommunity(append = false, resetChapter = false) {
 }
 
 export async function showDetail(id, updateHash = true) {
+  cancelStoryFocus();
   const generation = ++detailRequest, epoch = state.navigationEpoch;
   try {
     const data = await api('/api/community/event?id=' + encodeURIComponent(id));
@@ -140,7 +141,7 @@ export async function showDetail(id, updateHash = true) {
 }
 
 export function bindCommunity() {
-  bindStory(showDetail);
+  bindStory(showDetail, () => { detailRequest++; });
   bindMomentForm(async (id, created) => {
     const epoch = state.navigationEpoch, draft = detailRequest;
     if (created) {

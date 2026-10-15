@@ -4,7 +4,7 @@ import {state} from '../state.js';
 import {landscape, illustration, WIDTH, HEIGHT} from './story-art.js';
 
 let generation = 0, focusRequest = 0, chapter, root, active, animation, scale = 1, center = [WIDTH / 2, HEIGHT / 2];
-let filters = {}, labels = new Map(), chapters = [], moments = new Map(), openDetail, drag, suppressClick = false;
+let filters = {}, labels = new Map(), chapters = [], moments = new Map(), openDetail, contextChanged, drag, suppressClick = false;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const view = () => $('#tapestry-viewport');
 const isCurrent = (id, epoch) => id === generation && epoch === state.navigationEpoch && state.view === 'community';
@@ -101,6 +101,7 @@ export async function loadStory(nextFilters, nextLabels, current = () => true, s
 }
 
 export async function focusScene(event, celebrate = true) {
+  contextChanged();
   const request = ++focusRequest, epoch = state.navigationEpoch;
   const current = () => request === focusRequest && epoch === state.navigationEpoch && state.view === 'community' && !$('#moment-editor').open && !$('#moment-detail').open;
   if (chapter !== event.scene.chapter || !document.getElementById(event.scene.id)) {
@@ -128,12 +129,12 @@ function exportSVG() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function bindStory(details) {
-  openDetail = details;
-  $('#story-chapter').addEventListener('change', event => { cancelStoryFocus(); loadStory(filters, labels, () => true, Number(event.target.value)); });
+export function bindStory(details, onContextChange) {
+  openDetail = details; contextChanged = onContextChange;
+  $('#story-chapter').addEventListener('change', event => { contextChanged(); cancelStoryFocus(); loadStory(filters, labels, () => true, Number(event.target.value)); });
   for (const [id, direction] of [['story-previous', -1], ['story-next', 1]]) $(`#${id}`).addEventListener('click', () => {
     const target = direction < 0 ? chapters.filter(item => item.id < chapter).at(-1) : chapters.find(item => item.id > chapter);
-    if (target) { cancelStoryFocus(); loadStory(filters, labels, () => true, target.id); }
+    if (target) { contextChanged(); cancelStoryFocus(); loadStory(filters, labels, () => true, target.id); }
   });
   $('#story-zoom-in').addEventListener('click', () => zoom(scale + .5));
   $('#story-zoom-out').addEventListener('click', () => zoom(scale - .5));
@@ -161,11 +162,12 @@ export function bindStory(details) {
   });
   view().addEventListener('pointermove', event => {
     if (!drag || event.pointerId !== drag.pointer) return;
+    if (!event.buttons) { drag = undefined; return; }
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
     if (!suppressClick && Math.hypot(dx, dy) < 6) return;
     suppressClick = true; view().setPointerCapture(event.pointerId);
     center = [drag.center[0] - dx * drag.matrix.a, drag.center[1] - dy * drag.matrix.d]; frame();
   });
   const release = () => { drag = undefined; setTimeout(() => { suppressClick = false; }, 0); };
-  view().addEventListener('pointerup', release); view().addEventListener('pointercancel', release);
+  window.addEventListener('pointerup', release); window.addEventListener('pointercancel', release);
 }

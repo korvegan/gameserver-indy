@@ -71,6 +71,13 @@ const fs = require('node:fs');
     await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 + 50, box.y + box.height / 2 + 35, {steps: 4}); await page.mouse.up();
     assert.notEqual(await page.locator('.tapestry-canvas').getAttribute('viewBox'), panned);
     assert.equal(await page.locator('#moment-detail').evaluate(node => node.open), false);
+    // Releasing outside before capture must not leave a drag on pointer re-entry.
+    const edgeY = box.y + box.height / 2;
+    await page.mouse.move(box.x + 2, edgeY); await page.mouse.down();
+    await page.mouse.move(box.x - 20, edgeY); await page.mouse.up();
+    const released = await page.locator('.tapestry-canvas').getAttribute('viewBox');
+    await page.mouse.move(box.x + 60, edgeY + 35);
+    assert.equal(await page.locator('.tapestry-canvas').getAttribute('viewBox'), released);
     await page.locator('#story-fit').click();
     assert.equal(await page.locator('.tapestry-canvas').getAttribute('viewBox'), original);
     const token = (await (await page.request.get('http://127.0.0.1:8766/api/session')).json()).token;
@@ -114,6 +121,24 @@ const fs = require('node:fs');
     const before = await metric(); await page.waitForTimeout(1100); const after = await metric();
     const idleTaskMs = (after.TaskDuration - before.TaskDuration) * 1000;
     assert.ok(idleTaskMs < 200, `Idle task time unexpectedly high: ${idleTaskMs}ms`);
+    // Detail responses belong to the chapter in which the reader opened them.
+    let releaseDetail, detailSeen;
+    const detailGate = new Promise(resolve => { releaseDetail = resolve; });
+    const detailArrival = new Promise(resolve => { detailSeen = resolve; });
+    const latestScene = await page.locator('.tapestry-scene').first().getAttribute('data-event-id');
+    await page.route('**/api/community/event?id=' + latestScene, async route => {
+      const response = await route.fetch(); detailSeen(); await detailGate; await route.fulfill({response});
+    });
+    await page.locator('#scene-' + latestScene).click(); await detailArrival;
+    await page.locator('#story-previous').click();
+    await page.waitForFunction(chapter => document.querySelector('#story-chapter').value !== chapter, latestChapter);
+    const detailDone = page.waitForResponse(response => response.url().endsWith('/api/community/event?id=' + latestScene));
+    releaseDetail(); await detailDone;
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.locator('#moment-detail').evaluate(node => node.open), false);
+    await page.unroute('**/api/community/event?id=' + latestScene);
+    await page.locator('#story-next').click();
+    await page.waitForFunction(chapter => document.querySelector('#story-chapter').value === chapter, latestChapter);
     // A chapter requested by an older scene click must not steal a newer draft.
     let releaseChapter, chapterSeen;
     const gate = new Promise(resolve => { releaseChapter = resolve; });
