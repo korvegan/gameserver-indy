@@ -5,14 +5,35 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
+if (-not ('EnshroudedPath' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public static class EnshroudedPath {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    public static extern uint GetLongPathName(string path, StringBuilder buffer, uint capacity);
+}
+'@
+}
+
+function Get-CanonicalPath([string]$path) {
+    $full = [IO.Path]::GetFullPath($path)
+    $buffer = New-Object System.Text.StringBuilder(32768)
+    $length = [EnshroudedPath]::GetLongPathName($full, $buffer, $buffer.Capacity)
+    if ($length -gt 0 -and $length -lt $buffer.Capacity) { return $buffer.ToString() }
+    return $full
+}
+
 function Get-ServerProcesses {
-    $target = [IO.Path]::GetFullPath((Join-Path $ServerDirectory 'enshrouded_server.exe'))
+    $target = Get-CanonicalPath (Join-Path $ServerDirectory 'enshrouded_server.exe')
     $found = @(Get-CimInstance Win32_Process -Filter "Name = 'enshrouded_server.exe'")
     foreach ($process in $found) {
         if (-not $process.ExecutablePath) {
             throw 'Ein Serverprozess ist nicht lesbar. Bitte die Verwaltung unter demselben Windows-Benutzer starten.'
         }
-        if ([string]::Equals($process.ExecutablePath, $target, [StringComparison]::OrdinalIgnoreCase)) {
+        $executablePath = Get-CanonicalPath $process.ExecutablePath
+        if ([string]::Equals($executablePath, $target, [StringComparison]::OrdinalIgnoreCase)) {
             $process
         }
     }

@@ -1,4 +1,4 @@
 @echo off
 title Enshrouded Indy
-wsl.exe --cd /home/korvegan/projects/enshrouded-indy python3 -m enshrouded_manager
-pause
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-manager.ps1" %*
+if errorlevel 1 pause

@@ -117,7 +117,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(manager: Manager, port=8765):
     with LocalServer(manager, port) as server:
-        print(f"Enshrouded Indy: http://localhost:{server.server_port}", flush=True)
+        print(f"Enshrouded Indy: http://127.0.0.1:{server.server_port}", flush=True)
         print("Verwaltung mit Strg+C beenden. Ein laufender Spielserver bleibt dabei aktiv.", flush=True)
         try:
             server.serve_forever()
