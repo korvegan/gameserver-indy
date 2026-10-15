@@ -2,7 +2,7 @@ import {api} from '../api.js';
 import {$, element, notice} from '../dom.js';
 import {can, state} from '../state.js';
 
-let editing, eventId, image, preview, imageRequest = 0, openRequest = 0, processing = false, saving = false, saved;
+let editing, eventId, image, preview, imageRequest = 0, openRequest = 0, processing = false, saving = false, saved, opening;
 const editor = () => $('#moment-editor');
 
 function instances(selected = '') {
@@ -22,6 +22,8 @@ function clearPreview() {
 
 export async function openMoment(event) {
   if (!can('community.write') || saving) return;
+  if (editor().open && state.communityDirty && !confirm('Ungespeicherten Chronikentwurf verwerfen?')) return;
+  opening?.();
   const generation = ++openRequest, epoch = state.navigationEpoch;
   try {
     const options = await api('/api/community/options');
@@ -97,8 +99,8 @@ async function submit(remove = false) {
   finally { saving = false; $('#moment-fields').disabled = false; $('#cancel-moment').disabled = false; }
 }
 
-export function bindMomentForm(onSaved) {
-  saved = onSaved;
+export function bindMomentForm(onSaved, onOpening) {
+  saved = onSaved; opening = onOpening;
   $('#new-moment').addEventListener('click', () => openMoment());
   $('#moment-game').addEventListener('change', () => instances());
   $('#moment-form').addEventListener('input', () => { state.communityDirty = true; });

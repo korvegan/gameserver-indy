@@ -12,12 +12,13 @@ import zipfile
 from .catalog import identifier
 from .configuration import ManagerError
 from .security import AccessDenied
+from .storage import chronicle_time
 
 MAX_IMAGE = 256 * 1024
 MAX_EXPORT = 32 * 1024 * 1024
 LATEST = 'NOT EXISTS (SELECT 1 FROM community_events n WHERE n.id=e.id AND n.revision>e.revision)'
 ACTIVE = "COALESCE(json_extract(e.payload,'$.removed'),0)=0"
-MOMENT_TIME = "COALESCE(NULLIF(json_extract(e.payload,'$.occurred_at'),''),e.recorded_at)"
+MOMENT_TIME = "chronicle_time(json_extract(e.payload,'$.occurred_at'),e.recorded_at)"
 SELECT = 'SELECT e.payload,e.recorded_at,s.id AS scene_id,s.position,s.template FROM community_events e JOIN scenes s ON s.event_id=e.id'
 
 
@@ -70,7 +71,7 @@ def archive_html(events):
     for event in events:
         latest[event['id']] = event
     cards = []
-    for event in sorted(latest.values(), key=lambda item: item.get('occurred_at') or item['recorded_at'], reverse=True):
+    for event in sorted(latest.values(), key=lambda item: (chronicle_time(item.get('occurred_at'), item['recorded_at']), item['scene']['position']), reverse=True):
         esc = lambda value: html.escape(str(value))
         members = ', '.join(event.get('member_names', {}).get(member, member) for member in event['member_ids'])
         picture = '<img alt="Screenshot" src="media/' + event['media_id'] + '.jpg">' if event.get('media_id') else ''
@@ -121,7 +122,7 @@ class ChronicleService:
                 except (ValueError, TypeError, OverflowError):
                     raise ManagerError('Zeitraum bitte als gültiges Datum angeben.') from None
                 clauses.append(MOMENT_TIME + operator + '?')
-                parameters.append(date.isoformat())
+                parameters.append(date.isoformat(timespec='microseconds'))
         return ' AND '.join(clauses), parameters
 
     def page(self, principal, **query):
@@ -150,7 +151,7 @@ class ChronicleService:
         next_cursor = None
         if len(rows) > limit:
             last = events[-1]
-            next_cursor = base64.urlsafe_b64encode(json.dumps([last.get('occurred_at') or last['recorded_at'], last['scene']['position']]).encode()).decode()
+            next_cursor = base64.urlsafe_b64encode(json.dumps([chronicle_time(last.get('occurred_at'), last['recorded_at']), last['scene']['position']]).encode()).decode()
         return {'events': events, 'next_cursor': next_cursor, 'total': stats[0], 'change_token': ':'.join(map(str, stats))}
 
     def detail(self, principal, event_id, include_history=True):
@@ -187,7 +188,15 @@ class ChronicleService:
         if any(key in body and type(body[key]) is not bool for key in ('remove', 'clear_image')):
             raise ManagerError('Ungültige Auswahl zum Entfernen.')
         event_id, revision = body['id'], body['revision']
-        previous = self.detail(principal, event_id)['event'] if revision > 1 else None
+        previous = None
+        if revision > 1:
+            self.detail(principal, event_id, include_history=False)
+            # Reconstruct retries from their actual predecessor, even after later corrections/removal.
+            with self.database.connect() as db:
+                row = db.execute(SELECT + ' WHERE e.id=? AND e.revision=?', [event_id, revision - 1]).fetchone()
+            if row is None:
+                raise ManagerError('Ereignisrevisionen müssen lückenlos aufeinander folgen.')
+            previous = event_view(row)
         if previous and previous['source'] != 'manual':
             raise ManagerError('Importierte Nachweise können hier nicht manuell überschrieben werden.')
         reason = text(body.get('reason', ''), 300, required=bool(previous))

@@ -1,6 +1,7 @@
 """Chronicle persistence and authorization. Only temporary worlds/accounts/images."""
 import base64
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 import io
 import json
 import sqlite3
@@ -173,13 +174,13 @@ class ChronicleTests(ManagerFixture):
     def test_schema_one_upgrade_creates_exact_backup_before_media_table(self):
         old = self.root / 'v1.sqlite3'
         self.app.database.backup(old)
-        with sqlite3.connect(old) as db:
+        with closing(sqlite3.connect(old)) as db, db:
             db.execute('DROP TABLE community_media')
             db.execute('PRAGMA user_version=1')
         upgraded = Database(old)
         backups = list((self.root / 'backups').glob('platform-v1-*.sqlite3'))
         self.assertEqual(len(backups), 1)
-        with sqlite3.connect(backups[0]) as db:
+        with closing(sqlite3.connect(backups[0])) as db:
             self.assertEqual(db.execute('PRAGMA user_version').fetchone()[0], 1)
             self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='community_media'").fetchone())
         with upgraded.connect() as db:
@@ -190,13 +191,13 @@ class ChronicleTests(ManagerFixture):
     def test_failed_migration_backup_leaves_version_one_untouched(self):
         old = self.root / 'backup-unavailable.sqlite3'
         self.app.database.backup(old)
-        with sqlite3.connect(old) as db:
+        with closing(sqlite3.connect(old)) as db, db:
             db.execute('DROP TABLE community_media')
             db.execute('PRAGMA user_version=1')
         with patch.object(Database, 'backup', side_effect=OSError('unavailable')):
             with self.assertRaises(OSError):
                 Database(old)
-        with sqlite3.connect(old) as db:
+        with closing(sqlite3.connect(old)) as db:
             self.assertEqual(db.execute('PRAGMA user_version').fetchone()[0], 1)
             self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='community_media'").fetchone())
 
@@ -234,6 +235,43 @@ class ChronicleTests(ManagerFixture):
         self.assertEqual(corrected['badge_id'], 'old-badge')
         self.assertEqual(corrected['campaign_id'], 'old-campaign')
         self.assertEqual(corrected['mod_profile_id'], 'old-mods')
+
+    def test_successful_revision_replays_keep_their_historical_image_after_later_edits_and_removal(self):
+        original = contribution(image=base64.b64encode(JPEG).decode())
+        self.chronicle.save(OWNER, original)
+        second = contribution(revision=2, title='Korrigiert', reason='Titel präzisiert')
+        self.chronicle.save(OWNER, second)
+        third = contribution(revision=3, title='Korrigiert', reason='Bild entfernt', clear_image=True)
+        self.chronicle.save(OWNER, third)
+        self.chronicle.save(OWNER, second)
+        self.assertNotIn('media_id', self.chronicle.detail(OWNER, original['id'])['event'])
+        removal = {'id': original['id'], 'revision': 4, 'remove': True, 'reason': 'Archiviert'}
+        self.chronicle.save(OWNER, removal)
+        for body in [original, second, third, removal]:
+            self.chronicle.save(OWNER, body)
+        detail = self.chronicle.detail(OWNER, original['id'])
+        self.assertTrue(detail['event']['removed'])
+        self.assertEqual(len(detail['history']), 4)
+        self.assertEqual(self.chronicle.media(OWNER, original['id'], revision=2), JPEG)
+
+    def test_legacy_offset_times_sort_filter_paginate_and_archive_by_utc_without_rewriting_evidence(self):
+        for event_id, occurred in [('early-offset', '2026-10-15T00:30:00+02:00'), ('later-z', '2026-10-14T23:30:00Z'),
+                                   ('same-instant', '2026-10-15T01:30:00+02:00')]:
+            self.app.community.record({'id': event_id, 'revision': 1, 'game_id': 'enshrouded', 'title': event_id,
+                'source': 'verified-game', 'member_ids': ['legacy-one'], 'badge_id': 'badge', 'occurred_at': occurred})
+        first = self.chronicle.page(OWNER, limit='1')
+        self.assertEqual(first['events'][0]['id'], 'same-instant')
+        second = self.chronicle.page(OWNER, limit='1', cursor=first['next_cursor'])
+        self.assertEqual(second['events'][0]['id'], 'later-z')
+        third = self.chronicle.page(OWNER, limit='1', cursor=second['next_cursor'])
+        self.assertEqual(third['events'][0]['id'], 'early-offset')
+        self.assertEqual(self.chronicle.page(OWNER, **{'from': '2026-10-15', 'to': '2026-10-15'})['total'], 0)
+        self.assertEqual(self.chronicle.page(OWNER, **{'from': '2026-10-14', 'to': '2026-10-14'})['total'], 3)
+        original = self.chronicle.detail(OWNER, 'early-offset')['event']
+        self.assertEqual(original['occurred_at'], '2026-10-15T00:30:00+02:00')
+        archive = zipfile.ZipFile(io.BytesIO(self.chronicle.export(OWNER)))
+        offline = archive.read('index.html').decode()
+        self.assertLess(offline.index('<h2>later-z'), offline.index('<h2>early-offset'))
 
 
 class ChronicleHTTPTests(HTTPFixture):

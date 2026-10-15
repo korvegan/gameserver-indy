@@ -108,9 +108,11 @@ export async function loadCommunity(append = false) {
     if (!current()) return;
     if (!append) events = new Map();
     for (const event of result.events) events.set(event.id, event);
-    nextCursor = result.next_cursor; token = result.change_token;
+    nextCursor = result.next_cursor;
     $('#community-state').textContent = result.total ? `${result.total} gemeinsame Momente. ${events.size} geladen. Eure Geschichte bleibt erhalten.` : 'Noch keine gemeinsamen Momente in dieser Auswahl.';
-    $('#community-news').hidden = true; render();
+    if (!append) { token = result.change_token; $('#community-news').hidden = true; }
+    else if (result.change_token !== token) announceChanges();
+    render();
     if (location.hash.startsWith('#moment-')) await showDetail(location.hash.slice(8), false);
     if (location.hash.startsWith('#scene-')) {
       const sceneId = location.hash.slice(1), eventId = sceneId.slice(6);
@@ -121,6 +123,7 @@ export async function loadCommunity(append = false) {
         scene = sceneFor(event); $('#story-scenes').append(scene);
       }
       scene.focus({preventScroll: true});
+      scene.scrollIntoView({behavior: 'instant', block: 'nearest'});
     }
   } catch (error) {
     if (current()) { $('#community-state').textContent = 'Die Chronik konnte nicht aktualisiert werden. Bereits geladene Momente bleiben sichtbar.'; notice(error.message, true); }
@@ -133,7 +136,7 @@ export async function showDetail(id, updateHash = true) {
   const generation = ++detailRequest, epoch = state.navigationEpoch;
   try {
     const data = await api('/api/community/event?id=' + encodeURIComponent(id));
-    if (generation !== detailRequest || epoch !== state.navigationEpoch || state.view !== 'community') return;
+    if (generation !== detailRequest || epoch !== state.navigationEpoch || state.view !== 'community' || $('#moment-editor').open) return;
     currentDetail = data.event;
     const event = data.event, body = $('#moment-detail-body');
     $('#moment-detail-title').textContent = event.removed ? `${event.title} · entfernt` : event.title;
@@ -166,7 +169,7 @@ export async function showDetail(id, updateHash = true) {
 }
 
 export function bindCommunity() {
-  bindMomentForm(async id => { await loadCommunity(); if (id) await showDetail(id); });
+  bindMomentForm(async id => { await loadCommunity(); if (id) await showDetail(id); }, () => { detailRequest++; });
   $('#chronicle-more').addEventListener('click', () => loadCommunity(true));
   $('#close-moment-detail').addEventListener('click', () => $('#moment-detail').close());
   $('#moment-detail').addEventListener('close', () => { if (location.hash.startsWith('#moment-')) history.replaceState(null, '', location.pathname + location.search); });
@@ -182,9 +185,13 @@ export function bindCommunity() {
       const result = await api('/api/community?' + query({limit: 1}));
       if (generation !== request || epoch !== state.navigationEpoch || state.view !== 'community') return;
       if (result.change_token !== token) {
-        $('#community-news').textContent = 'Neue oder korrigierte Momente sind verfügbar. Mit „Chronik aktualisieren“ laden, wenn du bereit bist.';
-        $('#community-news').hidden = false;
+        announceChanges();
       }
     } catch { /* Keep the last good reading position; explicit refresh reports errors. */ }
   }, 30000);
+}
+
+function announceChanges() {
+  $('#community-news').textContent = 'Neue oder korrigierte Momente sind verfügbar. Mit „Chronik aktualisieren“ laden, wenn du bereit bist.';
+  $('#community-news').hidden = false;
 }

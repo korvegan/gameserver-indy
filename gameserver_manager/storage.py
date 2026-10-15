@@ -1,5 +1,6 @@
 """Versioned local SQLite storage. Game configuration remains in its original files."""
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
@@ -29,6 +30,18 @@ MEDIA_SCHEMA = """CREATE TABLE community_media (
     id TEXT PRIMARY KEY, content BLOB NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL)"""
 
 
+def chronicle_time(value, fallback):
+    """Canonical read key; preserve the original evidence and timezone in its payload."""
+    for candidate in (value, fallback):
+        try:
+            moment = datetime.fromisoformat(candidate.replace('Z', '+00:00'))
+            if moment.tzinfo is not None:
+                return moment.astimezone(timezone.utc).isoformat(timespec='microseconds')
+        except (ValueError, TypeError, AttributeError, OverflowError):
+            pass
+    return '0001-01-01T00:00:00.000000+00:00'
+
+
 class Database:
     def __init__(self, path):
         self.path = Path(path)
@@ -53,6 +66,7 @@ class Database:
     def connect(self, write=False):
         connection = sqlite3.connect(self.path, timeout=5)
         connection.row_factory = sqlite3.Row
+        connection.create_function('chronicle_time', 2, chronicle_time, deterministic=True)
         try:
             connection.execute("PRAGMA foreign_keys = ON")
             if write:
