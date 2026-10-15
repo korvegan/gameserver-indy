@@ -7,7 +7,7 @@ import {acceptJob, mergeJobs, renderJobs, watchJob} from './jobs.js';
 import {controls, renderCatalog, renderEvents, renderStatus} from './views/server.js';
 import {loadLogs} from './views/logs.js';
 import {loadGames} from './views/catalog.js';
-import {loadCommunity} from './views/community.js';
+import {bindCommunity, isCommunityHash, loadCommunity} from './views/community.js';
 import {renderUpdate} from './views/updates.js';
 import {bindConnections, renderConnection} from './views/connection.js';
 
@@ -159,7 +159,7 @@ async function mutate(path, body = {}) {
   finally { state.submitting = false; controls(); }
 }
 
-bindNavigation(go); bindForms(mutate); bindConnections();
+bindNavigation(go); bindForms(mutate); bindConnections(); bindCommunity();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;
@@ -180,7 +180,7 @@ for (const operation of ['stop', 'restart']) $(`#${operation}`).addEventListener
   if (confirm(operation === 'stop' ? 'Server stoppen? Verbundene Spieler werden getrennt.' : 'Server neu starten? Verbundene Spieler werden getrennt.')) runOperation(operation);
 });
 $('#refresh-community').addEventListener('click', loadCommunity);
-window.addEventListener('hashchange', () => { if (location.hash.startsWith('#scene-')) go('community'); });
+window.addEventListener('hashchange', () => { if (isCommunityHash()) go('community'); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !['games', 'community'].includes(state.view)) refresh(); });
 
 (async () => {
@@ -188,7 +188,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ![
     const session = await api('/api/session'); setToken(session.token); state.principal = session.principal;
     $('#identity-label').textContent = {owner: 'Besitzer · lokal', family: 'Familienbediener', viewer: 'Lesezugriff'}[session.principal.role] || 'Zugriff eingeschränkt';
     await refreshCatalog(); await refresh();
-    if (location.hash.startsWith('#scene-')) await go('community');
+    if (isCommunityHash()) await go('community');
   } catch (error) { notice(error.message, true); }
   controls();
   setInterval(() => { if (!document.hidden && !state.submitting && !state.refreshing && !['games', 'community'].includes(state.view)) refresh(); }, 8000);

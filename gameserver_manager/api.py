@@ -43,10 +43,16 @@ class Api:
             instance = self.app.instance(principal, selected, "jobs.read")
             return {"jobs": [self.app.job_view(principal, job) for job in self.app.jobs.recent(instance.profile["id"])]}
         if path == "/api/community":
-            return {"events": self.app.community.recent(principal)}
+            return self.app.chronicle.page(principal, **{key: one(query, key) for key in query})
+        if path == '/api/community/options':
+            return self.app.chronicle.options(principal)
+        if path == '/api/community/event':
+            return self.app.chronicle.detail(principal, one(query, 'id'))
         raise NotFound("Nicht gefunden.")
 
     def post(self, path, body, principal):
+        if path == '/api/community':
+            return 200, self.app.chronicle.save(principal, body)
         if path == '/api/connections/refresh':
             return 202, self.app.refresh_connections(principal, body.get('server_id'))
         if path == '/api/updates/check':

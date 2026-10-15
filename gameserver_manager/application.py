@@ -3,6 +3,7 @@ import copy
 
 from .catalog import GameCatalog
 from .community import CommunityService
+from .chronicle import ChronicleService
 from .connections import ConnectionService
 from .configuration import ManagerError
 from .jobs import JobService
@@ -23,6 +24,7 @@ class Application:
         self.updates = UpdateService(registry)
         self.connections = ConnectionService()
         self.community = CommunityService(self.database, self.catalog, registry)
+        self.chronicle = ChronicleService(self.community)
 
     def instance(self, principal, server_id=None, permission="status.read", explicit=False):
         principal.require(permission, server_id)

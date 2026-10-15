@@ -6,7 +6,7 @@ import secrets
 import sqlite3
 from urllib.parse import parse_qs, urlsplit
 
-from .api import Api, NotFound
+from .api import Api, NotFound, one
 from .application import Application
 from .configuration import ManagerError
 from .paths import ROOT
@@ -48,15 +48,17 @@ class Handler(BaseHTTPRequestHandler):
         # Never log request bodies, group passwords or Discord webhook URLs.
         pass
 
-    def send(self, status, value, content_type="application/json; charset=utf-8"):
+    def send(self, status, value, content_type="application/json; charset=utf-8", download=None):
         data = json.dumps(value, ensure_ascii=False).encode() if content_type.startswith("application/json") else value
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        if download:
+            self.send_header('Content-Disposition', 'attachment; filename="' + download + '"')
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
         self.end_headers()
         self.wfile.write(data)
 
@@ -68,9 +70,16 @@ class Handler(BaseHTTPRequestHandler):
         if not self.trusted_host():
             return self.send(403, {"error": "Dieser Zugriff ist nur über localhost erlaubt."})
         path = urlsplit(self.path).path
+        query = parse_qs(urlsplit(self.path).query)
         try:
             if path == "/api/session":
                 return self.send(200, {"token": self.server.token, "principal": self.server.identity(self).public(), "api_version": 1})
+            if path == '/api/community/media':
+                content = self.server.app.chronicle.media(self.server.identity(self), one(query, 'event'), one(query, 'revision'))
+                return self.send(200, content, 'image/jpeg')
+            if path == '/api/community/export':
+                content = self.server.app.chronicle.export(self.server.identity(self), **{key: one(query, key) for key in query})
+                return self.send(200, content, 'application/zip', download='sturmklingen-chronicle.zip')
             if path.startswith("/api/"):
                 return self.send(200, self.server.api.get(path, parse_qs(urlsplit(self.path).query), self.server.identity(self)))
             files = {
@@ -80,7 +89,7 @@ class Handler(BaseHTTPRequestHandler):
                 "/favicon.svg": ("favicon.svg", "image/svg+xml"),
             }
             for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js",
-                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js"):
+                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js"):
                 files["/" + name] = (name, "text/javascript; charset=utf-8")
             if path in files:
                 filename, content_type = files[path]

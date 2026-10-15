@@ -93,8 +93,44 @@
       <div id="game-catalog" class="catalog-grid"></div>
     </section>
     <section id="community" class="view" hidden>
-      <div class="page-heading"><div><p class="eyebrow">DIE CHRONIK DER STURMKLINGEN</p><h1>Unsere gemeinsamen Momente.</h1><p class="subtitle" id="community-state">Chronik wird geladen …</p></div><button class="button secondary" id="refresh-community">↻ Chronik aktualisieren</button></div>
+      <div class="page-heading"><div><p class="eyebrow">DIE CHRONIK DER STURMKLINGEN</p><h1>Unsere gemeinsamen Momente.</h1><p class="subtitle" id="community-state">Chronik wird geladen …</p></div><div class="chronicle-actions"><button class="button primary" id="new-moment" data-permission="community.write">＋ Moment festhalten</button><button class="button secondary" id="refresh-community">↻ Chronik aktualisieren</button></div></div>
+      <p id="community-news" class="inline-info" role="status" hidden></p>
+      <form id="chronicle-filters" class="panel form-grid">
+        <label>Spiel filtern<select name="game" aria-label="Spiel filtern"><option value="">Alle Spiele</option></select></label>
+        <label>Kampagne filtern<select name="campaign" aria-label="Kampagne filtern"><option value="">Alle Kampagnen</option></select></label>
+        <label>Beteiligte filtern<select name="member" aria-label="Beteiligte filtern"><option value="">Alle Beteiligten</option></select></label>
+        <div class="form-grid"><label>Zeitraum von (UTC)<input name="from" type="date"></label><label>Zeitraum bis (UTC)<input name="to" type="date"></label></div>
+        <div class="chronicle-actions wide"><button class="button secondary" type="submit">Filter anwenden</button><button class="button secondary" type="reset">Filter zurücksetzen</button><a id="chronicle-export" class="button secondary" href="/api/community/export" data-permission="community.export">Auswahl als ZIP exportieren</a></div>
+      </form>
       <div class="community-layout"><div><h2 class="section-title">Chronik</h2><div id="chronicle"></div></div><section aria-labelledby="story-title"><h2 class="section-title" id="story-title">Unser Geschichtsbild</h2><p class="muted">Jeder gespeicherte Moment erhält seinen festen Platz.</p><div id="story-scenes"></div></section></div>
+      <button id="chronicle-more" class="button secondary" hidden>Weitere Momente laden</button>
+      <dialog id="moment-editor" aria-labelledby="moment-editor-title">
+        <form id="moment-form">
+          <h2 id="moment-editor-title" class="section-title">Einen Moment festhalten</h2>
+          <p class="muted">Eine manuell bestätigte Erinnerung. Alle eingetragenen Beteiligten erhalten dieselbe Sturmklingen-Auszeichnung.</p>
+          <fieldset id="moment-fields">
+            <div class="form-grid">
+              <label class="wide">Titel<input id="moment-title" maxlength="160" required autofocus></label>
+              <label>Spiel<select id="moment-game" required></select></label>
+              <label>Serverzuordnung<select id="moment-instance"></select></label>
+              <label>Kampagne / Welt<input id="moment-campaign" maxlength="100" list="moment-campaigns"><datalist id="moment-campaigns"></datalist></label>
+              <label>Erlebt am<input id="moment-date" type="datetime-local"><span class="field-help">Deine Ortszeit. Leer lassen, wenn der ursprüngliche Zeitpunkt unbekannt ist.</span></label>
+              <label class="wide">Beteiligte<textarea id="moment-members" rows="3" required maxlength="1296" placeholder="Ein Spielername pro Zeile"></textarea><span class="field-help">1–16 Namen, jeweils einmal. Dieselben Namen werden bei späteren Momenten wiedererkannt. Dies verknüpft keine Spielkonten.</span></label>
+              <label class="wide">Gemeinsame Auszeichnung<input id="moment-badge" maxlength="80" required placeholder="Zum Beispiel: Unser erstes Lager"></label>
+              <label class="wide">Eure Erinnerung<textarea id="moment-description" rows="4" maxlength="1000"></textarea></label>
+              <label class="wide">Screenshot (optional)<input id="moment-image" type="file" accept="image/png,image/jpeg,image/webp"><span class="field-help">PNG, JPEG oder WebP bis 10 MiB. Gespeichert wird eine verkleinerte JPEG-Vorschau bis 1280 × 1280 und 256 KiB.</span></label>
+              <div class="wide"><img id="moment-preview" class="moment-image" alt="Vorschau des Screenshots" hidden><p id="moment-image-state" class="field-help" role="status"></p><label><input id="moment-clear-image" type="checkbox">Gespeicherten Screenshot entfernen</label></div>
+              <label id="moment-reason-label" class="wide" hidden>Grund der Korrektur / Entfernung<input id="moment-reason" maxlength="300"></label>
+            </div>
+            <div class="form-footer chronicle-actions"><button type="submit" class="button primary" id="save-moment">Moment speichern</button><button type="button" class="button secondary" id="remove-moment" hidden>Moment entfernen</button></div>
+          </fieldset>
+          <p id="moment-error" class="field-help" role="alert"></p><button type="button" class="button secondary" id="cancel-moment">Schließen</button>
+        </form>
+      </dialog>
+      <dialog id="moment-detail" aria-labelledby="moment-detail-title">
+        <h2 id="moment-detail-title" class="section-title"></h2><div id="moment-detail-body"></div>
+        <div class="form-footer chronicle-actions"><button id="edit-moment" class="button primary" hidden>Moment korrigieren</button><button id="close-moment-detail" class="button secondary">Schließen</button></div>
+      </dialog>
     </section>
     <footer>GAMESERVER INDY<span>Deine Welten bleiben auf deinem Rechner.</span></footer>
   </main>

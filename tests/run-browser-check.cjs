@@ -22,9 +22,11 @@ async function main() {
       await delay(100);
     }
     if (!started) throw new Error(`Test fixture did not start: ${output}`);
-    const browser = spawn(process.execPath, ['tests/browser-smoke.cjs'], {cwd: root, stdio: 'inherit'});
-    const [code] = await once(browser, 'exit');
-    if (code !== 0) throw new Error(`Browser check failed (exit ${code}).`);
+    for (const script of ['tests/browser-smoke.cjs', 'tests/browser-chronicle.cjs']) {
+      const browser = spawn(process.execPath, [script], {cwd: root, stdio: 'inherit'});
+      const [code] = await once(browser, 'exit');
+      if (code !== 0) throw new Error(`Browser check failed in ${script} (exit ${code}).`);
+    }
   } finally {
     if (fixture.pid && fixture.exitCode === null && fixture.signalCode === null) {
       const exited = once(fixture, 'exit');

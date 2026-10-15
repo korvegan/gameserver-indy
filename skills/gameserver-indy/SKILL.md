@@ -59,6 +59,8 @@ Bei weiter bedienbaren Discord-Feldern darf eine verspätete Speicherbestätigun
 
 ## Lernen bei weiterer Arbeit
 
+Die Chronik #24 nutzt `chronicle.py` und SQLite-Schema 2 einschließlich JPEG-Vorschauen. Der Übergang von Schema 1 erstellt vorab einen konsistenten Snapshot; für einen Programm-Rückweg mit V1-Datenbank diesen ebenfalls berücksichtigen und den aktuellen V2-Stand erhalten. Bedienung, Medien-/Exportgrenzen und Wiederherstellung stehen in `docs/chronicle.md`. Manuelle Namen sind keine Steam-/Discord-Identitäten. Der am 15.10.2026 vom Nutzer bestätigte Enshrouded-Betrieb zu dritt belegt einen Mehrspieler-Praxistest, keinen automatisch zu erzeugenden Erfolg und keine bestimmte externe Verbindungsart.
+
 Beitrittsadressen werden über `connections.py`/`scripts/windows-network.ps1` am nativen Windows-Host ermittelt; die WSL-Adresse gehört nicht zum Spielserver. Die bestätigte Enshrouded-IP-Suche verwendet IP plus konfigurierten Query-Port. Eine öffentliche IP belegt keine Routerfreigabe oder Erreichbarkeit; Details und Grenzen stehen in `docs/connection-info.md`. ASKA bleibt bei der Serversuche nach Namen, bis ein direkter Beitrittsweg belegt ist. Statuspolls lesen nur zwischengespeicherte Adressen, keine externe Netzabfrage auslösen.
 
 Eine verzögerte manuelle Adressantwort darf auch innerhalb desselben Profils keine neueren Statusdaten überschreiben. Im Review wurde eine alte Beitrittsadresse nach einer Portänderung reproduziert; neben der Auswahlgeneration schützt nun eine Renderrevision mit Browser-Regression.

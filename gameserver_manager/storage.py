@@ -2,10 +2,11 @@
 from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
+from uuid import uuid4
 
 from .configuration import ManagerError
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SCHEMA = (
     """CREATE TABLE jobs (
         id TEXT PRIMARY KEY, server_id TEXT NOT NULL, operation TEXT NOT NULL,
@@ -24,19 +25,27 @@ SCHEMA = (
         PRIMARY KEY(event_id, revision, target),
         FOREIGN KEY(event_id, revision) REFERENCES community_events(id, revision))""",
 )
+MEDIA_SCHEMA = """CREATE TABLE community_media (
+    id TEXT PRIMARY KEY, content BLOB NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL)"""
 
 
 class Database:
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.connect() as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            if version not in (0, 1, SCHEMA_VERSION):
+                raise ManagerError("Die Plattformdatenbank hat eine nicht unterstützte Version. Passende Programmversion verwenden.")
+        if version == 1:
+            self.backup(self.path.parent / 'backups' / f'platform-v1-{uuid4().hex}.sqlite3')
         with self.connect(write=True) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, SCHEMA_VERSION):
-                raise ManagerError("Die Plattformdatenbank hat eine nicht unterstützte Version. Passende Programmversion verwenden.")
             if version == 0:
                 for statement in SCHEMA:
                     connection.execute(statement)
+            if version in (0, 1):
+                connection.execute(MEDIA_SCHEMA)
                 connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.path.chmod(0o600)
 
