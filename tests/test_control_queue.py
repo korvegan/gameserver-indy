@@ -5,6 +5,7 @@ from urllib.request import Request, urlopen
 from unittest.mock import patch
 
 from gameserver_manager.configuration import ManagerError
+from gameserver_manager.jobs import JobService
 from gameserver_manager.sessions import signing_token
 from gameserver_manager.server import LocalServer
 from gameserver_manager.security import Principal
@@ -119,6 +120,29 @@ class ControlQueueTests(ManagerFixture):
                     future.result(timeout=2)
                 action.assert_not_called()
             self.assertEqual(self.app.jobs.get(job['id'])['state'], 'failed')
+        finally:
+            release.set()
+
+    def test_shutdown_does_not_start_another_target_waiting_for_a_worker(self):
+        self.app.jobs.close()
+        self.app.jobs = JobService(self.app.database, workers=1)
+        entered, release = threading.Event(), threading.Event()
+        def first():
+            entered.set(); release.wait(3)
+            return {'message': 'done'}
+        _first, active = self.app.jobs.submit('enshrouded', 'start', OWNER.id, first, enqueue=True)
+        try:
+            self.assertTrue(entered.wait(1))
+            with patch.object(self.registry.get('aska'), 'action') as action:
+                item, waiting = self.app.submit(OWNER, 'restart', {'server_id': 'aska'})
+                self.assertEqual(item['state'], 'queued')
+                with self.app.jobs.lock:
+                    self.app.jobs.closed = True
+                release.set(); active.result(timeout=2)
+                with self.assertRaisesRegex(ManagerError, 'beendet'):
+                    waiting.result(timeout=2)
+                action.assert_not_called()
+            self.assertEqual(self.app.jobs.get(item['id'])['state'], 'interrupted')
         finally:
             release.set()
 

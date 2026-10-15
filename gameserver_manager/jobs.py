@@ -73,6 +73,12 @@ class JobService:
             job_id, callback, future = entry
             error, result = None, None
             try:
+                with self.lock:
+                    closing = self.closed
+                if closing:
+                    message = 'Verwaltung wird beendet. Dieser wartende Befehl wurde nicht ausgeführt.'
+                    self._interrupt(job_id, message)
+                    raise ManagerError(message)
                 result = self._run(job_id, reservation, callback)
             except BaseException as exc:
                 error = exc
