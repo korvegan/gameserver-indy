@@ -67,8 +67,14 @@ a {
   font-size:10px;
   letter-spacing:1.8px;
   color:#859487;
-  margin:53px 14px 14px;
+  margin:24px 14px 14px;
 }
+.server-picker { margin-top:28px; }
+.profile-entry { padding:12px 0; border-bottom:1px solid var(--border); }
+.profile-entry:last-child { border-bottom:0; }
+.profile-entry small { display:block; color:var(--muted); overflow-wrap:anywhere; }
+#game-fields .field-help { display:block; }
+.server-details strong { overflow-wrap:anywhere; }
 nav {
   display:grid;
   gap:7px;
@@ -676,7 +682,7 @@ pre {
   }
   nav {
     display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
+    grid-template-columns:repeat(5,minmax(0,1fr));
     gap:4px;
     margin-top:18px;
   }

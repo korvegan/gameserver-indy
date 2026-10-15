@@ -1,0 +1,25 @@
+{
+  "id": "enshrouded",
+  "label": "Enshrouded",
+  "executable": "enshrouded_server.exe",
+  "config_filename": "enshrouded_server.json",
+  "default_directory": "D:\\SteamLibrary\\steamapps\\common\\EnshroudedServer",
+  "steam_game_app_id": 1203620,
+  "steam_server_app_id": 2278520,
+  "role_groups": true,
+  "fields": [
+    {"key": "name", "label": "Servername", "type": "text", "required": true, "wide": true},
+    {"key": "slotCount", "label": "Spielerplätze", "type": "number", "min": 1, "max": 16, "required": true},
+    {"key": "queryPort", "label": "Query-Port", "type": "number", "min": 1, "max": 65535, "required": true},
+    {"key": "gameSettingsPreset", "label": "Schwierigkeitsvorlage", "type": "select", "options": {"Default": "Standard", "Relaxed": "Entspannt", "Hard": "Schwer", "Survival": "Überleben", "Custom": "Benutzerdefiniert"}},
+    {"key": "voiceChatMode", "label": "Sprachchat-Modus", "type": "select", "options": {"Proximity": "Umgebungsnah", "Global": "Serverweit"}},
+    {"key": "saveDirectory", "label": "Weltordner", "type": "text", "required": true, "wide": true, "help": "Ein neuer, leerer Ordner erzeugt beim nächsten Start eine neue Welt. Vorhandene Weltordner weiterverwenden, um fortzusetzen."},
+    {"key": "enableVoiceChat", "label": "Sprachchat aktivieren", "type": "checkbox"},
+    {"key": "enableTextChat", "label": "Textchat aktivieren", "type": "checkbox"}
+  ],
+  "metrics": [
+    {"key": "slotCount", "label": "Spielerplätze"},
+    {"key": "gameSettingsPreset", "label": "Schwierigkeit", "options": {"Default": "Standard", "Relaxed": "Entspannt", "Hard": "Schwer", "Survival": "Überleben", "Custom": "Eigene Regeln"}},
+    {"key": "queryPort", "label": "Query-Port"}
+  ]
+}

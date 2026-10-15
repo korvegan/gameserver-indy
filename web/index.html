@@ -4,35 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#101813">
-  <title>Enshrouded Indy · Serververwaltung</title>
+  <title>GameServer Indy · Serververwaltung</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
-    <a class="brand" href="/" aria-label="Enshrouded Indy Startseite"><img src="/favicon.svg" alt="" width="38" height="38"><span>ENSHROUDED<small>INDY / SERVERVERWALTUNG</small></span></a>
-    <p class="nav-label">DEIN SERVER</p>
+    <a class="brand" href="/" aria-label="GameServer Indy Startseite"><img src="/favicon.svg" alt="" width="38" height="38"><span>GAMESERVER<small>INDY / SERVERVERWALTUNG</small></span></a>
+    <label class="server-picker">Serverprofil<select id="server-select" disabled><option>Wird geladen …</option></select></label>
+    <p class="nav-label">VERWALTUNG</p>
     <nav aria-label="Hauptnavigation">
       <button class="nav active" data-view="overview" aria-current="page"><span aria-hidden="true">◈</span> Übersicht</button>
       <button class="nav" data-view="settings"><span aria-hidden="true">⚙</span> Einstellungen</button>
       <button class="nav" data-view="logs"><span aria-hidden="true">≡</span> Serverlog</button>
       <button class="nav" data-view="discord"><span aria-hidden="true">↗</span> Discord</button>
+      <button class="nav" data-view="profiles"><span aria-hidden="true">＋</span> Serverprofile</button>
     </nav>
-    <div class="sidebar-bottom"><span class="local-dot"></span> Lokal auf deinem Rechner<small>Enshrouded Indy · v0.1</small></div>
+    <div class="sidebar-bottom"><span class="local-dot"></span> Lokal auf deinem Rechner<small>GameServer Indy · v0.2</small></div>
   </aside>
   <main>
     <header class="topbar"><span><span class="muted">Verwaltung</span><span class="slash">/</span><span id="breadcrumb">Übersicht</span></span><span class="local-badge">LOCAL HOST</span></header>
     <div id="notice" role="status" aria-live="polite" hidden></div>
     <section id="overview" class="view">
-      <div class="page-heading"><div><p class="eyebrow">DEINE WELT. DEINE REGELN.</p><h1>Willkommen am Flammenaltar.</h1><p class="subtitle">Dein Enshrouded-Server, an einem Ort verwaltet.</p></div><button class="button secondary" id="refresh">↻ Aktualisieren</button></div>
+      <div class="page-heading"><div><p class="eyebrow">DEINE SPIELE. DEINE SERVER.</p><h1>Dein nächster Spielabend.</h1><p class="subtitle">Dedicated Server an einem Ort verwalten.</p></div><button class="button secondary" id="refresh">↻ Aktualisieren</button></div>
       <div class="server-card">
         <div class="server-card-top"><div class="world-icon" aria-hidden="true">♜</div><span class="pill" id="server-state">Status wird geprüft</span></div>
-        <p class="eyebrow">DEDICATED SERVER</p><h2 id="server-name">Enshrouded Indy</h2><p class="server-caption">Ein neuer Aufbruch in Embervale.</p>
-        <div class="server-details"><div><small>SPIELERPLÄTZE</small><strong id="slot-count">—</strong></div><div><small>SCHWIERIGKEIT</small><strong id="preset-label">—</strong></div><div><small>QUERY-PORT</small><strong id="query-port">—</strong></div><div><small>PROZESS-ID</small><strong id="process-id">—</strong></div></div>
+        <p class="eyebrow" id="game-label">DEDICATED SERVER</p><h2 id="server-name">GameServer Indy</h2><p class="server-caption" id="profile-caption">Dein ausgewähltes Serverprofil.</p>
+        <div class="server-details"><div><small id="metric-label-0">SPIELERPLÄTZE</small><strong id="slot-count">—</strong></div><div><small id="metric-label-1">SCHWIERIGKEIT</small><strong id="preset-label">—</strong></div><div><small id="metric-label-2">QUERY-PORT</small><strong id="query-port">—</strong></div><div><small>PROZESS-ID</small><strong id="process-id">—</strong></div></div>
         <div class="server-actions"><button class="button primary" id="start" disabled>▶ Server starten</button><button class="button secondary" id="stop" disabled>■ Stoppen</button><button class="button secondary" id="restart" disabled>↻ Neu starten</button><span id="process-note">Windows-Prozess wird geprüft.</span></div>
       </div>
-      <div id="setup-panel" class="setup-panel" hidden><div><h3>Bereit für den ersten Start?</h3><p>Erzeuge die Serverkonfiguration mit vier Benutzergruppen und zufälligen Passwörtern.</p></div><button class="button primary" id="setup">Server vorbereiten</button></div>
+      <div id="setup-panel" class="setup-panel" hidden><div><h3>Bereit für den ersten Start?</h3><p>Erzeuge eine fehlende Konfiguration passend zum Spiel. Vorhandene Dateien werden geprüft.</p></div><button class="button primary" id="setup">Server vorbereiten</button></div>
       <div class="overview-grid"><section class="panel"><div class="panel-heading"><h3>Alles an seinem Platz</h3><span class="small-tag">INSTALLATION</span></div><p class="muted">Deine Steam-Installation</p><code class="path" id="install-path">D:\SteamLibrary\steamapps\common\EnshroudedServer</code><div class="check-row"><span id="installation-check">Installation wird geprüft</span><span id="configuration-check">Konfiguration wird geprüft</span></div><button class="text-button" data-go="settings">Einstellungen öffnen <span>→</span></button></section><section class="panel"><div class="panel-heading"><h3>Deine Gruppe auf dem Laufenden</h3><span class="discord-mark" aria-hidden="true">◉</span></div><p class="muted">Teile den nächsten Aufbruch direkt in Discord.</p><p id="discord-status" class="connection-status">Verbindung wird geprüft</p><button class="text-button" data-go="discord">Discord einrichten <span>→</span></button></section></div>
       <section class="panel activity"><div class="panel-heading"><h3>Letzte Aktivitäten</h3><span class="muted">Auf diesem Rechner</span></div><div id="events"><p class="empty">Noch keine Aktivitäten. Deine Reise beginnt hier.</p></div></section>
     </section>
@@ -42,21 +44,32 @@
       <form id="config-form" class="panel">
         <div class="panel-heading"><h3>Allgemein</h3><span id="unsaved" class="small-tag" hidden>UNGESPEICHERT</span></div>
         <fieldset id="config-fields" disabled>
-          <div class="form-grid"><label class="wide">Servername<input name="name" required maxlength="100" autocomplete="off"></label><label>Spielerplätze<input name="slotCount" type="number" min="1" max="16" required></label><label>Query-Port<input name="queryPort" type="number" min="1" max="65535" required></label><label>Schwierigkeitsvorlage<select name="gameSettingsPreset"><option value="Default">Standard</option><option value="Relaxed">Entspannt</option><option value="Hard">Schwer</option><option value="Survival">Überleben</option><option value="Custom">Benutzerdefiniert</option></select></label><label>Sprachchat-Modus<select name="voiceChatMode"><option value="Proximity">Umgebungsnah</option><option value="Global">Serverweit</option></select></label></div>
-          <div class="checkboxes"><label><input name="enableVoiceChat" type="checkbox"> Sprachchat aktivieren</label><label><input name="enableTextChat" type="checkbox"> Textchat aktivieren</label></div>
-          <h3 class="form-section-title">Benutzergruppen</h3><p class="muted">Das verwendete Passwort bestimmt die Berechtigungen beim Beitritt.</p><div id="groups"></div>
-          <details class="advanced"><summary>Erweiterte Konfiguration · JSON</summary><p class="muted">Enthält alle Felder, einschließlich Passwörtern. Zum Anwenden den JSON-Button verwenden. Eigene Gameplay-Werte benötigen die Vorlage Custom.</p><label>Vollständige Serverkonfiguration<textarea id="json-editor" rows="20" spellcheck="false"></textarea></label><button type="button" class="button secondary" id="save-json">JSON prüfen und speichern</button></details>
+          <div id="game-fields" class="form-grid"></div>
+          <div id="roles-section"><h3 class="form-section-title">Benutzergruppen</h3><p class="muted">Das verwendete Passwort bestimmt die Berechtigungen beim Beitritt.</p><div id="groups"></div></div>
+          <details class="advanced"><summary>Erweiterte Konfiguration · JSON</summary><p class="muted">Alle Einstellungen des Spiels. Bei ASKA bleiben gespeicherte Zugangsdaten leer und werden beim Speichern beibehalten. Kommentare in der Originaldatei bleiben erhalten.</p><label>Vollständige Serverkonfiguration<textarea id="json-editor" rows="20" spellcheck="false"></textarea></label><button type="button" class="button secondary" id="save-json">JSON prüfen und speichern</button></details>
           <div class="form-footer"><span class="muted">Sicherungen: data/backups/</span><button class="button primary" type="submit" id="save-config">Einstellungen speichern</button></div>
         </fieldset>
       </form>
     </section>
     <section id="logs" class="view" hidden><div class="page-heading"><div><p class="eyebrow">EIN BLICK HINTER DIE KULISSEN</p><h1>Serverlog</h1><p class="subtitle">Die letzten 200 Zeilen der aktuellen Logdatei. Aktualisiert alle 8 Sekunden.</p></div><button class="button secondary" id="refresh-logs">↻ Aktualisieren</button></div><div class="log-window"><div class="log-title"><span class="local-dot"></span><span id="log-file">Serverkonsole</span></div><pre id="log-content">Noch keine Logs geladen.</pre></div></section>
     <section id="discord" class="view" hidden>
-      <div class="page-heading"><div><p class="eyebrow">GEMEINSAM NACH EMBERVALE</p><h1>Discord</h1><p class="subtitle">Nachrichten an deinen Kanal senden und Serverstarts ankündigen.</p></div></div>
+      <div class="page-heading"><div><p class="eyebrow">DEINE SPIELGRUPPE</p><h1>Discord</h1><p class="subtitle">Gemeinsamer Dashboard-Webhook. Ein externer ASKA-Starter übernimmt seine eigene Startmeldung.</p></div></div>
       <form id="discord-form" class="panel"><div class="panel-heading"><h3>Verbindung zu deinem Kanal</h3><span class="small-tag" id="webhook-state">NICHT VERBUNDEN</span></div><p class="muted">In Discord: Kanal bearbeiten → Integrationen → Webhooks → Neuer Webhook → Webhook-URL kopieren.</p><label>Webhook-URL<input id="webhook" type="password" autocomplete="new-password" placeholder="https://discord.com/api/webhooks/…"></label><p class="field-help" id="webhook-help">Die URL wird nur lokal gespeichert.</p><label class="checkbox-label"><input id="auto-notify" type="checkbox"> Bei Start, Stopp und Neustart über diese Verwaltung automatisch benachrichtigen</label><label class="checkbox-label"><input id="clear-webhook" type="checkbox"> Gespeicherten Webhook entfernen</label><div class="form-footer"><span class="muted">Erwähnungen lösen keine Pings aus.</span><button class="button primary" type="submit">Verbindung speichern</button></div></form>
-      <form id="message-form" class="panel"><h3>Nachricht an deine Gruppe</h3><label>Nachricht<textarea id="discord-message" rows="4" maxlength="2000" required placeholder="Der Server startet gleich. Wir sehen uns in Embervale!"></textarea></label><div class="form-footer"><span class="muted" id="message-counter">0 / 2000 Zeichen</span><button class="button secondary" type="submit">↗ An Discord senden</button></div></form>
+      <form id="message-form" class="panel"><h3>Nachricht an deine Gruppe</h3><label>Nachricht<textarea id="discord-message" rows="4" maxlength="2000" required placeholder="Der Server startet gleich. Bis zum Spielabend!"></textarea></label><div class="form-footer"><span class="muted" id="message-counter">0 / 2000 Zeichen</span><button class="button secondary" type="submit">↗ An Discord senden</button></div></form>
     </section>
-    <footer>ENSHROUDED INDY<span>Deine Welt bleibt auf deinem Rechner.</span></footer>
+    <section id="profiles" class="view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">DEINE SAMMLUNG</p><h1>Serverprofile</h1><p class="subtitle">Jede Installation erhält eigene Einstellungen, Logs und Konfigurationssicherungen.</p></div></div>
+      <div id="profile-list" class="panel"></div>
+      <form id="profile-form" class="panel"><h3>Installierten Server hinzufügen</h3><p class="muted">Ein Profil verweist auf vorhandene Dateien. Es installiert kein Spiel und erzeugt keine Welt.</p><fieldset id="profile-fields"><div class="form-grid">
+        <label>Spiel<select id="profile-game" required></select></label>
+        <label>Profil-ID<input id="profile-id" required pattern="[a-z0-9][a-z0-9_\-]{0,47}" maxlength="48" placeholder="aska"></label>
+        <label class="wide">Profilname<input id="profile-label" required maxlength="80" placeholder="ASKA Spielrunde"></label>
+        <label class="wide">Installationsordner<input id="profile-directory" required placeholder="D:\SteamLibrary\steamapps\common\ASKA Dedicated Server"></label>
+        <label class="wide">Externe Konfigurationsdatei (optional)<input id="profile-config" placeholder="C:\Server\config\server properties.txt"></label>
+        <label class="wide">Vorhandener PowerShell-Starter (optional)<input id="profile-launcher" placeholder="C:\Server\start-server.ps1" disabled></label>
+      </div><div class="form-footer"><span class="muted">Weitere Spiele werden über Spielprofile und Adapter ergänzt.</span><button class="button primary" type="submit">Serverprofil hinzufügen</button></div></fieldset></form>
+    </section>
+    <footer>GAMESERVER INDY<span>Deine Welten bleiben auf deinem Rechner.</span></footer>
   </main>
 </body>
 </html>

@@ -1,126 +1,101 @@
-# Enshrouded Indy
+# GameServer Indy
 
-Lokale Browseroberfläche für den **Windows Dedicated Server von Enshrouded**. Server starten, regulär stoppen und neu starten, Konfiguration bearbeiten, Logs lesen und Nachrichten an Discord senden.
+Lokale Browseroberfläche für Windows-Dedicated-Server. **Enshrouded und ASKA** haben eigene Konfigurationsprofile. Start, regulärer Stopp, Neustart, Konfigurationssicherungen und Discord teilen sich eine gemeinsame Verwaltung. Weitere Spiele werden über Adapter ergänzt.
 
-Voreingestellte Installation: `D:\SteamLibrary\steamapps\common\EnshroudedServer`
+## Start
 
-## Start auf diesem Rechner
+**GameServer Indy** auf dem Desktop öffnet **http://127.0.0.1:8765** und startet bei Bedarf die Verwaltung. Es startet keinen Spielserver. Im Browser das gewünschte Serverprofil auswählen.
 
-In WSL, mit Python **3.11 oder neuer**:
+Alternativ im Checkout mit Python 3.11 oder neuer:
 
 ```bash
-cd /home/korvegan/projects/enshrouded-indy
 bash start.sh
+python3 -m gameserver_manager status --server enshrouded
+python3 -m gameserver_manager status --server aska
 ```
 
-Danach **http://127.0.0.1:8765** im Windows-Browser öffnen. Unter Windows öffnet `start.cmd` die Oberfläche automatisch und startet die Verwaltung bei Bedarf. `start.cmd` und die Desktop-Verknüpfung verwenden denselben versionierten PowerShell-Starter. Es werden keine zusätzlichen Python- oder Node-Pakete für den Betrieb benötigt. Python und der lokale Dienst müssen laufen, solange die Oberfläche benutzt wird.
+Mit Windows-Python: `py -3 -m gameserver_manager`. Für den Betrieb sind keine zusätzlichen Python- oder Node-Pakete nötig. Der Dienst bindet nur an `127.0.0.1`; Host-/Origin-Prüfungen und ein Sitzungstoken schützen Änderungen. Verwaltung und Spielserver unter demselben Windows-Konto ausführen.
 
-Direkt aus Windows PowerShell:
+## Profile
 
-```powershell
-wsl.exe --distribution Indy --user korvegan --cd /home/korvegan/projects/enshrouded-indy --exec python3 -m enshrouded_manager
-```
+- `profiles/enshrouded.json` und `profiles/aska.json`: Formularfelder, Kennzahlen und Startmetadaten eines Spiels.
+- `gameserver_manager/games.py`: Adapter für Dateiformat, Validierung, Standardwerte und Besonderheiten.
+- `manager.local.json`: lokale Serverprofile mit ID, Spiel, Namen, Installationsordner und optional externer Konfiguration/Starter. Von Git ausgeschlossen.
+- **Serverprofile** im Browser fügt vorhandene Installationen hinzu. Dabei werden keine Spiele installiert oder Welten verändert.
 
-Alternativ läuft der Dienst mit einer Windows-Python-Installation (`py -3 -m enshrouded_manager`) aus einer lokalen Kopie des Projekts. Die Prozesssteuerung nutzt Windows PowerShell 5.1. Unter WSL muss Windows-Interop verfügbar sein. Verwaltung und Spielserver unter demselben Windows-Benutzer starten.
+Die bisherige Einzelserver-Konfiguration wird als Enshrouded-Profil übernommen und beim Speichern eines weiteren Profils lokal erweitert. Discord bleibt gemeinsam konfiguriert. Jede Aktion trägt ihre Profil-ID; die Auswahl ist pro Browser und verändert keinen laufenden Server. Pro Installationsordner ist ein Profil möglich, da Prozesse über ihren vollständigen EXE-Pfad zugeordnet werden.
 
-### Desktop-Verknüpfung installieren oder aktualisieren
+### Enshrouded
 
-In Windows PowerShell, für den aktuellen WSL-Checkout:
+Installation: `D:\SteamLibrary\steamapps\common\EnshroudedServer`.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "\\wsl.localhost\Indy\home\korvegan\projects\enshrouded-indy\scripts\install-desktop-shortcut.ps1" -WslUser korvegan
-```
+**Server vorbereiten** erzeugt nur eine fehlende `enshrouded_server.json`. Die vier Benutzergruppen erhalten zufällige Passwörter. Unbekannte Felder bleiben beim Bearbeiten erhalten. Eigene Gameplay-Werte benötigen `gameSettingsPreset: "Custom"`.
 
-Der Installer erkennt Distribution und Projektpfad aus dem WSL-Netzwerkpfad. Er kopiert `scripts/start-manager.ps1` nach `%LOCALAPPDATA%\EnshroudedIndy\Start-Manager.ps1`, speichert die Rechnerdaten daneben in `launcher.local.json` und legt **Enshrouded Indy** auf dem tatsächlichen Windows-Desktop an. Derselbe Befehl aktualisiert eine vorhandene eigene Installation. Eine fremde Verknüpfung mit demselben Namen wird nicht überschrieben.
+**Weltordner** steuert `saveDirectory`: Ein neuer, leerer Ordner erzeugt beim nächsten Spielserverstart eine neue Welt; ein bestehender setzt dessen Welt fort. Die alte Welt wird nicht gelöscht. Neue Felder und Grenzen nach Spielupdates müssen anhand der ausgelieferten Version abgeglichen werden.
 
-Beim Doppelklick wartet der Starter auf die lokale HTTP-Antwort, bevor er den Browser öffnet. Weitere Klicks verwenden eine bereits laufende Verwaltung. Die WSL-Konsole startet minimiert; bei Startproblemen liegt das Fehlerprotokoll unter `%LOCALAPPDATA%\EnshroudedIndy\logs\`. Der Spielserver wird durch diesen Starter nicht automatisch gestartet.
+### ASKA
 
-Für andere Installationen können `-WslDistribution`, `-WslUser`, `-ProjectDirectory` (absoluter Linux-Pfad) und `-Port` angegeben werden. `start.cmd` erkennt diese Daten beim Aufruf aus dem WSL-Checkout ebenfalls; ein optionales `scripts/launcher.local.json` kann sie lokal vorgeben. Nach einem Update den Installer erneut ausführen, damit der Desktop-Starter dem Repository entspricht. `ExecutionPolicy Bypass` gilt ausschließlich für den aufgerufenen Prozess und ändert keine systemweite Richtlinie.
+Installation: `D:\SteamLibrary\steamapps\common\ASKA Dedicated Server`.
 
-## Erstes Setup
+ASKA verwendet `server properties.txt` und `-propertiesPath`. Externe Konfigurationen werden von Steam-Updates nicht überschrieben. Kommentare, unbekannte Felder, BOM und Zeilenenden bleiben erhalten. Passwort und Token bleiben im Browser leer; leere Werte behalten die gespeicherten Zugangsdaten. Ein Passwort kann ersetzt, derzeit aber nicht im Formular entfernt werden.
 
-1. Die Übersicht erkennt das Serverprogramm im hinterlegten Installationsordner.
-2. **Server vorbereiten** erzeugt eine fehlende `enshrouded_server.json`. Eine vorhandene Datei wird geprüft und beibehalten. Der Server muss gestoppt sein.
-3. Unter **Einstellungen** Servername, Spielerplätze, Schwierigkeit, Chat und Gruppenpasswörter setzen. Die vier anfänglichen Gruppen Admin, Friend, Guest und Visitor erhalten unterschiedliche zufällige Passwörter. „Anzeigen“ blendet sie ein.
-4. **Server starten** startet die EXE mit dem Installationsordner als Arbeitsverzeichnis. „Prozess läuft“ beschreibt den Windows-Prozess; die Bereitschaft zum Verbinden lässt sich im **Serverlog** prüfen, z. B. anhand von `HostOnline`.
+Auf Indy wird die **aktive externe Konfiguration** unter `C:\Users\korvegan\Documents\workspace\Aska\config\server properties.txt` verwendet. Der vorhandene `start-aska-discord.ps1` lädt die bestätigte Bestandswelt und versendet seine eigene Discord-Meldung nach offener Sitzung. Dafür sendet das Dashboard keine zusätzliche Startmeldung. Die Save-ID bleibt bei externem Starter gebunden.
 
-Das Setup startet den Spielserver nicht automatisch. Er kann beim ersten Spielstart zusätzliche Standardeinstellungen ergänzen. Eigene Gameplay-Werte unter `gameSettings` benötigen `gameSettingsPreset: "Custom"`.
+Ohne externen Starter setzt die Windows-Anbindung SteamAppId/SteamGameId 1898300 und übergibt den Konfigurationspfad direkt. Ein Gameserver-Token für Spiel-App-ID 1898300 ist nötig. Die Download-App-ID des Servers ist 3246670.
 
-Bei einem anderen Installationsort `manager.example.json` nach `manager.local.json` kopieren und `server_directory` ändern. Danach die Verwaltung neu starten. Für einen anderen lokalen Port:
+Grundlage: mitgelieferte **ASKA Dedicated Server Setup - EN.pdf** und installierte Konfigurationsvorlage. Die Anleitung beschreibt Ctrl+C als regulären Stopp. Der Stopp mit dem vorhandenen Starter an der echten Welt bleibt im Betrieb zu bestätigen; automatisierte Prüfungen nutzen Testprozesse. Rohe ASKA-Logs können Zugangsdaten enthalten; die Oberfläche verweist deshalb auf das Starterfenster.
 
-```bash
-bash start.sh --port 8766
-```
+## Betrieb und Backups
 
-## Konfiguration und Stoppen
+Bearbeiten nur bei gestopptem Server. Zuerst wird die Konfiguration exakt gesichert, dann atomar ersetzt. Enshrouded behält `data/backups/`; weitere Profile verwenden `data/servers/<id>/backups/`.
 
-Der Server muss zum Bearbeiten gestoppt sein. Vor jeder Änderung kopiert die Verwaltung die bisherige Konfiguration nach `data/backups/`, prüft die neue Konfiguration und ersetzt die Originaldatei atomar. Unbekannte Felder bleiben beim Bearbeiten über das Formular erhalten. Der ausklappbare JSON-Editor erlaubt auch Änderungen an Spielregeln, Rollenrechten, Speicherpfaden und weiteren Serverfeldern; sein eigener Speicherbutton übernimmt den gesamten Inhalt.
+**Konfigurationssicherungen enthalten keine Weltspielstände.** Für eine Weltsicherung regulär stoppen und den vollständigen Spielstandordner kopieren. ASKA speichert im Windows-Benutzerprofil.
 
-**Stoppen** sendet Strg+C an die Konsole genau dieser Installation und wartet bis zu 45 Sekunden auf das Ende. Bei einem Fehler bleibt der Prozess aktiv: Im Serverfenster manuell Strg+C drücken. Es gibt keinen automatischen erzwungenen Abbruch. Ein Neustart startet erst, wenn das Stoppen erfolgreich war. Wurde der Server außerhalb der Verwaltung gestartet, muss seine Konsole für denselben Windows-Benutzer zugänglich sein.
+Stoppen sendet Ctrl+C an die Konsole der ausgewählten Installation und wartet bis zu 45 Sekunden. Kein erzwungener Abbruch. Ist die Konsole nicht erreichbar, im Serverfenster stoppen. Neustart erst nach erfolgreichem Stopp.
 
-`data/backups/` enthält Konfigurationssicherungen, keine Weltspielstände. Weltdateien liegen im in `saveDirectory` angegebenen Verzeichnis. Für eine manuelle Weltsicherung zuerst den Server stoppen und dieses gesamte Verzeichnis kopieren.
-
-Die Verwaltung selbst mit Strg+C beenden. Der Spielserver läuft dabei weiter. Die Anwendung installiert keinen Autostart, Windows-Dienst oder Update-Automatismus. Steam bleibt für die Serverupdates zuständig.
+„Prozess läuft“ bestätigt keinen Beitritt. Enshrouded meldet Bereitschaft mit `HostOnline`; der vorhandene ASKA-Starter beobachtet `The session is now open!`. Steam verwaltet weiterhin Spielupdates. Kein Update- oder Mod-Automatismus.
 
 ## Discord
 
-1. Im gewünschten Discord-Kanal **Kanal bearbeiten → Integrationen → Webhooks** öffnen und einen Webhook anlegen.
-2. Die kopierte URL unter **Discord** hinterlegen und die Verbindung speichern.
-3. Eine eigene Nachricht schreiben und **An Discord senden** wählen.
+Unter **Discord** den Dashboard-Webhook hinterlegen und optional Prozessmeldungen einschalten. Ein leeres URL-Feld behält den Webhook; die Checkbox entfernt ihn. Die URL wird nicht zurückgegeben. `DISCORD_WEBHOOK_URL` hat Vorrang. Discord-Fehler stoppen keinen erfolgreich gestarteten Server; Erwähnungen erzeugen keine Pings.
 
-Optional Nachrichten bei Start, Stopp und Neustart **über diese Verwaltung** einschalten. Sie melden Prozessaktionen; Abstürze und manuelle Starts außerhalb der Oberfläche werden in dieser ersten Version nicht automatisch an Discord gemeldet. Discord-Ausfälle ändern den erfolgreichen Serverstart nicht und erscheinen als Hinweis. Erwähnungen erzeugen keine Pings.
+Der ASKA-Starter behält seine eigene Windows-DPAPI-Anbindung. Sie wird nicht importiert. Manuelle Nachrichten und Stoppmeldungen verwenden den Dashboard-Webhook.
 
-Alternativ den Webhook vor dem Start als Umgebungsvariable `DISCORD_WEBHOOK_URL` setzen; sie hat Vorrang vor dem lokal gespeicherten Wert. In diesem Fall die Variable entfernen, um den Webhook vollständig zu deaktivieren. Ein leer gelassenes URL-Feld behält den bisherigen Webhook. „Gespeicherten Webhook entfernen“ löscht ihn aus der lokalen Datei.
+## Desktop-Starter
 
-`manager.local.json`, `data/` und `.env` sind von Git ausgeschlossen. Webhook-URLs und Serverpasswörter gehören nicht ins Repository. Die Webhook-URL wird nicht an den Browser zurückgegeben. Gruppenpasswörter sind zum lokalen Bearbeiten in der Konfiguration zugänglich.
+Aus dem WSL-Checkout in Windows PowerShell:
 
-## Netzwerk
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "\\wsl.localhost\Indy\home\korvegan\projects\gameserver-indy\scripts\install-desktop-shortcut.ps1" -WslUser korvegan
+```
 
-Die Verwaltungsoberfläche bindet ausschließlich an `127.0.0.1`. Host- und Origin-Prüfungen sowie ein Sitzungstoken schützen die schreibenden API-Aufrufe. Die Verwaltung ist für einen vertrauenswürdigen lokalen Rechner gedacht; es gibt keine Benutzerkonten oder Freigabe ins LAN.
+Der Installer erkennt Distribution und Projektpfad, kopiert den Starter nach `%LOCALAPPDATA%\GameServerIndy\Start-Manager.ps1` und erstellt **GameServer Indy.lnk**. Nach einem Umzug des Checkouts oder Änderungen am Starter erneut ausführen. Fremde Verknüpfungen werden nicht überschrieben. Weitere Aufrufe verwenden den laufenden Dienst. Fehlerprotokolle: `%LOCALAPPDATA%\GameServerIndy\logs\`. PowerShell-Ausführungsoptionen gelten nur für den jeweiligen Prozess.
 
-Der Spielserver verwendet standardmäßig `queryPort: 15637`. Windows-Firewall und gegebenenfalls Router müssen separat für die benötigten Spielverbindungen eingerichtet werden. Das Setup verändert keine Firewall- oder Routerregeln. Die Erreichbarkeit über das Internet ist damit noch nicht bestätigt.
+## Weitere Spiele ergänzen
 
-## Entwicklung und Prüfung
+1. `profiles/<spiel-id>.json` mit Formularfeldern, Kennzahlen und Startparametern hinzufügen. Textbasierte Dateiformate können für Zahlen `value_type: "string"` angeben.
+2. In `gameserver_manager/games.py` einen Adapter mit den Attributen und Methoden der vorhandenen Spiele ergänzen und in `GAME_TYPES` registrieren. CLI und Browser übernehmen die Spielauswahl automatisch.
+3. Speichern und regulären Stopp anhand der Herstelleranleitung prüfen. Die gemeinsame Windows-Anbindung unterstützt EXE-Start, ein optionales Konfigurationsargument und vorhandene PowerShell-Starter. Spiele mit RCON, Java oder anderen Stoppverfahren brauchen einen passenden Prozessadapter.
+4. Dateiformat, Zugangsdaten und profilbezogene Aktionen isoliert prüfen, dann die Installation als lokales Serverprofil hinzufügen.
+
+Frontend und zentrale HTTP-Routen benötigen keine weiteren spielspezifischen Formulare. Der Eintrag einer EXE allein garantiert keine vollständige Spielunterstützung.
+
+## Entwicklung
 
 ```bash
 python3 -m unittest discover -s tests -v
-node --check web/app.js
-python3 -m enshrouded_manager status
-```
-
-Die Tests arbeiten in temporären Installationen mit einem simulierten Prozessadapter und gemocktem Discord. Sie prüfen insbesondere das Sperren laufender Konfigurationen, die Originaldatei bei fehlerhaften Änderungen, Backups, Start-/Stopp-Reihenfolgen, unbekannte Felder, lokale API-Zugriffskontrollen und Discord-Fehler. Es werden dabei weder der echte Server gestartet noch Discord-Nachrichten verschickt. Node wird nur für die Entwicklungsprüfungen benötigt.
-
-Die Windows-Anbindung lässt sich zusätzlich mit einem temporären Testprozess prüfen:
-
-```bash
-ENSHROUDED_WINDOWS_TEST=1 python3 -m unittest discover -s tests -p test_windows_bridge.py -v
-```
-
-Unter Windows prüft dieses Skript zusätzlich Installer und Starter mit einer temporären Testinstallation, einschließlich Erststart, wiederholter Aufrufe, Pfaden mit Leerzeichen und Startfehlern:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\test-desktop-launcher.ps1
-```
-
-Für die Browserprüfung werden die Prüfwerkzeuge anhand des Lockfiles installiert. Der Prüfaufruf startet und beendet seine eigene isolierte Testinstallation auf Port 8766:
-
-```bash
-npm ci --no-audit --no-fund
-npx playwright install chromium
+npm run check:js
 npm run test:browser
 ```
 
-Die Browserprüfung bedient die Oberfläche einschließlich Erstkonfiguration, regulären und fehlerhaften Änderungen, Passwortanzeige, Discord, Serveraktionen und mobilen Ansichten. Screenshots liegen anschließend im ignorierten Ordner `artifacts/`. Falls Chromium bereits installiert ist, kann `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` auf dessen ausführbare Datei verweisen.
+Die Browserprüfung verwendet temporäre Installationen auf Port 8766, steuert keine echten Server und sendet keine Nachrichten. Screenshots: `artifacts/`. Fehlende Werkzeuge mit `npm ci --no-audit --no-fund` und `npx playwright install chromium` vorbereiten.
 
-GitHub Actions führt die Backend-Tests unter Linux und Windows aus, ergänzt unter Windows die Prozess- und Starterprüfungen und startet die Chromium-Browserprüfung in einem eigenen Job. Screenshots werden als Workflow-Artefakte abgelegt. Ein echter Desktop-Aufruf mit WSL und Standardbrowser wird zusätzlich lokal geprüft; der Windows-CI-Job verwendet dafür einen temporären Ersatzprozess.
+Windows-Prozessintegration mit temporären Testservern:
 
-Für diese lokale Prüfung zuerst die Verwaltung beenden und dann unter Windows `scripts/check-desktop-start.ps1` ausführen. Das Skript ruft die installierte Desktop-Verknüpfung auf, wartet auf die HTTP-Antwort, prüft die Wiederverwendung der laufenden Verwaltung und vergleicht die Spielserver-Prozess-IDs vor und nach dem Aufruf. Die Verwaltung bleibt danach aktiv; der Standardbrowser wird durch die Verknüpfung geöffnet.
+```bash
+GAMESERVER_WINDOWS_TEST=1 python3 -m unittest discover -s tests -p test_windows_bridge.py -v
+```
 
-## Quellen
+Unter Windows prüft `tests/test-desktop-launcher.ps1` die Starter isoliert. `scripts/check-desktop-start.ps1` ist die manuelle Kaltstartprüfung der echten Desktop-Verknüpfung. GitHub Actions prüft Backend auf Linux/Windows, Prozessanbindung, Starter und Chromium.
 
-Die mitgelieferte `enshrouded_server_readme.txt` der Installation (Version 0.9.0.0) ist die Grundlage für die aktuellen Felder und Gruppenrechte.
-
-- [Offizielle Serverkonfiguration](https://enshrouded.zendesk.com/hc/en-us/articles/16055441447709-Dedicated-Server-Configuration)
-- [Offizielle Rollen und Passwörter](https://enshrouded.zendesk.com/hc/en-us/articles/19191581489309-Server-Roles-Configuration)
-- [Server-FAQ und Startbereitschaft](https://enshrouded.zendesk.com/hc/en-us/articles/16056312924957-Dedicated-Server-FAQ)
-- [Discord: Execute Webhook](https://docs.discord.com/developers/resources/webhook#execute-webhook)
+Für weitere Arbeiten den [projektspezifischen Skill](skills/gameserver-indy/SKILL.md) verwenden und neue bestätigte Fallstricke dort pflegen.

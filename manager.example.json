@@ -1,5 +1,20 @@
 {
-  "server_directory": "D:\\SteamLibrary\\steamapps\\common\\EnshroudedServer",
+  "schema_version": 2,
+  "servers": [
+    {
+      "id": "enshrouded",
+      "game": "enshrouded",
+      "label": "Enshrouded",
+      "server_directory": "D:\\SteamLibrary\\steamapps\\common\\EnshroudedServer"
+    },
+    {
+      "id": "aska",
+      "game": "aska",
+      "label": "ASKA",
+      "server_directory": "D:\\SteamLibrary\\steamapps\\common\\ASKA Dedicated Server",
+      "config_path": "C:\\Servers\\ASKA\\config\\server properties.txt"
+    }
+  ],
   "discord": {
     "webhook_url": "",
     "auto_notify": false

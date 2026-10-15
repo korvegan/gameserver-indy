@@ -1,0 +1,32 @@
+{
+  "id": "aska",
+  "label": "ASKA",
+  "executable": "AskaServer.exe",
+  "config_filename": "server properties.txt",
+  "default_directory": "D:\\SteamLibrary\\steamapps\\common\\ASKA Dedicated Server",
+  "steam_game_app_id": 1898300,
+  "launch_steam_app_id": 1898300,
+  "steam_server_app_id": 3246670,
+  "config_argument": "-propertiesPath",
+  "logs": "external",
+  "external_launcher": true,
+  "fields": [
+    {"key": "server name", "label": "Servername", "type": "text", "required": true, "wide": true},
+    {"key": "display name", "label": "Name einer neuen Welt", "type": "text", "required": true},
+    {"key": "save id", "label": "Save-ID", "type": "text", "lock_with_external_launcher": true, "help": "Beim vorhandenen externen Starter ist diese ID an die bestehende Welt gebunden."},
+    {"key": "steam game port", "label": "Spielport", "type": "number", "value_type": "string", "min": 1, "max": 65535, "required": true},
+    {"key": "steam query port", "label": "Query-Port", "type": "number", "value_type": "string", "min": 1, "max": 65535, "required": true},
+    {"key": "region", "label": "Region", "type": "select", "options": {"default": "Automatisch", "europe": "Europa", "asia": "Asien", "japan": "Japan", "south america": "Südamerika", "south korea": "Südkorea", "usa east": "USA Ost", "usa west": "USA West", "australia": "Australien", "canada east": "Kanada Ost", "hong kong": "Hongkong", "india": "Indien", "turkey": "Türkei", "united arab emirates": "VAE", "usa south central": "USA Süd", "south africa": "Südafrika"}},
+    {"key": "autosave style", "label": "Automatisch speichern", "type": "select", "options": {"every morning": "Jeden Morgen", "every 5 minutes": "Alle 5 Minuten", "every 10 minutes": "Alle 10 Minuten", "every 15 minutes": "Alle 15 Minuten", "every 20 minutes": "Alle 20 Minuten", "disabled": "Deaktiviert"}},
+    {"key": "keep server world alive", "label": "Welt ohne Spieler", "type": "select", "options": {"false": "Pausieren", "true": "Weiterlaufen lassen"}},
+    {"key": "mode", "label": "Spielmodus", "type": "select", "options": {"normal": "Normal", "custom": "Benutzerdefiniert"}},
+    {"key": "custom game preset path", "label": "Pfad zur Spielvorlage", "type": "text"},
+    {"key": "password", "label": "Neues Serverpasswort", "type": "password", "help": "Leer lassen, um das vorhandene Passwort beizubehalten."},
+    {"key": "authentication token", "label": "Neuer Steam-Gameserver-Token", "type": "password", "help": "Für die Spiel-App-ID 1898300 erstellen. Leer lassen behält den gespeicherten Token; er wird nicht an den Browser übertragen."}
+  ],
+  "metrics": [
+    {"key": "save id", "label": "Welt-ID"},
+    {"key": "autosave style", "label": "Autosave", "options": {"every morning": "Jeden Morgen", "every 5 minutes": "Alle 5 Min.", "every 10 minutes": "Alle 10 Min.", "every 15 minutes": "Alle 15 Min.", "every 20 minutes": "Alle 20 Min.", "disabled": "Aus"}},
+    {"key": "steam query port", "label": "Query-Port"}
+  ]
+}

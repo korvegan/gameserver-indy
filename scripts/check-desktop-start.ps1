@@ -1,19 +1,25 @@
 # Manual check on the actual Windows desktop. Starts the manager and opens its UI.
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
-$application = Join-Path $env:LOCALAPPDATA 'EnshroudedIndy'
+$application = Join-Path $env:LOCALAPPDATA 'GameServerIndy'
 $launcher = Join-Path $application 'Start-Manager.ps1'
-$shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Enshrouded Indy.lnk'
+$shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'GameServer Indy.lnk'
 $initial = & $launcher -CheckOnly
 if ($initial.Running) { throw 'Fuer den Kaltstart-Test zuerst die laufende Verwaltung beenden.' }
 $project = Split-Path -Parent $PSScriptRoot
 $settingsPath = Join-Path $project 'manager.local.json'
 if (-not (Test-Path -LiteralPath $settingsPath)) { $settingsPath = Join-Path $project 'manager.example.json' }
-$directory = (Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json).server_directory
+$settings = Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$profiles = @($settings.servers)
+if (-not $settings.servers) { $profiles = @([pscustomobject]@{ id = 'enshrouded'; game = 'enshrouded'; server_directory = $settings.server_directory }) }
 $bridge = Join-Path $PSScriptRoot 'windows-server.ps1'
 function Get-GameProcesses {
-    $state = & $bridge -Action Status -ServerDirectory $directory | ConvertFrom-Json
-    return (@($state.processes | ForEach-Object { $_.pid } | Sort-Object) -join ',')
+    $states = foreach ($profile in $profiles) {
+        $game = Get-Content -LiteralPath (Join-Path $project ('profiles\' + $profile.game + '.json')) -Raw -Encoding UTF8 | ConvertFrom-Json
+        $state = & $bridge -Action Status -ServerDirectory $profile.server_directory -ExecutableName $game.executable | ConvertFrom-Json
+        $profile.id + ':' + (@($state.processes | ForEach-Object { $_.pid } | Sort-Object) -join ',')
+    }
+    return ($states -join ';')
 }
 $gameBefore = Get-GameProcesses
 Start-Process -FilePath $shortcut

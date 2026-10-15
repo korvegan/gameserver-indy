@@ -4,7 +4,7 @@ param(
     [string]$ProjectDirectory,
     [ValidateRange(1, 65535)][int]$Port = 8765,
     [string]$DesktopDirectory = [Environment]::GetFolderPath('Desktop'),
-    [string]$ApplicationDirectory = (Join-Path $env:LOCALAPPDATA 'EnshroudedIndy')
+    [string]$ApplicationDirectory = (Join-Path $env:LOCALAPPDATA 'GameServerIndy')
 )
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
@@ -14,7 +14,7 @@ foreach ($name in @('WslDistribution', 'WslUser', 'ProjectDirectory')) {
     if ($PSBoundParameters.ContainsKey($name)) { $parameters[$name] = Get-Variable -Name $name -ValueOnly }
 }
 $settings = & $source @parameters
-$shortcutPath = Join-Path $DesktopDirectory 'Enshrouded Indy.lnk'
+$shortcutPath = Join-Path $DesktopDirectory 'GameServer Indy.lnk'
 $launcherPath = Join-Path $ApplicationDirectory 'Start-Manager.ps1'
 $shell = New-Object -ComObject WScript.Shell
 if (Test-Path -LiteralPath $shortcutPath) {
@@ -32,17 +32,20 @@ $shortcut.TargetPath = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\po
 $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $launcherPath + '"'
 $shortcut.WorkingDirectory = $ApplicationDirectory
 $shortcut.IconLocation = (Join-Path $env:WINDIR 'System32\shell32.dll') + ',14'
-$managerSettings = Join-Path (Split-Path -Parent $PSScriptRoot) 'manager.local.json'
-if (Test-Path -LiteralPath $managerSettings) {
-    $serverDirectory = (Get-Content -LiteralPath $managerSettings -Raw -Encoding UTF8 | ConvertFrom-Json).server_directory
-    $icon = Join-Path $serverDirectory 'enshrouded_server.exe'
-    if (Test-Path -LiteralPath $icon) { $shortcut.IconLocation = $icon + ',0' }
-}
-$shortcut.Description = 'Startet die lokale Enshrouded-Verwaltung und oeffnet die Browseroberflaeche.'
+$shortcut.Description = 'Startet GameServer Indy und oeffnet die lokale Browseroberflaeche.'
 $shortcut.WindowStyle = 7
 $shortcut.Save()
 $saved = $shell.CreateShortcut($shortcutPath)
 if ($saved.TargetPath -ne $shortcut.TargetPath -or $saved.Arguments -ne $shortcut.Arguments) {
     throw 'Die gespeicherte Verknuepfung stimmt nicht mit dem Starter ueberein.'
+}
+# Migrate only our former shortcut, preserving unrelated links and archived logs.
+$legacyPath = Join-Path $DesktopDirectory 'Enshrouded Indy.lnk'
+if (Test-Path -LiteralPath $legacyPath) {
+    $legacy = $shell.CreateShortcut($legacyPath)
+    $legacyLauncher = Join-Path $env:LOCALAPPDATA 'EnshroudedIndy\Start-Manager.ps1'
+    if ($legacy.Arguments.IndexOf('-File "' + $legacyLauncher + '"', [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+        Remove-Item -LiteralPath $legacyPath
+    }
 }
 [pscustomobject]@{ Shortcut = $shortcutPath; Launcher = $launcherPath; Url = ('http://127.0.0.1:' + $settings.Port) }

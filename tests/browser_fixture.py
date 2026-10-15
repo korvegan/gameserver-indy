@@ -5,11 +5,13 @@ import tempfile
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from enshrouded_manager.core import Manager, atomic_json
-from enshrouded_manager.server import serve
+from gameserver_manager.core import GameServerManager, atomic_json
+from gameserver_manager.registry import ServerRegistry
+from gameserver_manager.games import GAME_TYPES
+from gameserver_manager.server import serve
 from test_manager import FakeBridge
 
-with tempfile.TemporaryDirectory(prefix="enshrouded-browser-") as temporary:
+with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
     root = Path(temporary)
     installation = root / "EnshroudedServer"
     installation.mkdir()
@@ -17,5 +19,8 @@ with tempfile.TemporaryDirectory(prefix="enshrouded-browser-") as temporary:
     atomic_json(root / "manager.local.json", {
         "server_directory": str(installation), "discord": {"webhook_url": "", "auto_notify": False},
     })
-    with patch("enshrouded_manager.core.send_discord"):
-        serve(Manager(root, FakeBridge()), 8766)
+    aska = root / "ASKA Server"
+    aska.mkdir()
+    (aska / "AskaServer.exe").touch()
+    with patch("gameserver_manager.core.send_discord"), patch("gameserver_manager.core.WindowsServerBridge", side_effect=lambda *args: FakeBridge()), patch.object(GAME_TYPES["aska"], "default_directory", str(aska)):
+        serve(ServerRegistry(root, GameServerManager(root, FakeBridge())), 8766)

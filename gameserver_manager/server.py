@@ -3,9 +3,10 @@ from __future__ import annotations
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import secrets
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
-from .core import Manager, ManagerError, ROOT
+from .core import ManagerError, ROOT
+from .registry import ServerRegistry
 
 STATIC = ROOT / "web"
 
@@ -13,14 +14,14 @@ STATIC = ROOT / "web"
 class LocalServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, manager: Manager, port=8765):
-        self.manager = manager
+    def __init__(self, manager, port=8765):
+        self.registry = manager if isinstance(manager, ServerRegistry) else ServerRegistry(manager.root, manager)
         self.token = secrets.token_urlsafe(32)
         super().__init__(("127.0.0.1", port), Handler)
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "EnshroudedIndy/0.1"
+    server_version = "GameServerIndy/0.2"
 
     def setup(self):
         super().setup()
@@ -53,9 +54,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/api/session":
                 return self.send(200, {"token": self.server.token})
-            manager = self.server.manager
+            if path == "/api/servers":
+                return self.send(200, self.server.registry.catalog())
+            selected = parse_qs(urlsplit(self.path).query).get("server", [None])[0]
+            manager = self.server.registry.get(selected)
             if path == "/api/state":
-                return self.send(200, {"status": manager.status(), "config": manager.config(), "events": manager.events()})
+                return self.send(200, {"status": manager.status(), "config": manager.public_config(), "events": manager.events(),
+                                       "game_profile": manager.game.schema,
+                                       **self.server.registry.catalog()})
             if path == "/api/logs":
                 return self.send(200, manager.logs())
             files = {
@@ -93,9 +99,11 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError()
         except (ValueError, UnicodeError):
             return self.send(400, {"error": "Ungültiges JSON."})
-        manager = self.server.manager
         path = urlsplit(self.path).path
         try:
+            if path == "/api/servers":
+                return self.send(200, self.server.registry.register(body))
+            manager = self.server.registry.get(body.get("server_id"), explicit=path not in ("/api/discord/settings", "/api/discord/send"))
             if path == "/api/setup":
                 result = manager.setup()
             elif path in ("/api/start", "/api/stop", "/api/restart"):
@@ -115,9 +123,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(500, {"error": "Datei konnte nicht gespeichert werden. Pfad und Berechtigungen prüfen."})
 
 
-def serve(manager: Manager, port=8765):
+def serve(manager, port=8765):
     with LocalServer(manager, port) as server:
-        print(f"Enshrouded Indy: http://127.0.0.1:{server.server_port}", flush=True)
+        print(f"GameServer Indy: http://127.0.0.1:{server.server_port}", flush=True)
         print("Verwaltung mit Strg+C beenden. Ein laufender Spielserver bleibt dabei aktiv.", flush=True)
         try:
             server.serve_forever()
