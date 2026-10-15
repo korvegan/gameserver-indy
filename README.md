@@ -127,3 +127,9 @@ python3 -m gameserver_manager demo
 ```
 
 Der Test verbindet einen Gruppenmoment, vier gleiche Auszeichnungen, eine stabile Szenen-ID und genau eine Stub-Mitteilung. Es werden keine echten Errungenschaften oder Discord-Nachrichten erzeugt.
+
+Die Oberfläche zeigt Serveraktionen als **Aufträge** mit Phase und Ergebnis. Während eines Auftrags bleibt ein anderes Profil bedienbar. Die Besitzerkonfiguration wird gezielt unter **Einstellungen** geladen und ist kein Teil der regelmäßigen Statusantwort. Ungespeicherte Entwürfe bleiben bei Navigation erhalten; ein Profilwechsel fragt vor dem Verwerfen nach.
+
+**Spiele / Mods** zeigt den unabhängigen Spielkatalog mit vorhandenen Serverprofilen und dem Stand der Verwaltungsfunktionen. **Sturmklingen** liest gespeicherte Gruppenmomente und deren feste Szenenzuordnung. Erfassung, Modinstallation und das animierte illustrierte Geschichtsbild werden in den jeweiligen Fachissues ergänzt. Im normalen Betrieb werden keine Beispieldaten angelegt. Die Chronik wird unabhängig vom Serverstatus aktualisiert; in Hintergrundtabs pausiert das allgemeine Statuspolling.
+
+JavaScript ist in native Browsermodule für API, Zustand, Formulare, Navigation, Aufträge und Ansichten aufgeteilt. Ein Bundler ist nicht nötig; `npm run check:js` prüft alle ausgelieferten Module. Die Browserfixture hat zusätzliche künstliche Verzögerungen und eine ausschließlich für Tests injizierte Familienidentität. Produktcode vertraut keinem vom Browser gelieferten Rollenheader.

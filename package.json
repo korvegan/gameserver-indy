@@ -1,10 +1,11 @@
 {
   "name": "gameserver-indy",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "type": "module",
   "private": true,
   "description": "Development checks for GameServer Indy",
   "scripts": {
-    "check:js": "node --check web/app.js",
+    "check:js": "node tests/check-js.cjs",
     "test:browser": "node tests/run-browser-check.cjs"
   },
   "devDependencies": {

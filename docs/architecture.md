@@ -69,6 +69,27 @@ Vier Worker, höchstens 16 aktive/wartende Ziele. Ein Ziel besitzt höchstens ei
 
 Zustände: `queued → running → succeeded/failed`; nach unterbrochener Verwaltung `interrupted`. Der Fortschritt nennt die tatsächliche Phase und eine Arbeitseinheit, keine erfundene Prozentzahl für ein Spiel. Diese Operationen sind ausdrücklich weder abbrechbar noch fortsetzbar. Ein Neustart der Verwaltung wiederholt keinen unklar abgeschlossenen Stopp, Download oder Dateischritt. Prozessstatus und vorhandene bereinigte Logs dienen der anschließenden Prüfung. Spätere Sicherungs-/Update-/Downloadschritte können eigene ehrliche Fortschritts- und Wiederanlaufverträge erhalten.
 
+Schlägt das Speichern eines Workerzustands vor oder nach dem eigentlichen Seiteneffekt fehl, wird das Ergebnis als unbekannt/unterbrochen geführt. Solange die Datenbank keine Änderung annimmt, hält die Verwaltung diese terminale Sicht im Speicher; der nächste mögliche Zugriff gleicht sie in SQLite ab. Der Callback wird nicht erneut ausgeführt. Ein Prozessneustart behandelt auch übrig gebliebene `queued`-/`running`-Einträge als unterbrochen.
+
+## Frontend
+
+| Modul | Verantwortung |
+| --- | --- |
+| `app.js` | Zusammensetzung, Auswahlwechsel, gezieltes Laden und Auslösen fachlicher Abläufe. |
+| `api.js` | HTTP/CSRF und Fehler; jedes Instanzziel wird ausdrücklich übergeben. Kein Lesen einer veränderlichen globalen Auswahl im Client. |
+| `state.js` | Eindeutige Quelle für Auswahlgeneration, Identität/Rechte, Entwürfe und laufende Aufträge. |
+| `forms.js` | Schemabasierte Eingaben, JSON-Entwurf und Erhalt ungespeicherter Daten. |
+| `navigation.js`, `dom.js` | Gemeinsame Navigation, sichere Textelemente und schließbare Meldungen. |
+| `jobs.js` | Auftragsverfolgung, Phase/Ergebnis und getrennte Sperre je Ziel. |
+| `views/server.js`, `views/logs.js` | Status/Historie und eine unabhängig gegen verspätete Antworten geschützte Logansicht. |
+| `views/catalog.js`, `views/community.js` | Eigenständige Spielidentität/Fähigkeiten sowie Chronik mit stabiler Szenenzuordnung. |
+
+Eine neue Auswahl verwirft alte Statusanfragen und erhöht eine Auswahlgeneration. Antworten und Konfigurations-/Loganforderungen prüfen ihre ursprüngliche Auswahl; sie ändern das Prozessziel nicht nachträglich. Ein abgelehnter Profilwechsel erhält den Entwurf. Navigation erhält auch Discord-/Nachrichten-/Registrierungsentwürfe. Verlassen mit ungespeicherten Daten wird angekündigt.
+
+Status kommt aus `/api/status`; die Besitzerkonfiguration wird nur in der Einstellungsansicht geladen. Aufträge werden getrennt verfolgt, sodass ein anderer Server während eines Starts bedienbar bleibt. Allgemeines Statuspolling läuft sichtbar alle acht Sekunden und pausiert in Hintergrundtabs sowie in Spiele-/Gemeinschaftsansichten. Aktive Aufträge werden im Hintergrund langsamer weiterverfolgt. Chronik und Szene werden nur gezielt aktualisiert; unveränderte Ereignisse bauen bestehende DOM-Szenen nicht neu auf.
+
+Die neuen Ansichten erlauben das Lesen vorhandener Katalog-/Gemeinschaftsdaten. Der Testdatensatz stammt ausschließlich aus der Browserfixture; der normale Betrieb erhält keine erfundenen Erfolge. Mitgliederverwaltung, manuelles Erfassen, Moderation, Uploads und das illustrierte animierte Geschichtsbild folgen den Fachissues. Die ruhige Darstellung mit Tastaturzugang und reduzierter Bewegung ist bereits nutzbar.
+
 ## Persistenz, Migration und Rückweg
 
 `data/platform.sqlite3`, Schema 1, speichert Aufträge, Gemeinschaftsrevisionen, stabile Szenenpositionen und freigegebene Versandzustände. Jede Operation nutzt eine eigene Verbindung; kurze Schreibtransaktionen sind atomar. Keine Verbindung wird zwischen Threads geteilt. Der lokale Speicher verwendet das normale SQLite-Journal statt zusätzlicher Dienste. Auftragsargumente und Geheimnisse werden nicht persistiert.
@@ -85,12 +106,12 @@ python3 -m gameserver_manager demo
 
 Der Befehl verwendet ausschließlich ein temporäres Verzeichnis und einen Discord-Stub. Ein Gruppenmoment für vier synthetische Mitglieder wird doppelt eingereicht und verarbeitet: genau ein Chronikeintrag, vier gleiche Badge-Zuordnungen, eine dauerhaft zugeordnete Szene und eine Stub-Mitteilung. Es werden weder eine echte Errungenschaft erfunden noch echte Nachrichten versendet.
 
-`(event_id, revision)` ist unveränderlich und eindeutig. Korrekturen erhöhen die Revision lückenlos; die Szene und ihre Position bleiben erhalten. `(event_id, revision, target)` identifiziert den Versand. Eine bestätigte ältere Nachrichten-ID wird an einen Korrekturtransport zur Aktualisierung übergeben. Bei unklarem Versand wird nicht blind neu veröffentlicht. Auch nach Neustart oder weiterer Korrektur bleibt ein unklarer Vorgang prüfpflichtig. Live-Veröffentlichung, Medien und umfangreiche Chronikverwaltung folgen #22–#26.
+`(event_id, revision)` ist unveränderlich und eindeutig. Korrekturen erhöhen die Revision lückenlos; die Szene und ihre Position bleiben erhalten. `(event_id, revision, target)` identifiziert den Versand. Eine bestätigte ältere Nachrichten-ID wird an einen Korrekturtransport zur Aktualisierung übergeben. Überholte Revisionen werden weder neu eingereiht noch nachträglich versendet; alte wartende Vorgänge werden `superseded`. Eine Korrektur wartet auf einen noch laufenden Vorgänger. Bei unklarem Versand wird nicht blind neu veröffentlicht. Auch nach Neustart oder weiterer Korrektur bleibt ein unklarer Vorgang prüfpflichtig. Live-Veröffentlichung, Medien und umfangreiche Chronikverwaltung folgen #22–#26.
 
 ## Umsetzungsstufen und Prüfung
 
 1. **Backend-PR:** Dienste, Sperren, Datenbank, Rechte/Datensichten, Hintergrundaufträge und ausführbarer Gemeinschaftsdurchstich. Bisheriges Frontend läuft über die kompatiblen Routen weiter. Backend-, Browser- und native Windows-Prüfungen vor dem Merge.
-2. **Frontend-PR:** Module für Client, Zustand, Formulare, Navigation, Aufträge und Ansichten. Getrennte Status-/Besitzerabfragen, verspätete Antworten absichern, Spiele/Mods und Sturmklingen als eigenständige Bereiche vorbereiten. Desktop/Mobil, Tastatur, ungespeicherte Eingaben und reduzierte Bewegung prüfen. Bewertung/Roadmap abschließen und Messwerte dokumentieren.
+2. **Frontend-PR:** Module für Client, Zustand, Formulare, Navigation, Aufträge und Ansichten. Getrennte Status-/Besitzerabfragen, verspätete Antworten absichern, Spiele/Mods und Sturmklingen als eigenständige Bereiche vorbereiten. Desktop/Mobil, Tastatur, ungespeicherte Eingaben und reduzierte Bewegung prüfen. Bewertung/Roadmap abschließen und Messwerte dokumentieren. Enthält auch die Korrekturen der beiden Backend-Reviewbefunde. Nach Nutzeranweisung ist vor jedem weiteren Merge ein separates Sub-Agent-Review verpflichtend.
 3. **Fachausbau nach Auftrag:** #5/#7/#6 für belegte Spielfähigkeiten, Zustand und Datenerhalt; danach #29/#8/#16/#17 gemäß Matrix. Das Refactoring wartet nicht auf fertige Familienidentitäten, um den Vertrag dafür zu testen; #17 setzt auf diesen geprüften Vertrag auf.
 
 Regressionen prüfen konkurrierende Ziele, Rechte auch auf alten Routen, Geheimnisse, unbekannten Wiederanlauf, externe Konfigurationen/BOM/unbekannte Felder und wiederholte Ereignisverarbeitung. Echter ASKA-Stopp/Welt-Restore und Zugriff aus externem Netz bleiben separate Betriebsprüfungen. Zeit-/Antwortgrößenmessungen mit Testprozessen dienen der Architekturprüfung, nicht als Leistungszusage für eine echte Viererrunde.
@@ -98,3 +119,5 @@ Regressionen prüfen konkurrierende Ziele, Rechte auch auf alten Routen, Geheimn
 ### Gemessene API-Kosten
 
 `python3 tests/benchmark_platform.py` am 15.10.2026: je 30 HTTP-Abrufe auf einem lokalen Testserver mit `FakeBridge`, ohne echte Windows-/Spielbelastung. Der bisherige Besitzervertrag `/api/state` lieferte 4.013 Byte bei Median 0,921 ms; die getrennte Statussicht 663 Byte bei 0,842 ms. Während ein Teststart bewusst blockierte, antwortete dasselbe Profil im Median nach 0,869 ms (p95 1,045 ms), das andere nach 0,836 ms (p95 0,922 ms). Damit ist vor allem die fehlende Kopplung an den langen Auftrag nachgewiesen. Der Statuskörper ist in diesem Beispiel rund 83 % kleiner; zusätzliche gezielte UI-Abfragen sind darin nicht enthalten.
+
+Die Browserregression zählt während 8,5 Sekunden in der Gemeinschaftsansicht keine allgemeinen Statusabrufe und bestätigt dieselbe DOM-Szene nach gezieltem Neuladen. Vor dem ersten Öffnen der Einstellungen wird keine Besitzerkonfiguration geladen. Das misst das Aktualisierungsverhalten, keine Spiel-FPS oder reale CPU-Auslastung. Es wurden keine zusätzlichen Laufzeitbibliotheken eingeführt.

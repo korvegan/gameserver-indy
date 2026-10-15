@@ -7,6 +7,10 @@ const fs = require('node:fs');
   const browser = await chromium.launch({headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined});
   const page = await browser.newPage({viewport: {width: 1440, height: 960}});
   const errors = [];
+  const requests = [];
+  page.on('request', request => {
+    if (request.resourceType() === 'fetch') requests.push({method: request.method(), path: new URL(request.url()).pathname});
+  });
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => {
     if (message.type() === 'error' && !message.text().includes('409 (Conflict)')) errors.push(message.text());
@@ -25,6 +29,7 @@ const fs = require('node:fs');
     await page.locator('#setup').click();
     await expectNotice('Server vorbereitet');
     assert.equal(await page.locator('#start').isEnabled(), true);
+    assert.equal(requests.some(request => request.path === '/api/state' || request.path === '/api/config'), false);
     await nav('Einstellungen').click();
     assert.equal(await page.getByLabel('Servername', {exact: true}).inputValue(), 'Enshrouded Indy');
     await page.getByRole('button', {name: 'Anzeigen', exact: true}).first().click();
@@ -134,18 +139,18 @@ const fs = require('node:fs');
     await expectNotice('Server gestoppt');
     const otherState = await page.request.get('http://127.0.0.1:8766/api/state?server=enshrouded');
     assert.equal((await otherState.json()).status.running, true);
-    await page.route('**/api/state?server=aska', route => route.fulfill({status: 409, contentType: 'application/json', body: JSON.stringify({error: 'ASKA-Testkonfiguration nicht lesbar'})}));
+    await page.route('**/api/status?server=aska', route => route.fulfill({status: 409, contentType: 'application/json', body: JSON.stringify({error: 'ASKA-Testkonfiguration nicht lesbar'})}));
     await page.locator('#refresh').click();
     await expectNotice('ASKA-Testkonfiguration nicht lesbar');
     await page.locator('#server-select').selectOption('enshrouded');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Indy Browser Test');
     assert.equal(await page.locator('#stop').isEnabled(), true);
-    await page.unroute('**/api/state?server=aska');
+    await page.unroute('**/api/status?server=aska');
     await page.locator('#server-select').selectOption('aska');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'ASKA Browser Test');
     await page.screenshot({path: 'artifacts/aska-mobile.png', fullPage: true});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.route('**/api/state?server=aska', async route => {
+    await page.route('**/api/status?server=aska', async route => {
       await new Promise(resolve => setTimeout(resolve, 200));
       await route.continue();
     });
@@ -154,8 +159,80 @@ const fs = require('node:fs');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Indy Browser Test');
     await page.locator('#server-select').selectOption('aska');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'ASKA Browser Test');
-    await page.unroute('**/api/state?server=aska');
+    await page.unroute('**/api/status?server=aska');
     assert.deepEqual(errors, []);
+    // Rejected profile switches preserve a real draft; navigation itself keeps it.
+    await nav('Einstellungen').click();
+    await page.locator('[name="server name"]').fill('Nicht verwerfen');
+    page.removeAllListeners('dialog');
+    page.once('dialog', dialog => dialog.dismiss());
+    await page.locator('#server-select').selectOption('enshrouded');
+    assert.equal(await page.locator('#server-select').inputValue(), 'aska');
+    assert.equal(await page.locator('[name="server name"]').inputValue(), 'Nicht verwerfen');
+    page.on('dialog', dialog => dialog.accept());
+    await nav('Übersicht').click();
+    await nav('Einstellungen').click();
+    assert.equal(await page.locator('[name="server name"]').inputValue(), 'Nicht verwerfen');
+    await page.locator('#server-select').selectOption('enshrouded');
+    await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Indy Browser Test');
+    await page.locator('#server-select').selectOption('aska');
+    await page.waitForFunction(() => document.querySelector('[name="server name"]')?.value === 'ASKA Browser Test');
+
+    // A long job permits selection and independent work on the other instance.
+    await nav('Übersicht').click();
+    await page.locator('#start').click();
+    await page.waitForFunction(() => document.querySelector('#job-list').textContent.includes('Läuft'));
+    assert.equal(await page.locator('#server-select').isEnabled(), true);
+    await page.locator('#server-select').selectOption('enshrouded');
+    await page.waitForFunction(() => !document.querySelector('#stop').disabled);
+    await page.locator('#stop').click();
+    await expectNotice('Server gestoppt');
+    await page.locator('#server-select').selectOption('aska');
+    await page.waitForFunction(() => !document.querySelector('#stop').disabled);
+    await page.locator('#stop').click();
+    await expectNotice('Server gestoppt');
+
+    await nav('Spiele / Mods').click();
+    await page.getByRole('heading', {name: 'Raft', exact: true}).waitFor();
+    assert.ok((await page.locator('#game-catalog').textContent()).includes('Kein Serveradapter eingerichtet'));
+    await nav('Sturmklingen').click();
+    await page.locator('#scene-qa-milestone').waitFor();
+    assert.equal(await page.locator('#chronicle .badge-list li').count(), 4);
+    await page.evaluate(() => { window.qaScene = document.querySelector('#scene-qa-milestone'); });
+    const pollCount = requests.filter(request => request.path === '/api/status').length;
+    await page.locator('#refresh-community').click();
+    await page.waitForTimeout(8500);
+    assert.equal(requests.filter(request => request.path === '/api/status').length, pollCount);
+    assert.equal(await page.evaluate(() => window.qaScene === document.querySelector('#scene-qa-milestone')), true);
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.getByRole('button', {name: 'Szene ansehen', exact: true}).focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'scene-qa-milestone');
+    await page.screenshot({path: 'artifacts/sturmklingen-mobile.png', fullPage: true});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+
+    // The identity is injected only by the fixture. Browser UI and API agree.
+    const family = await browser.newContext({extraHTTPHeaders: {'X-QA-Identity': 'family'}, viewport: {width: 390, height: 844}});
+    try {
+      const familyPage = await family.newPage();
+      await familyPage.goto('http://127.0.0.1:8766');
+      await familyPage.waitForFunction(() => !document.querySelector('#start').disabled);
+      assert.equal(await familyPage.getByRole('button', {name: 'Einstellungen', exact: true}).count(), 0);
+      assert.equal(await familyPage.locator('#server-select option').count(), 1);
+      assert.equal(await familyPage.locator('#stop').isDisabled(), true);
+      const denied = await familyPage.request.get('http://127.0.0.1:8766/api/config?server=aska');
+      assert.equal(denied.status(), 403);
+      await familyPage.locator('#start').click();
+      await familyPage.waitForFunction(() => document.querySelector('#notice').textContent.includes('Auftrag abgeschlossen'));
+      assert.equal(await familyPage.locator('#stop').isDisabled(), true);
+      await familyPage.screenshot({path: 'artifacts/family-mobile.png', fullPage: true});
+      assert.equal(await familyPage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    } finally { await family.close(); }
+    await nav('Übersicht').click();
+    await page.locator('#refresh').click();
+    await page.waitForFunction(() => !document.querySelector('#stop').disabled);
+    await page.locator('#stop').click();
+    await expectNotice('Server gestoppt');
     await nav('Serverlog').click();
     await page.waitForFunction(() => document.querySelector('#log-content').textContent.includes('The session is now open!'));
     assert.equal((await page.locator('#log-content').textContent()).includes('browser-secret-from-log'), false);
@@ -165,14 +242,15 @@ const fs = require('node:fs');
     await page.screenshot({path: 'artifacts/aska-logs-mobile.png', fullPage: true});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await nav('Übersicht').click();
-    await page.route('**/api/start', route => route.fulfill({status: 409, contentType: 'application/json', body: JSON.stringify({error: 'Teststart fehlgeschlagen'})}));
+    await page.route('**/api/jobs', route => route.request().method() === 'POST'
+      ? route.fulfill({status: 409, contentType: 'application/json', body: JSON.stringify({error: 'Teststart fehlgeschlagen'})}) : route.continue());
     await page.locator('#start').click();
     await expectNotice('Teststart fehlgeschlagen');
     assert.equal(await page.locator('#logs').isVisible(), true);
     assert.equal(await page.locator('#log-source').inputValue(), 'launcher');
-    await page.unroute('**/api/start');
+    await page.unroute('**/api/jobs');
     assert.deepEqual(errors, []);
-    console.log('Browser QA passed: Enshrouded + ASKA profiles, isolated actions, secret replacement, configuration, Discord, desktop/mobile.');
+    console.log('Browser QA passed: profiles, jobs, late responses, drafts, family permissions, stable community scene, logs, Discord, desktop/mobile.');
   } finally {
     await browser.close();
   }

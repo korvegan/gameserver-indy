@@ -1,8 +1,10 @@
 """Regression tests for the application boundaries, not real games or accounts."""
 import json
+import sqlite3
 import threading
 import urllib.error
 import urllib.request
+from unittest.mock import patch
 
 from gameserver_manager.application import Application
 from gameserver_manager.catalog import GameCatalog
@@ -105,15 +107,58 @@ class PlatformTests(ManagerFixture):
         self.assertNotIn(b"private-token", database)
         self.assertNotIn(b"private-password", database)
 
+    def test_storage_failure_before_and_after_callback_becomes_interrupted_without_replay(self):
+        for phase in ("running", "succeeded"):
+            with self.subTest(phase=phase):
+                calls = []
+                update = self.app.jobs._update
+                failed = []
+
+                def flaky(job_id, state, message, result=None):
+                    if state == phase and not failed:
+                        failed.append(state)
+                        raise sqlite3.OperationalError("temporary write failure")
+                    return update(job_id, state, message, result)
+
+                with patch.object(self.app.jobs, "_update", side_effect=flaky):
+                    job, future = self.app.jobs.submit("storage-test", "start", OWNER.id,
+                        lambda: calls.append("effect") or {"message": "done"})
+                    with self.assertRaisesRegex(ManagerError, "Ausgang unbekannt"):
+                        future.result(timeout=2)
+                    self.assertEqual(self.app.jobs.get(job["id"])["state"], "interrupted")
+                self.assertEqual(calls, [] if phase == "running" else ["effect"])
+                self.assertFalse(self.app.jobs.active)
+
+    def test_unpersisted_terminal_outcome_is_visible_and_reconciled_when_storage_recovers(self):
+        update = self.app.jobs._update
+        with patch.object(self.app.jobs, "_update", side_effect=sqlite3.OperationalError("write unavailable")):
+            job, future = self.app.jobs.submit("storage-test", "start", OWNER.id, lambda: {"message": "never called"})
+            with self.assertRaises(ManagerError):
+                future.result(timeout=2)
+            self.assertEqual(self.app.jobs.get(job["id"])["state"], "interrupted")
+            self.assertEqual(self.app.jobs.recent("storage-test")[0]["state"], "interrupted")
+        self.assertEqual(self.app.jobs.get(job["id"])["state"], "interrupted")
+        self.assertFalse(self.app.jobs.unsettled)
+        with self.app.database.connect() as db:
+            self.assertEqual(db.execute("SELECT state FROM jobs WHERE id=?", (job["id"],)).fetchone()[0], "interrupted")
+
     def test_startup_and_sqlite_backup_preserve_existing_external_files_and_unknown_fields(self):
         original = self.aska.config_path.read_bytes()
         settings = self.registry.path.read_bytes()
+        event = {"id": "snapshot-event", "revision": 1, "game_id": "aska", "title": "Vor Sicherung",
+                 "source": "test", "badge_id": "snapshot-badge", "member_ids": ["one"]}
+        self.app.community.record(event, publish=True)
         second = Database(self.app.database.path)
         snapshot = self.root / "snapshot.sqlite3"
         second.backup(snapshot)
         with self.assertRaises(FileExistsError):
             second.backup(snapshot)
         restored = Database(snapshot)
+        self.app.community.record({**event, "revision": 2, "title": "Nach Sicherung"})
+        restored_events = CommunityService(restored, self.app.catalog).recent(OWNER)
+        self.assertEqual(restored_events[0]["title"], "Vor Sicherung")
+        self.assertEqual(restored_events[0]["scene"]["id"], "scene-snapshot-event")
+        self.assertEqual(self.app.community.recent(OWNER)[0]["title"], "Nach Sicherung")
         with restored.connect() as db:
             self.assertEqual(db.execute("PRAGMA user_version").fetchone()[0], 1)
         self.assertEqual(self.aska.config_path.read_bytes(), original)
@@ -190,6 +235,52 @@ class PlatformTests(ManagerFixture):
         self.assertEqual(len(result["events"][0]["awards"]), 4)
         self.assertEqual(len(result["discord_stub"]), 1)
         self.assertEqual(result["events"][0]["scene"]["id"], result["scene_id"])
+
+    def test_old_revision_replay_cannot_overwrite_a_published_correction(self):
+        community = self.app.community
+        event = {"id": "correction", "revision": 1, "game_id": "aska", "title": "Original",
+                 "source": "test", "badge_id": "badge", "member_ids": ["one"]}
+        community.record(event)
+        community.record({**event, "revision": 2, "title": "Corrected"}, publish=True)
+        cards = []
+
+        def stub(_target, card):
+            cards.append(card)
+            return "message-1"
+
+        community.deliver_pending(stub)
+        community.record(event, publish=True)
+        community.deliver_pending(stub)
+        self.assertEqual([card["content"] for card in cards], ["Corrected"])
+
+    def test_correction_supersedes_pending_revisions_and_waits_for_inflight_delivery(self):
+        community = self.app.community
+        event = {"id": "pending-correction", "revision": 1, "game_id": "aska", "title": "Original",
+                 "source": "test", "badge_id": "badge", "member_ids": ["one"]}
+        community.record(event, publish=True)
+        community.record({**event, "revision": 2, "title": "Second"}, publish=True)
+        entered, release = threading.Event(), threading.Event()
+        cards = []
+
+        def slow(_target, card):
+            cards.append(card)
+            entered.set()
+            release.wait(3)
+            return "message-1"
+
+        thread = threading.Thread(target=community.deliver_pending, args=(slow,))
+        thread.start()
+        try:
+            self.assertTrue(entered.wait(2))
+            community.record({**event, "revision": 3, "title": "Latest"}, publish=True)
+            community.deliver_pending(slow)
+            self.assertEqual(len(cards), 1)
+        finally:
+            release.set()
+            thread.join(timeout=3)
+        community.deliver_pending(slow)
+        self.assertEqual([card["content"] for card in cards], ["Second", "Latest"])
+        self.assertEqual(cards[-1]["previous_remote_id"], "message-1")
 
 
 class PlatformHTTPTests(HTTPFixture):

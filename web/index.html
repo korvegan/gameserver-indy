@@ -7,7 +7,7 @@
   <title>GameServer Indy · Serververwaltung</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
-  <script src="/app.js" defer></script>
+  <script type="module" src="/app.js"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -16,27 +16,31 @@
     <p class="nav-label">VERWALTUNG</p>
     <nav aria-label="Hauptnavigation">
       <button class="nav active" data-view="overview" aria-current="page"><span aria-hidden="true">◈</span> Übersicht</button>
-      <button class="nav" data-view="settings"><span aria-hidden="true">⚙</span> Einstellungen</button>
-      <button class="nav" data-view="logs"><span aria-hidden="true">≡</span> Serverlog</button>
-      <button class="nav" data-view="discord"><span aria-hidden="true">↗</span> Discord</button>
-      <button class="nav" data-view="profiles"><span aria-hidden="true">＋</span> Serverprofile</button>
+      <button class="nav" data-view="settings" data-permission="config.read" hidden><span aria-hidden="true">⚙</span> Einstellungen</button>
+      <button class="nav" data-view="logs" data-permission="logs.read" hidden><span aria-hidden="true">≡</span> Serverlog</button>
+      <button class="nav" data-view="discord" data-permission="discord.write" hidden><span aria-hidden="true">↗</span> Discord</button>
+      <button class="nav" data-view="profiles" data-permission="catalog.write" hidden><span aria-hidden="true">＋</span> Serverprofile</button>
+      <button class="nav" data-view="games"><span aria-hidden="true">▦</span> Spiele / Mods</button>
+      <button class="nav" data-view="community"><span aria-hidden="true">⚑</span> Sturmklingen</button>
     </nav>
-    <div class="sidebar-bottom"><span class="local-dot"></span> Lokal auf deinem Rechner<small>GameServer Indy · v0.2</small></div>
+    <div class="sidebar-bottom"><span class="local-dot"></span> Lokal auf deinem Rechner<small>GameServer Indy · v0.3</small></div>
   </aside>
   <main>
-    <header class="topbar"><span><span class="muted">Verwaltung</span><span class="slash">/</span><span id="breadcrumb">Übersicht</span></span><span class="local-badge">LOCAL HOST</span></header>
+    <header class="topbar"><span><span class="muted">Verwaltung</span><span class="slash">/</span><span id="breadcrumb">Übersicht</span></span><span class="local-badge" id="identity-label">LOCAL HOST</span></header>
     <div id="notice" role="status" aria-live="polite" hidden></div>
     <section id="overview" class="view">
       <div class="page-heading"><div><p class="eyebrow">DEINE SPIELE. DEINE SERVER.</p><h1>Dein nächster Spielabend.</h1><p class="subtitle">Dedicated Server an einem Ort verwalten.</p></div><button class="button secondary" id="refresh">↻ Aktualisieren</button></div>
       <div class="server-card">
         <div class="server-card-top"><div class="world-icon" aria-hidden="true">♜</div><span class="pill" id="server-state">Status wird geprüft</span></div>
-        <p class="eyebrow" id="game-label">DEDICATED SERVER</p><h2 id="server-name">GameServer Indy</h2><p class="server-caption" id="profile-caption">Dein ausgewähltes Serverprofil.</p>
+        <p class="eyebrow" id="game-label">DEDICATED SERVER</p><h2 id="server-name">GameServer Indy</h2><p class="server-caption" id="profile-caption">Dein ausgewähltes Serverprofil.</p><p id="status-updated" class="field-help"></p>
         <div class="server-details"><div><small id="metric-label-0">SPIELERPLÄTZE</small><strong id="slot-count">—</strong></div><div><small id="metric-label-1">SCHWIERIGKEIT</small><strong id="preset-label">—</strong></div><div><small id="metric-label-2">QUERY-PORT</small><strong id="query-port">—</strong></div><div><small>PROZESS-ID</small><strong id="process-id">—</strong></div></div>
         <div class="server-actions"><button class="button primary" id="start" disabled>▶ Server starten</button><button class="button secondary" id="stop" disabled>■ Stoppen</button><button class="button secondary" id="restart" disabled>↻ Neu starten</button><span id="process-note">Windows-Prozess wird geprüft.</span></div>
       </div>
       <div id="setup-panel" class="setup-panel" hidden><div><h3>Bereit für den ersten Start?</h3><p>Erzeuge eine fehlende Konfiguration passend zum Spiel. Vorhandene Dateien werden geprüft.</p></div><button class="button primary" id="setup">Server vorbereiten</button></div>
-      <div class="overview-grid"><section class="panel"><div class="panel-heading"><h3>Alles an seinem Platz</h3><span class="small-tag">INSTALLATION</span></div><p class="muted">Deine Steam-Installation</p><code class="path" id="install-path">D:\SteamLibrary\steamapps\common\EnshroudedServer</code><div class="check-row"><span id="installation-check">Installation wird geprüft</span><span id="configuration-check">Konfiguration wird geprüft</span></div><button class="text-button" data-go="settings">Einstellungen öffnen <span>→</span></button></section><section class="panel"><div class="panel-heading"><h3>Deine Gruppe auf dem Laufenden</h3><span class="discord-mark" aria-hidden="true">◉</span></div><p class="muted">Teile den nächsten Aufbruch direkt in Discord.</p><p id="discord-status" class="connection-status">Verbindung wird geprüft</p><button class="text-button" data-go="discord">Discord einrichten <span>→</span></button></section></div>
-      <section class="panel activity"><div class="panel-heading"><h3>Letzte Aktivitäten</h3><span class="muted">Auf diesem Rechner</span></div><div id="events"><p class="empty">Noch keine Aktivitäten. Deine Reise beginnt hier.</p></div></section>
+      <p class="inline-info" id="access-note" hidden>Deine freigegebenen Server sind hier sichtbar. Als Familienbediener kannst du sie starten. Stoppen, Neustart und Einstellungen bleiben derzeit Besitzeraktionen.</p>
+      <section class="panel activity"><div class="panel-heading"><h3>Aufträge</h3><span class="muted">Für dieses Serverprofil</span></div><div id="job-list"><p class="empty">Noch keine Aufträge für dieses Profil.</p></div></section>
+      <div class="overview-grid" data-permission="config.read"><section class="panel"><div class="panel-heading"><h3>Alles an seinem Platz</h3><span class="small-tag">INSTALLATION</span></div><p class="muted">Deine Steam-Installation</p><code class="path" id="install-path"></code><div class="check-row"><span id="installation-check">Installation wird geprüft</span><span id="configuration-check">Konfiguration wird geprüft</span></div><button class="text-button" data-go="settings">Einstellungen öffnen <span>→</span></button></section><section class="panel"><div class="panel-heading"><h3>Deine Gruppe auf dem Laufenden</h3><span class="discord-mark" aria-hidden="true">◉</span></div><p class="muted">Teile den nächsten Aufbruch direkt in Discord.</p><p id="discord-status" class="connection-status">Verbindung wird geprüft</p><button class="text-button" data-go="discord">Discord einrichten <span>→</span></button></section></div>
+      <section class="panel activity" data-permission="config.read"><div class="panel-heading"><h3>Letzte Aktivitäten</h3><span class="muted">Auf diesem Rechner</span></div><div id="events"><p class="empty">Noch keine Aktivitäten. Deine Reise beginnt hier.</p></div></section>
     </section>
     <section id="settings" class="view" hidden>
       <div class="page-heading"><div><p class="eyebrow">DEINE REGELN</p><h1>Servereinstellungen</h1><p class="subtitle">Änderungen gelten beim nächsten Start. Die bisherige Datei wird gesichert.</p></div></div>
@@ -68,6 +72,14 @@
         <label class="wide">Externe Konfigurationsdatei (optional)<input id="profile-config" placeholder="C:\Server\config\server properties.txt"></label>
         <label class="wide">Vorhandener PowerShell-Starter (optional)<input id="profile-launcher" placeholder="C:\Server\start-server.ps1" disabled></label>
       </div><div class="form-footer"><span class="muted">Weitere Spiele werden über Spielprofile und Adapter ergänzt.</span><button class="button primary" type="submit">Serverprofil hinzufügen</button></div></fieldset></form>
+    </section>
+    <section id="games" class="view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">GEMEINSAM SPIELEN</p><h1>Deine Spiele.</h1><p class="subtitle" id="games-state">Spiele werden geladen …</p></div></div>
+      <div id="game-catalog" class="catalog-grid"></div>
+    </section>
+    <section id="community" class="view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">DIE CHRONIK DER STURMKLINGEN</p><h1>Unsere gemeinsamen Momente.</h1><p class="subtitle" id="community-state">Chronik wird geladen …</p></div><button class="button secondary" id="refresh-community">↻ Chronik aktualisieren</button></div>
+      <div class="community-layout"><div><h2 class="section-title">Chronik</h2><div id="chronicle"></div></div><section aria-labelledby="story-title"><h2 class="section-title" id="story-title">Unser Geschichtsbild</h2><p class="muted">Jeder gespeicherte Moment erhält seinen festen Platz.</p><div id="story-scenes"></div></section></div>
     </section>
     <footer>GAMESERVER INDY<span>Deine Welten bleiben auf deinem Rechner.</span></footer>
   </main>

@@ -70,7 +70,9 @@ class CommunityService:
                 position = db.execute("SELECT COALESCE(MAX(position), -1) + 1 FROM scenes").fetchone()[0]
                 db.execute("INSERT OR IGNORE INTO scenes VALUES (?, ?, ?, 'milestone')",
                            ("scene-" + event["id"], event["id"], position))
-            if publish:
+                db.execute("UPDATE deliveries SET state='superseded' WHERE event_id=? AND revision<? AND state IN ('pending', 'failed')",
+                           (event["id"], event["revision"]))
+            if publish and (not existing or event["revision"] >= existing["revision"]):
                 db.execute("INSERT OR IGNORE INTO deliveries VALUES (?, ?, ?, 'pending', NULL)",
                            (event["id"], event["revision"], target))
         return {"event_id": event["id"], "revision": event["revision"], "scene_id": "scene-" + event["id"]}
@@ -103,15 +105,23 @@ class CommunityService:
         for row in rows:
             key = (row["event_id"], row["revision"], row["target"])
             with self.database.connect(write=True) as db:
-                ambiguous = db.execute("SELECT 1 FROM deliveries WHERE event_id=? AND target=? AND state IN ('sending', 'uncertain') LIMIT 1",
+                latest = db.execute("SELECT MAX(revision) FROM community_events WHERE id=?", (row["event_id"],)).fetchone()[0]
+                if row["revision"] < latest:
+                    db.execute("UPDATE deliveries SET state='superseded' WHERE event_id=? AND revision=? AND target=? AND state='pending'", key)
+                    continue
+                ambiguous = db.execute("SELECT 1 FROM deliveries WHERE event_id=? AND target=? AND state='uncertain' LIMIT 1",
                                        (row["event_id"], row["target"])).fetchone()
                 if ambiguous:
                     db.execute("UPDATE deliveries SET state='uncertain' WHERE event_id=? AND revision=? AND target=?", key)
                     continue
+                sending = db.execute("SELECT 1 FROM deliveries WHERE event_id=? AND target=? AND state='sending' LIMIT 1",
+                                     (row["event_id"], row["target"])).fetchone()
+                if sending:
+                    continue
                 claimed = db.execute("UPDATE deliveries SET state='sending' WHERE event_id=? AND revision=? AND target=? AND state='pending'", key).rowcount
                 event = db.execute("SELECT payload FROM community_events WHERE id=? AND revision=?", key[:2]).fetchone()
-                previous = db.execute("SELECT remote_id FROM deliveries WHERE event_id=? AND target=? AND state='sent' ORDER BY revision DESC LIMIT 1",
-                                      (row["event_id"], row["target"])).fetchone()
+                previous = db.execute("SELECT remote_id FROM deliveries WHERE event_id=? AND target=? AND revision<? AND state='sent' ORDER BY revision DESC LIMIT 1",
+                                      (row["event_id"], row["target"], row["revision"])).fetchone()
             if not claimed:
                 continue
             event = json.loads(event["payload"])

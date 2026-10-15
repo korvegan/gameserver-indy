@@ -1,6 +1,6 @@
 # Werkzeugstand und Arbeitsmethoden
 
-Stand der Prüfung: 15.10.2026. Dies beschreibt beobachtete Fähigkeiten auf Indy, keine Garantie für spätere Sitzungen. Vor Verwendung die tatsächlich angebotenen Werkzeuge und relevanten Versionen prüfen. Aktueller Checkout: `/home/korvegan/projects/gameserver-indy`; der frühere Projektpfad `enshrouded-indy` existiert hier nicht mehr.
+Stand der Werkzeugprüfung: 15.10.2026 vor dem Refactoring #27; die damaligen Testzahlen sind eine Bestandsaufnahme. Aktuelle Architektur und Prüfabläufe stehen im Repository unter `docs/architecture.md`. Dies beschreibt beobachtete Fähigkeiten auf Indy, keine Garantie für spätere Sitzungen. Vor Verwendung die tatsächlich angebotenen Werkzeuge und relevanten Versionen prüfen. Hauptcheckout: `/home/korvegan/projects/gameserver-indy`; der frühere Projektpfad `enshrouded-indy` existiert hier nicht mehr.
 
 ## Geprüfte Fähigkeiten
 
@@ -58,4 +58,4 @@ GAMESERVER_WINDOWS_TEST=1 python3 -m unittest discover -s tests -p test_windows_
 
 Den Windows-Startertest mit nativer Windows PowerShell 5.1 und dem nach Windows umgewandelten vollständigen Pfad zu `tests/test-desktop-launcher.ps1` ausführen. Tests entsprechend dem Thema auswählen; nicht nach jedem Dokumentationssatz erneut die gesamte Suite starten.
 
-Vor einem Merge `gh pr checks <PR>` für den aktuellen Commit prüfen und beim Merge `--match-head-commit <geprüfte-SHA>` verwenden. Anschließend PR-Status, `main` und dessen CI prüfen. Die CI deckt Linux-/Windows-Backend, Windows-Prozessanbindung, Desktop-Starter und Chromium ab.
+Nach jedem erstellten PR gemäß `AGENTS.md` einen separaten Sub-Agenten mit dem tatsächlichen PR-Review beauftragen; vor dem Merge wesentliche Befunde beheben und den aktuellen Commit erneut prüfen lassen. Anschließend `gh pr checks <PR>` für diesen Commit prüfen und beim Merge `--match-head-commit <geprüfte-SHA>` verwenden. PR-Status, `main` und dessen CI kontrollieren. Die CI deckt Linux-/Windows-Backend, Windows-Prozessanbindung, Desktop-Starter und Chromium ab.
