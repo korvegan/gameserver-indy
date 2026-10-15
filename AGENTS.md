@@ -1,3 +1,14 @@
 # GameServer Indy
 
 Bei Arbeiten an diesem Repository den Skill [gameserver-indy](skills/gameserver-indy/SKILL.md) lesen. Er enthält die Besonderheiten des Windows-/WSL-Hosts und der Spieladapter. Neue belegte Fallstricke im Rahmen der jeweiligen Arbeit dort aktualisieren; Vermutungen als unbestätigt kennzeichnen. Die Repository-Version ist die Quelle der installierten Skill-Kopie.
+
+## Autonomes Arbeiten
+
+Korvegan hat am 15.10.2026 freigegeben, beauftragte oder ausdrücklich zur Umsetzung freigegebene Themen weitgehend autonom zu bearbeiten, einschließlich Commit, Push, Pull Request und selbstständigem Merge. Für diese Schritte keine erneute Freigabe einholen. Ein angelegtes Backlog-Issue allein ist kein Auftrag, es umzusetzen.
+
+- Zu Beginn Umfang und überprüfbare Abnahmekriterien aus dem Auftrag und den verknüpften Issues ableiten. Routineentscheidungen selbst treffen; fehlende wesentliche Angaben gezielt klären und unabhängige Arbeit fortsetzen.
+- Änderungen auf einem Themenbranch umsetzen, den vollständigen Diff prüfen und die zum Thema passenden lokalen Prüfungen ausführen. Bei Spielprozessänderungen die isolierten Windows-Tests einbeziehen; bei UI-Änderungen die Browserprüfung.
+- Vor dem Merge alle einschlägigen CI-Prüfungen für den aktuellen PR-Commit abwarten und Fehler oder wesentliche offene Befunde beheben. Branch-Regeln einhalten; keine Prüfungen oder Schutzregeln umgehen. Gegen den geprüften Commit mergen.
+- Nach dem Merge den Zustand auf GitHub verifizieren, den lokalen Checkout auf `main` aktualisieren, sofern keine fremden Änderungen entgegenstehen, und auch den CI-Lauf auf `main` kontrollieren. Betriebsschritte ausführen, soweit sie zum beauftragten Thema gehören. Ergebnis, relevante Prüfungen und verbleibende Grenzen knapp berichten.
+
+Die Freigabe bezieht sich auf das beauftragte Thema. Andere Backlog-Themen, reale Welten, Nachrichten an Spieler sowie Änderungen an Hostbetrieb oder externen Konten benötigen einen passenden Auftrag. Bestehende Aufträge und Freigaben berücksichtigen, statt pauschal erneut nachzufragen.
