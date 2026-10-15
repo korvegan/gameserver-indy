@@ -53,6 +53,7 @@ Mitglied, Anmeldung und Spielergerät ebenfalls unterscheiden: `Principal.id` be
 | --- | --- |
 | `GET /api/servers`, `/api/games` | Gefilterte Instanzen bzw. Spielidentitäten mit Fähigkeiten. Familien erhalten keine Installationspfade. |
 | `GET /api/status?server=<id>` | Prozessstatus und ausdrücklich ausgewählte Anzeigegrößen; keine allgemeine Spielkonfiguration. |
+| `POST /api/updates/check` | Besitzerrecht `updates.check`, `{server_id}`; Antwort 202 mit lesendem Steam-Prüfauftrag. Der begrenzte Befund steht unter `update` in `/api/status`. |
 | `GET /api/config?server=<id>` | Konfiguration und Formularschema, nur Besitzer. ASKA-Geheimnisse bleiben leer. |
 | `GET /api/events`, `/api/logs` | Technische Historie/bereinigte Logs, derzeit nur Besitzer. |
 | `POST /api/jobs` | `{server_id, operation}` für Start/Stopp/Neustart; Antwort 202 mit unveränderlicher Auftrags-ID. Intern auch Setup/Konfigurationsänderung. |
@@ -66,6 +67,8 @@ Besitzer dürfen konfigurieren und betreiben. Familien dürfen freigegebene Prof
 ## Aufträge und Parallelität
 
 Vier Worker, höchstens 16 aktive/wartende Ziele. Ein Ziel besitzt höchstens einen verändernden Auftrag. Konfiguration, Setup und Prozessaktionen verwenden dieselbe Instanzsperre; Discord hat ein eigenes Verwaltungsziel. Registrierung und gemeinsame Einstellungen teilen eine kurze Metadatensperre. Weder Windows-Aufrufe noch Discord-Netzwerkzugriffe halten diese globale Sperre. Lesender Status wartet nicht auf die Instanzsperre.
+
+`steam.py` liest eindeutig zugeordnete Steam-Manifeste und begrenzt die anonyme SteamCMD-Abfrage. `updates.py` hält den versionierten Metadaten-Cache, Zustandsbewertung und sparsamen Zeitplan; [Details und Quellen](steam-updates.md). Ein lesender Prüfauftrag behält die echte Server-ID für Verlauf/Rechte und verwendet eine eigene Reservierung `('updates', server_id)`. Dadurch bleibt der verändernde Instanzauftrag unabhängig. Frontend-Pendingzustände unterscheiden diese beiden Reservierungen ebenfalls. Der Zeitplan startet nur im regulären `serve`-Einstieg; isolierte HTTP-/Browserfixtures lösen keine echten periodischen Abfragen aus.
 
 Zustände: `queued → running → succeeded/failed`; nach unterbrochener Verwaltung `interrupted`. Der Fortschritt nennt die tatsächliche Phase und eine Arbeitseinheit, keine erfundene Prozentzahl für ein Spiel. Diese Operationen sind ausdrücklich weder abbrechbar noch fortsetzbar. Ein Neustart der Verwaltung wiederholt keinen unklar abgeschlossenen Stopp, Download oder Dateischritt. Prozessstatus und vorhandene bereinigte Logs dienen der anschließenden Prüfung. Spätere Sicherungs-/Update-/Downloadschritte können eigene ehrliche Fortschritts- und Wiederanlaufverträge erhalten.
 

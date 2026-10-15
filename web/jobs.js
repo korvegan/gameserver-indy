@@ -5,7 +5,8 @@ import {state} from './state.js';
 const watching = new Set(), completed = new Set();
 const active = job => job.state === 'queued' || job.state === 'running';
 const names = {queued: 'Wartet', running: 'Läuft', succeeded: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen'};
-const operations = {start: 'Starten', stop: 'Stoppen', restart: 'Neu starten', setup: 'Vorbereiten', config: 'Einstellungen speichern'};
+const operations = {start: 'Starten', stop: 'Stoppen', restart: 'Neu starten', setup: 'Vorbereiten', config: 'Einstellungen speichern', check_updates: 'Steam-Update prüfen'};
+const reservation = job => job.operation === 'check_updates' ? `updates:${job.server_id}` : job.server_id;
 
 export function mergeJobs(jobs) {
   const known = new Map(state.latestJobs.map(job => [job.id, job]));
@@ -31,7 +32,7 @@ export function renderJobs() {
 export function watchJob(initial, update, finish) {
   if (!active(initial) || watching.has(initial.id) || completed.has(initial.id)) return;
   watching.add(initial.id);
-  state.pending.set(initial.server_id, initial);
+  state.pending.set(reservation(initial), initial);
   update();
   (async () => {
     try {
@@ -46,10 +47,10 @@ export function watchJob(initial, update, finish) {
         if (state.selectedServer === job.server_id) { mergeJobs([job]); renderJobs(); }
         if (!active(job)) {
           completed.add(job.id);
-          if (state.pending.get(job.server_id)?.id === job.id) state.pending.delete(job.server_id);
+          if (state.pending.get(reservation(job))?.id === job.id) state.pending.delete(reservation(job));
           update(); await finish(job); return;
         }
-        state.pending.set(job.server_id, job); update();
+        state.pending.set(reservation(job), job); update();
         await new Promise(resolve => setTimeout(resolve, document.hidden ? 2000 : 500));
       }
     } finally { watching.delete(initial.id); }

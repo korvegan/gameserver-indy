@@ -33,6 +33,8 @@ Installation: `D:\SteamLibrary\steamapps\common\EnshroudedServer`.
 
 **Weltordner** steuert `saveDirectory`: Ein neuer, leerer Ordner erzeugt beim nächsten Spielserverstart eine neue Welt; ein bestehender setzt dessen Welt fort. Die alte Welt wird nicht gelöscht. Neue Felder und Grenzen nach Spielupdates müssen anhand der ausgelieferten Version abgeglichen werden.
 
+Für 1.0 sind die Flammenstufe zum Bauen im Miasma (`gameSettings.flameLevelFogRemoval`, 0–20, Standard 11) und die Gegneranzahl einschließlich `Automatic` im Formular verfügbar. Vorhandene Spielregeln werden erhalten; Details und Quellen stehen unter [Steam-Updates und Enshrouded 1.0](docs/steam-updates.md).
+
 ### ASKA
 
 Installation: `D:\SteamLibrary\steamapps\common\ASKA Dedicated Server`.
@@ -60,6 +62,8 @@ Der bestehende ASKA-Starter verwirft normalerweise seine umgeleitete Serverausga
 Auf Indy ist dieser Schritt eingerichtet. Die neuen Protokolle liegen im jeweiligen Datenordner unter `logs/`, für ASKA unter `data/servers/aska/logs/`. Der externe Starter erhält ein eigenes Protokoll; sein Server-Ausgabestrom hat Vorrang vor `Player.log`. Beide Dateien rotieren bei etwa 2 MiB mit jeweils einer Vorgängerdatei. Die ursprünglichen Unity-Dateien werden nicht verändert.
 
 ## Betrieb und Backups
+
+**Steam-Updates** in der Übersicht zeigt installierten/angebotenen Build, Branch, Quellen und Prüfzeit. **Steam-Updates prüfen** startet einen lesenden Hintergrundauftrag. Nach Einrichtung von `steamcmd_path` wird auch etwa alle 30 Minuten geprüft. Alte oder fehlgeschlagene Befunde bleiben erkennbar; der Build eines laufenden Prozesses wird nicht aus bereits aktualisierten Dateien abgeleitet. [Einrichtung, Zustände und Grenzen](docs/steam-updates.md).
 
 Bearbeiten nur bei gestopptem Server. Zuerst wird die Konfiguration exakt gesichert, dann atomar ersetzt. Enshrouded behält `data/backups/`; weitere Profile verwenden `data/servers/<id>/backups/`.
 

@@ -25,11 +25,12 @@ class JobService:
             db.execute("UPDATE jobs SET state='interrupted', message=?, updated_at=? WHERE state IN ('queued', 'running')",
                        ("Verwaltung unterbrochen. Ergebnis unbekannt; Prozessstatus und Protokoll prüfen. Kein automatischer Wiederholungsversuch.", utcnow()))
 
-    def submit(self, server_id, operation, actor_id, callback):
+    def submit(self, server_id, operation, actor_id, callback, *, reservation=None):
+        reservation = server_id if reservation is None else reservation
         with self.lock:
             if self.closed:
                 raise ManagerError("Die Verwaltung wird gerade beendet.")
-            if server_id in self.active:
+            if reservation in self.active:
                 raise ManagerError("Für dieses Ziel arbeitet bereits ein Auftrag. Bitte dessen Ergebnis abwarten.")
             if len(self.active) >= 16:
                 raise ManagerError("Die Auftragswarteschlange ist voll. Bitte später erneut versuchen.")
@@ -37,11 +38,11 @@ class JobService:
             with self.database.connect(write=True) as db:
                 db.execute("INSERT INTO jobs VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, NULL)",
                            (job_id, server_id, operation, actor_id, "Wartet auf Ausführung.", now, now))
-            self.active[server_id] = job_id
+            self.active[reservation] = job_id
             try:
-                future = self.executor.submit(self._run, job_id, server_id, callback)
+                future = self.executor.submit(self._run, job_id, reservation, callback)
             except BaseException:
-                self.active.pop(server_id, None)
+                self.active.pop(reservation, None)
                 self._update(job_id, "interrupted", "Auftrag konnte nicht gestartet werden.")
                 raise
         return self.get(job_id), future
@@ -51,7 +52,7 @@ class JobService:
             db.execute("UPDATE jobs SET state=?, message=?, updated_at=?, result=? WHERE id=?",
                        (state, message, utcnow(), json.dumps(result, ensure_ascii=False) if result is not None else None, job_id))
 
-    def _run(self, job_id, server_id, callback):
+    def _run(self, job_id, reservation, callback):
         try:
             self._update(job_id, "running", "Wird ausgeführt. Fortschritt im Serverprotokoll prüfen.")
             try:
@@ -72,7 +73,7 @@ class JobService:
             raise ManagerError(message) from None
         finally:
             with self.lock:
-                self.active.pop(server_id, None)
+                self.active.pop(reservation, None)
 
     def _reconcile(self):
         with self.lock:

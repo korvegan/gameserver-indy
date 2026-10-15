@@ -71,6 +71,11 @@ a {
   margin:24px 14px 14px;
 }
 .server-picker { margin-top:28px; }
+.update-builds { display:flex; gap:24px; flex-wrap:wrap; }
+.update-builds>div { min-width:0; max-width:100%; }
+.update-builds small,.update-builds strong { display:block; }
+.update-builds strong { overflow-wrap:anywhere; }
+.update-builds small { color:var(--muted); font-size:10px; letter-spacing:1px; }
 .profile-entry { padding:12px 0; border-bottom:1px solid var(--border); }
 .profile-entry:last-child { border-bottom:0; }
 .profile-entry small { display:block; color:var(--muted); overflow-wrap:anywhere; }

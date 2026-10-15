@@ -80,7 +80,7 @@ class Handler(BaseHTTPRequestHandler):
                 "/favicon.svg": ("favicon.svg", "image/svg+xml"),
             }
             for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js",
-                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js"):
+                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js"):
                 files["/" + name] = (name, "text/javascript; charset=utf-8")
             if path in files:
                 filename, content_type = files[path]
@@ -125,6 +125,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(manager, port=8765):
     with LocalServer(manager, port) as server:
+        server.app.start_update_checks()
         print(f"GameServer Indy: http://127.0.0.1:{server.server_port}", flush=True)
         print("Verwaltung mit Strg+C beenden. Ein laufender Spielserver bleibt dabei aktiv.", flush=True)
         try:
