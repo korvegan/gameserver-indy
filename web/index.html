@@ -18,6 +18,7 @@
       <button class="nav active" data-view="overview" aria-current="page"><span aria-hidden="true">◈</span> Übersicht</button>
       <button class="nav" data-view="settings" data-permission="config.read" hidden><span aria-hidden="true">⚙</span> Einstellungen</button>
       <button class="nav" data-view="logs" data-permission="logs.read" hidden><span aria-hidden="true">≡</span> Serverlog</button>
+      <button class="nav" data-view="backups" data-permission="backups.manage" hidden><span aria-hidden="true">▣</span> Weltsicherungen</button>
       <button class="nav" data-view="discord" data-permission="discord.write" hidden><span aria-hidden="true">↗</span> Discord</button>
       <button class="nav" data-view="profiles" data-permission="catalog.write" hidden><span aria-hidden="true">＋</span> Serverprofile</button>
       <button class="nav" data-view="games"><span aria-hidden="true">▦</span> Spiele / Mods</button>
@@ -57,6 +58,15 @@
       </section>
       <div class="overview-grid" data-permission="config.read"><section class="panel"><div class="panel-heading"><h3>Alles an seinem Platz</h3><span class="small-tag">INSTALLATION</span></div><p class="muted">Deine Steam-Installation</p><code class="path" id="install-path"></code><div class="check-row"><span id="installation-check">Installation wird geprüft</span><span id="configuration-check">Konfiguration wird geprüft</span></div><button class="text-button" data-go="settings">Einstellungen öffnen <span>→</span></button></section><section class="panel"><div class="panel-heading"><h3>Deine Gruppe auf dem Laufenden</h3><span class="discord-mark" aria-hidden="true">◉</span></div><p class="muted">Teile den nächsten Aufbruch direkt in Discord.</p><p id="discord-status" class="connection-status">Verbindung wird geprüft</p><button class="text-button" data-go="discord">Discord einrichten <span>→</span></button></section></div>
       <section class="panel activity" data-permission="config.read"><div class="panel-heading"><h3>Letzte Aktivitäten</h3><span class="muted">Auf diesem Rechner</span></div><div id="events"><p class="empty">Noch keine Aktivitäten. Deine Reise beginnt hier.</p></div></section>
+    </section>
+    <section id="backups" class="view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">EURE WELT BLEIBT BEI EUCH</p><h1>Weltsicherungen</h1><p class="subtitle">Welt und zugehörige Konfiguration. Drei Tage rollend; angeheftete Stände bleiben erhalten.</p></div><button id="backup-refresh" class="button secondary">↻ Aktualisieren</button></div>
+      <section class="panel"><h2 class="section-title">Dieses Weltziel</h2><code id="backup-target" class="path">Weltziel wird geladen …</code><p id="backup-last"></p><p class="muted" id="backup-progress" role="status"></p>
+        <div class="backup-actions"><button id="backup-create" class="button primary backup-action" data-offline="true">Welt jetzt sichern</button><label class="check-row"><input id="backup-auto" type="checkbox"> Nach regulärem Dashboard-Stopp automatisch sichern</label></div>
+        <p class="field-help">Sicherungen benötigen einen gestoppten Server. Die Automatik stoppt keine Spielrunde. Ein Neustart wartet auf die erfolgreiche Sicherung. Alte Stände werden erst nach einer neuen geprüften Sicherung entfernt. Enshrouded-Charakterstände auf Spieler-PCs sind separat.</p>
+        <div id="backup-recovery" class="inline-info" hidden><p>Eine Wiederherstellung wurde unterbrochen. Start und Konfigurationsänderungen bleiben gesperrt, bis der vorherige Stand zurückgeholt wurde.</p><button id="backup-recover" class="button secondary backup-action" data-offline="true">Vorherigen Stand zurückholen</button></div>
+      </section>
+      <section class="panel"><h2 class="section-title">Gesicherte Spielabende</h2><p class="muted">Wiederherstellen ersetzt den gesamten Weltordner und seine Konfiguration. Der aktuelle Stand wird vorher gesichert und angeheftet. Währenddessen keinen Desktop-Starter verwenden.</p><div id="backup-list"></div></section>
     </section>
     <section id="settings" class="view" hidden>
       <div class="page-heading"><div><p class="eyebrow">DEINE REGELN</p><h1>Servereinstellungen</h1><p class="subtitle">Änderungen gelten beim nächsten Start. Die bisherige Datei wird gesichert.</p></div></div>

@@ -879,3 +879,8 @@ dialog h2 { overflow-wrap:anywhere; }
     transition:background .15s,border-color .15s;
   }
 }
+:root .backup-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+:root .backup-actions label.check-row { flex-direction: row; align-items: flex-start; gap: 8px; padding-top: 0; font-size: 12px; }
+:root .backup-actions input[type=checkbox] { flex: 0 0 auto; }
+:root .backup-entry { padding: 22px 0; border-bottom: 1px solid var(--border, #384638); overflow-wrap: anywhere; }
+:root #backup-target { white-space: pre-wrap; overflow-wrap: anywhere; }

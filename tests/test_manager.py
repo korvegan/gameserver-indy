@@ -23,7 +23,7 @@ class FakeBridge:
             self.running = True
         elif action == "Stop":
             self.running = False
-        return {"processes": [{"pid": 42}] if self.running else [], "user_profile": self.user_profile}
+        return {"processes": [{"pid": 42}] if self.running else [], "user_profile": self.user_profile, "launcher_running": False}
 
 
 class ManagerFixture(unittest.TestCase):

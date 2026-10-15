@@ -50,6 +50,8 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
     installation = root / "EnshroudedServer"
     installation.mkdir()
     (installation / "enshrouded_server.exe").touch()
+    (installation / 'savegame').mkdir()
+    (installation / 'savegame/world0.ksd').write_bytes(b'Browser QA world')
     steam_manifest(installation, 2278520, '100')
     (installation / 'enshrouded_server_readme.txt').write_text('Version: 1.0.0.0\n')
     atomic_json(root / "manager.local.json", {
@@ -71,7 +73,7 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
             server.app.connections._collect()
             server.app.community.record({"id": "qa-milestone", "revision": 1, "game_id": "raft", "title": "Gemeinsamer Testmoment",
                 "source": "test", "badge_id": "qa-badge", "member_ids": ["qa-one", "qa-two", "qa-three", "qa-four"]})
-            family = FamilyServer(server.app, 'indy.example.ts.net', 8767)
+            family = FamilyServer(server.app, 'indy.example.ts.net', 18767)
             proxy = FamilyProxy(family)
             server.app.access.configure(Principal('local-owner', 'owner'), {'enabled': True, 'hostname': family.hostname, 'port': family.server_port})
             server.app.access.runtime = {'active': True, 'hostname': family.hostname, 'port': family.server_port}

@@ -2,25 +2,28 @@ import {$, element} from '../dom.js';
 import {can, state} from '../state.js';
 import {renderUpdate} from './updates.js';
 import {renderConnection} from './connection.js';
+import {backupControls} from './backups.js';
 
 export function controls() {
   const status = state.snapshot?.status;
   const pending = state.pending.has(state.selectedServer);
   const locked = state.submitting || !state.available || pending;
   const actionLocked = locked || state.refreshing;
+  const recovery = status?.recovery_required;
   $('#server-select').disabled = state.submitting || !state.catalogAvailable;
   $('#profile-fields').disabled = state.submitting || !can('catalog.write');
-  $('#start').disabled = actionLocked || !can('server.start') || !status?.installed || !status?.configured || state.snapshot?.config_error || status.running || status.starting;
+  $('#start').disabled = actionLocked || recovery || !can('server.start') || !status?.installed || !status?.configured || state.snapshot?.config_error || status.running || status.starting;
   $('#stop').disabled = actionLocked || !can('server.stop') || !status?.running;
-  $('#restart').disabled = actionLocked || !can('server.restart') || !status?.running;
-  $('#setup').disabled = actionLocked || !can('server.setup') || !status?.installed || status.running || status.starting;
-  $('#config-fields').disabled = locked || state.configLoading || !can('config.write') || !state.config || status?.running || status?.starting;
+  $('#restart').disabled = actionLocked || recovery || !can('server.restart') || !status?.running;
+  $('#setup').disabled = actionLocked || recovery || !can('server.setup') || !status?.installed || status.running || status.starting;
+  $('#config-fields').disabled = locked || recovery || state.configLoading || !can('config.write') || !state.config || status?.running || status?.starting;
   $('#refresh').disabled = state.submitting;
   $('#refresh-logs').disabled = state.submitting;
   $('#check-updates').disabled = state.submitting || !state.selectedServer || !can('updates.check') || state.pending.has(`updates:${state.selectedServer}`);
   for (const node of document.querySelectorAll('[data-permission]')) node.hidden = !can(node.dataset.permission);
   for (const button of document.querySelectorAll('#discord button')) button.disabled = state.submitting || !can('discord.write');
   $('#access-note').hidden = state.principal?.role === 'owner';
+  backupControls();
   if (pending && state.available) {
     $('#server-state').textContent = '◌ Auftrag läuft';
     $('#process-note').textContent = 'Fortschritt und Ergebnis unter Aufträge.';

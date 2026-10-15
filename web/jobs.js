@@ -6,6 +6,7 @@ const watching = new Set(), completed = new Set();
 const active = job => job.state === 'queued' || job.state === 'running';
 const names = {queued: 'Wartet', running: 'Läuft', succeeded: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen'};
 const operations = {start: 'Starten', stop: 'Stoppen', restart: 'Neu starten', setup: 'Vorbereiten', config: 'Einstellungen speichern', check_updates: 'Steam-Update prüfen'};
+Object.assign(operations, {backup: 'Welt sichern', backup_verify: 'Sicherung prüfen', backup_pin: 'Sicherung anheften / lösen', backup_settings: 'Sicherungsautomatik speichern', backup_restore: 'Welt wiederherstellen', backup_recover: 'Vorherigen Stand zurückholen'});
 const reservation = job => job.operation === 'check_updates' ? `updates:${job.server_id}` : job.server_id;
 
 export function mergeJobs(jobs) {

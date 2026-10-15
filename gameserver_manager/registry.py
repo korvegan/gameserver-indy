@@ -39,6 +39,11 @@ class ServerRegistry:
             self.managers[profile["id"]] = supplied or GameServerManager(self.root, profile=profile, settings=self.settings, settings_lock=self.lock)
             if supplied:
                 manager.settings_lock = self.lock
+            self.managers[profile['id']].backups.peers = self.instances
+
+    def instances(self):
+        with self.lock:
+            return list(self.managers.values())
 
     @staticmethod
     def directory_identity(directory):
@@ -99,4 +104,5 @@ class ServerRegistry:
             self.settings.clear()
             self.settings.update(updated)
             self.managers[profile["id"]] = GameServerManager(self.root, profile=profile, settings=self.settings, settings_lock=self.lock)
+            self.managers[profile['id']].backups.peers = self.instances
         return {"message": "Serverprofil hinzugefügt. Spieldateien und Welten wurden nicht verändert.", "server_id": profile["id"]}

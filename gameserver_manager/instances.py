@@ -3,6 +3,7 @@ from pathlib import Path
 import threading
 
 from .configuration import ManagerError, local_path, read_json
+from .backups import WorldBackups
 from .discord import DiscordService
 from .games import GAME_TYPES
 from .history import TechnicalHistory
@@ -40,6 +41,7 @@ class GameServerManager:
         self.diagnostics = InstanceLogs(self)
         self.discord = DiscordService(self)
         self.history = TechnicalHistory(self.data)
+        self.backups = WorldBackups(self)
 
     @property
     def config_path(self):
@@ -95,5 +97,6 @@ class GameServerManager:
             "profile_label": self.profile["label"], "config_path": str(self.config_path),
             "external_launcher": bool(self.profile.get("launcher_script")),
             "starting": bool(state.get("launcher_running") and not processes),
+            "recovery_required": self.backups.pending.exists(),
             "discord_configured": bool(self.webhook()), "auto_notify": auto_notify,
         }

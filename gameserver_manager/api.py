@@ -28,6 +28,8 @@ class Api:
             return {"games": self.app.catalog.entries()}
         if path == "/api/status":
             return self.app.status(principal, selected)
+        if path == '/api/backups':
+            return self.app.backups(principal, selected, one(query, 'id'), one(query, 'recovery') == 'true')
         if path == "/api/config":
             return self.app.configuration(principal, selected)
         if path == "/api/state":

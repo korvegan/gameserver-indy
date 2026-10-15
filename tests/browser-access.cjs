@@ -81,7 +81,7 @@ const fs = require('node:fs');
       assert.equal(await remote.locator('#stop').isDisabled(), true);
       const denied = await remote.request.post('http://127.0.0.1:8768/api/jobs', {data: {server_id: 'aska', operation: 'stop'}, headers: {'X-Manager-Token': session.token}});
       assert.equal(denied.status(), 403);
-      assert.equal((await remote.request.get('http://127.0.0.1:8767/api/session')).status(), 403, 'Direct listener never grants local owner.');
+      assert.equal((await remote.request.get('http://127.0.0.1:18767/api/session')).status(), 403, 'Direct test listener never grants local owner.');
       fs.mkdirSync('artifacts', {recursive: true});
       await remote.screenshot({path: 'artifacts/family-mobile.png', fullPage: true});
       assert.equal(await remote.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

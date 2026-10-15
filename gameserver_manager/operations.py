@@ -9,6 +9,7 @@ class InstanceOperations:
         self.instance = instance
 
     def require_stopped(self):
+        self.instance.backups.guard()
         state = self.instance.bridge.call("Status")
         if state.get("processes") or state.get("launcher_running"):
             raise ManagerError("Bitte zuerst den Server stoppen. Die laufende Konfiguration wird nicht überschrieben.")
@@ -18,6 +19,8 @@ class InstanceOperations:
             raise ManagerError("Unbekannte Serveraktion.")
         m = self.instance
         with m.lock:
+            if action in ('start', 'restart'):
+                m.backups.guard()
             state = m.bridge.call("Status")
             before = state.get("processes", [])
             if state.get("launcher_running") and not before:
@@ -31,6 +34,7 @@ class InstanceOperations:
             if action in ("stop", "restart") and before:
                 m.bridge.call("Stop")
                 m.event("Server gestoppt.")
+                m.backups.after_stop()
             if action in ("start", "restart"):
                 append_diagnostic(m.diagnostic_directory, "Serverstart angefordert.")
                 config = {}
@@ -40,6 +44,7 @@ class InstanceOperations:
                     config = m.config()
                     m.game.validate_config(config)
                     m.game.validate_start(config)
+                    m.backups.exclusive()
                     started = m.bridge.call("Start")
                 except ManagerError as exc:
                     append_diagnostic(m.diagnostic_directory, str(exc), secret_values(config, m.webhook()))
