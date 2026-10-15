@@ -47,6 +47,8 @@ steamcmd +login anonymous +app_info_update 1 +app_info_print <Server-App-ID> +qu
 
 Die Befehle wurden zusätzlich mit der Hilfe der installierten SteamCMD-Version geprüft. Die Abfrage verlangt einen erfolgreichen Prozessabschluss, eine bestätigte anonyme Online-Verbindung und passende App-/Branchdaten. Ein reiner Cache-Ausdruck bei gescheiterter Verbindung gilt nicht als neue Bestätigung. Rohes SteamCMD-Protokoll wird nicht an Browser oder Aufträge weitergereicht. Es gibt ein Timeout von 45 Sekunden und keinen unbegrenzten Wiederholungsversuch. Die einzelne SteamCMD-Installation wird vor gleichzeitiger Verwendung geschützt; bei Belegung folgt eine verständliche Fehlermeldung.
 
+Beim Beenden der Verwaltung darf eine bereits laufende Metadatenprüfung bis zu ihrem Timeout auslaufen. Das kann den Verwaltungsneustart um bis zu 45 Sekunden verzögern; Spielprozesse werden dadurch nicht beendet. Der native Timeout wurde auf Indy auch mit einem isolierten Windows-Testprozess aus WSL geprüft.
+
 Valves dokumentiertes [UpToDateCheck](https://partner.steamgames.com/doc/webapi/ISteamApps#UpToDateCheck) wurde für beide Server-Apps geprüft und lieferte hier jeweils keinen App-Befund. Es wird deshalb nicht als Ersatz für den Branchvergleich verwendet. Publisher-Methoden wie `GetAppBuilds` benötigen fremde Herausgeberschlüssel und werden nicht benutzt.
 
 ## Zustände und laufender Prozess

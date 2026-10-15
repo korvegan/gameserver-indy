@@ -156,6 +156,17 @@ const fs = require('node:fs');
     await nav('Übersicht').click();
     await page.screenshot({path: 'artifacts/overview-mobile.png', fullPage: true});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.route('**/api/status?server=enshrouded', async route => {
+      const response = await route.fetch();
+      const data = await response.json(); data.update.branch = 'a'.repeat(80);
+      await route.fulfill({response, json: data});
+    });
+    await page.locator('#refresh').click();
+    await page.waitForFunction(() => document.querySelector('#steam-branch').textContent.length === 80);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.unroute('**/api/status?server=enshrouded');
+    await page.locator('#refresh').click();
+    await page.waitForFunction(() => document.querySelector('#steam-branch').textContent === 'public');
     await nav('Einstellungen').click();
     await page.screenshot({path: 'artifacts/settings-mobile.png', fullPage: true});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

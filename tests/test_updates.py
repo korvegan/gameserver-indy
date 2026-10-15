@@ -157,7 +157,7 @@ class UpdateTests(ManagerFixture):
                 self.assertEqual(service.view(self.manager)['state'], 'unknown')
 
     def test_missing_negative_or_malformed_install_state_is_unknown(self):
-        for extra in ('"StateFlags" "-1"', '"StateFlags" "not a number"', '"BytesToDownload" "-10"'):
+        for extra in ('', '"StateFlags" "-1"', '"StateFlags" "not a number"', '"StateFlags" "4" "BytesToDownload" "-10"'):
             self.manifest.write_text(f'"AppState" {{"appid" "2278520" "installdir" "{self.manager.directory.name}" "buildid" "100" {extra}}}')
             self.assertEqual(self.updates.view(self.manager)['state'], 'unknown')
 
