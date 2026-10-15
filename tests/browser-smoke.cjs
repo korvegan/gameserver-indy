@@ -30,6 +30,23 @@ const fs = require('node:fs');
     await expectNotice('Server vorbereitet');
     assert.equal(await page.locator('#start').isEnabled(), true);
     assert.equal(requests.some(request => request.path === '/api/state' || request.path === '/api/config'), false);
+    // Global views keep profile selection and menu geometry stable on desktop/mobile.
+    for (const viewport of [{width: 1440, height: 960}, {width: 390, height: 844}]) {
+      await page.setViewportSize(viewport);
+      await nav('Übersicht').click();
+      const before = await page.locator('nav').boundingBox();
+      const selected = await page.locator('#server-select').inputValue();
+      for (const name of ['Sturmklingen', 'Spiele / Mods', 'Übersicht']) {
+        await nav(name).click();
+        const after = await page.locator('nav').boundingBox();
+        assert.equal(await page.locator('#server-select').isVisible(), true, `${name}: profile selection stays visible`);
+        assert.equal(await page.locator('#server-select').inputValue(), selected);
+        for (const axis of ['x', 'y', 'width', 'height']) {
+          assert.ok(Math.abs(after[axis] - before[axis]) < .5, `${name} at ${viewport.width}px: menu ${axis} changed`);
+        }
+      }
+    }
+    await page.setViewportSize({width: 1440, height: 960});
     await nav('Einstellungen').click();
     assert.equal(await page.getByLabel('Servername', {exact: true}).inputValue(), 'Enshrouded Indy');
     await page.getByRole('button', {name: 'Anzeigen', exact: true}).first().click();

@@ -14,7 +14,6 @@ export function navigate(next) {
     if (button.dataset.view === next) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
   }
   $('#breadcrumb').textContent = names[next];
-  $('.server-picker').hidden = next === 'games' || next === 'community';
   return next;
 }
 
