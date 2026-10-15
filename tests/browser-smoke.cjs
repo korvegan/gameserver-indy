@@ -1,0 +1,106 @@
+// Run against `python3 tests/browser_fixture.py`, never the real installation.
+const {chromium} = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+
+(async () => {
+  const browser = await chromium.launch({headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined});
+  const page = await browser.newPage({viewport: {width: 1440, height: 960}});
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error' && !message.text().includes('409 (Conflict)')) errors.push(message.text());
+  });
+  page.on('dialog', dialog => dialog.accept());
+  const notice = page.locator('#notice');
+  async function expectNotice(text) {
+    await page.waitForFunction(expected => document.querySelector('#notice').textContent.includes(expected), text);
+  }
+  const nav = name => page.getByRole('button', {name, exact: true});
+  try {
+    await page.goto('http://127.0.0.1:8766');
+    await page.getByRole('button', {name: 'Server vorbereiten', exact: true}).waitFor();
+    await page.waitForFunction(() => !document.querySelector('#setup').disabled);
+    assert.equal(await page.locator('#start').isDisabled(), true);
+    await page.locator('#setup').click();
+    await expectNotice('Server vorbereitet');
+    assert.equal(await page.locator('#start').isEnabled(), true);
+    await nav('Einstellungen').click();
+    assert.equal(await page.getByLabel('Servername', {exact: true}).inputValue(), 'Enshrouded Indy');
+    await page.getByRole('button', {name: 'Anzeigen', exact: true}).first().click();
+    assert.equal(await page.locator('#group-0').getAttribute('type'), 'text');
+    await page.getByRole('button', {name: 'Verbergen', exact: true}).click();
+    assert.equal(await page.locator('#group-0').getAttribute('type'), 'password');
+    await page.getByLabel('Servername', {exact: true}).fill('Indy Browser Test');
+    await nav('Übersicht').click();
+    await page.locator('#refresh').click();
+    await nav('Einstellungen').click();
+    assert.equal(await page.getByLabel('Servername', {exact: true}).inputValue(), 'Indy Browser Test');
+    await page.getByRole('button', {name: 'Einstellungen speichern', exact: true}).click();
+    await expectNotice('Einstellungen gespeichert');
+    await page.getByText('Erweiterte Konfiguration · JSON', {exact: true}).click();
+    await page.locator('#json-editor').fill('{ broken');
+    await page.locator('#save-json').click();
+    await expectNotice('Syntaxfehler');
+    const session = await page.request.get('http://127.0.0.1:8766/api/state');
+    const config = (await session.json()).config;
+    config.slotCount = 17;
+    await page.locator('#json-editor').fill(JSON.stringify(config));
+    await page.locator('#save-json').click();
+    await expectNotice('slotCount');
+    config.slotCount = 8;
+    config.futureSetting = {preserved: true};
+    await page.locator('#json-editor').fill(JSON.stringify(config));
+    await page.locator('#save-json').click();
+    await expectNotice('Einstellungen gespeichert');
+    await nav('Serverlog').click();
+    await page.getByText('Noch keine Serverlogs vorhanden.', {exact: true}).waitFor();
+    await page.locator('#refresh-logs').click();
+    await nav('Discord').click();
+    await page.locator('#discord-message').fill('Hallo Embervale @everyone');
+    await page.getByRole('button', {name: 'An Discord senden', exact: false}).click();
+    await expectNotice('zuerst einen Discord-Webhook');
+    await page.locator('#webhook').fill('https://example.com/wrong');
+    await page.getByRole('button', {name: 'Verbindung speichern', exact: true}).click();
+    await expectNotice('gültige Discord-Webhook-URL');
+    await page.locator('#webhook').fill('https://discord.com/api/webhooks/123/browser_qa_fake');
+    await page.locator('#auto-notify').check();
+    await page.getByRole('button', {name: 'Verbindung speichern', exact: true}).click();
+    await expectNotice('Discord-Einstellungen gespeichert');
+    assert.equal(await page.locator('#webhook').inputValue(), '');
+    await page.getByRole('button', {name: 'An Discord senden', exact: false}).click();
+    await expectNotice('Nachricht an Discord gesendet');
+    await nav('Übersicht').click();
+    await page.locator('#start').click();
+    await expectNotice('Serverprozess gestartet');
+    assert.equal(await page.locator('#stop').isEnabled(), true);
+    await nav('Einstellungen').click();
+    assert.equal(await page.getByLabel('Servername', {exact: true}).isDisabled(), true);
+    await nav('Übersicht').click();
+    await page.locator('#restart').click();
+    await expectNotice('Serverprozess gestartet');
+    await page.locator('#stop').click();
+    await expectNotice('Server gestoppt');
+    await nav('Discord').click();
+    await page.locator('#clear-webhook').check();
+    await page.locator('#auto-notify').uncheck();
+    await page.getByRole('button', {name: 'Verbindung speichern', exact: true}).click();
+    await expectNotice('Discord-Einstellungen gespeichert');
+    await nav('Übersicht').click();
+    fs.mkdirSync('artifacts', {recursive: true});
+    await page.screenshot({path: 'artifacts/overview-desktop.png', fullPage: true});
+    await nav('Einstellungen').click();
+    await page.screenshot({path: 'artifacts/settings-desktop.png', fullPage: true});
+    await page.setViewportSize({width: 390, height: 844});
+    await nav('Übersicht').click();
+    await page.screenshot({path: 'artifacts/overview-mobile.png', fullPage: true});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await nav('Einstellungen').click();
+    await page.screenshot({path: 'artifacts/settings-mobile.png', fullPage: true});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    assert.deepEqual(errors, []);
+    console.log('Browser QA passed: setup, edit/backup, password visibility, dirty edits, JSON errors, logs, Discord, start/stop/restart, locked settings, desktop/mobile.');
+  } finally {
+    await browser.close();
+  }
+})().catch(error => {console.error(error); process.exitCode = 1;});

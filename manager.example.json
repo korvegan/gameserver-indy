@@ -1,0 +1,7 @@
+{
+  "server_directory": "D:\\SteamLibrary\\steamapps\\common\\EnshroudedServer",
+  "discord": {
+    "webhook_url": "",
+    "auto_notify": false
+  }
+}
