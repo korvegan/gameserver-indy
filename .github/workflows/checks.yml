@@ -111,6 +111,7 @@ jobs:
           echo '486673e20c014bfc4c9d27d5d3e78929f811c2834534f8117a56ab14de09e656  /tmp/indy-frankenphp' | sha256sum --check
           chmod 755 /tmp/indy-frankenphp
       - run: npm ci --no-audit --no-fund
+      - run: npm run check:js
       - run: npx playwright install --with-deps chromium
       - run: mkdir -p artifacts
       - run: npm run test:symfony-browser

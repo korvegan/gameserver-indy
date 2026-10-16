@@ -8,7 +8,7 @@ test('UI changes select dashboard/API and browser checks without native or legac
   assert.equal(p.native,false); assert.equal(p.python,false); assert.deepEqual(JSON.parse(p.symfony_os),['ubuntu-latest']);
 });
 test('process and backup changes retain Windows checks',()=>{
-  for(const file of ['symfony/src/Runtime/RuntimeSupervisor.php','symfony/src/Backup/WorldBackups.php','scripts/windows-server.ps1']){
+  for(const file of ['symfony/src/Runtime/RuntimeSupervisor.php','symfony/src/Backup/WorldBackups.php','symfony/src/Job/ExecuteServerJobHandler.php','scripts/windows-server.ps1']){
     const p=plan([file]);assert.equal(p.native,true,file);assert.equal(p.symfony,true,file);
     assert.equal(p.dashboard_only,false);assert.ok(JSON.parse(p.symfony_os).includes('windows-latest'));
   }

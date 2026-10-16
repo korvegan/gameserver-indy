@@ -16,7 +16,7 @@ function plan(files, event = 'pull_request') {
     result.dashboard_only=false;
     if (/^symfony\/(src|tests|config)\//.test(file)) {
       result.symfony=true; result.ui=true; reasons.add('Symfony application');
-      if (/^symfony\/src\/(Runtime|Backup|Storage|Command|Game|Instance)\//.test(file)
+      if (/^symfony\/src\/(Runtime|Backup|Storage|Command|Game|Instance|Job)\//.test(file)
         || /^symfony\/tests\/(Native|State|Release|WorldBackups|ManagedProcess)/.test(file)) {
         result.native=true; reasons.add('Native processes, storage or releases');
       }
