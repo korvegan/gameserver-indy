@@ -10,7 +10,7 @@ $managedMarker = Join-Path $stateDirectory '.indy-managed-state'
 if (Test-Path -LiteralPath $managedMarker -PathType Leaf) {
     if ((Get-Item -LiteralPath $managedMarker).Length -gt 4096) { throw 'Invalid manager data marker.' }
     $state = [IO.File]::ReadAllText($managedMarker) | ConvertFrom-Json
-    if ($state.format -cne 'gameserver-indy-state' -or $state.version -isnot [int] -or $state.version -ne 1 -or
+    if ($state -isnot [pscustomobject] -or $state.format -cne 'gameserver-indy-state' -or $state.version -isnot [int] -or $state.version -ne 1 -or
         $state.access_layout -cne 'shared-data') { throw 'Invalid manager data marker.' }
 } else {
     $marker = Join-Path $stateDirectory '.indy-symfony-slice'

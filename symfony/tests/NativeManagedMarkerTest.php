@@ -20,6 +20,7 @@ final class NativeManagedMarkerTest extends SliceTestCase
         yield 'wrong production layout' => [str_replace('shared-data', 'other', $valid), false, false];
         yield 'noninteger version' => [str_replace('"version":1', '"version":"1"', $valid), false, false];
         yield 'malformed production JSON cannot fall back' => ['{', true, false];
+        yield 'array root cannot masquerade as production object' => ['['.$valid.']', true, false];
     }
 
     #[DataProvider('markers')]
