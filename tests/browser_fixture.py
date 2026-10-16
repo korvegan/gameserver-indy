@@ -65,8 +65,9 @@ def steam_manifest(directory, app_id, build):
 def identity(request):
     # Test-only injection through LocalServer's constructor. Product code does
     # not recognize this header or trust client-supplied roles.
-    if request.headers.get("X-QA-Identity") == "family":
-        return Principal("test-family", "family", frozenset({"aska"}))
+    if request.headers.get("X-QA-Identity") in ("family", "viewer"):
+        role = request.headers["X-QA-Identity"]
+        return Principal("test-" + role, role, frozenset({"aska"}))
     return local_owner(request)
 
 with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:

@@ -122,13 +122,13 @@ async function go(next, {keepNotice = false} = {}) {
     if (!confirm('Ungespeicherte Freigabe verwerfen und die Ansicht wechseln?')) return;
     discardAccessDrafts();
   }
-  const permission = {settings: 'config.read', profiles: 'catalog.write', discord: 'discord.write', logs: 'logs.read', access: 'access.manage', backups: 'backups.manage'}[next];
+  const permission = {settings: 'config.read', profiles: 'catalog.write', discord: 'discord.write', logs: 'jobs.read', access: 'access.manage', backups: 'backups.manage'}[next];
   if (permission && !can(permission)) return notice('Für diesen Bereich fehlt die Berechtigung.', true);
   if (!navigate(next)) return;
   if (!keepNotice) notice('');
   const heading = $(`#${next} h1`); heading?.setAttribute('tabindex', '-1'); heading?.focus({preventScroll: true});
   if (next === 'settings') await loadConfig();
-  if (next === 'logs') await loadLogs();
+  if (next === 'logs' && can('logs.read')) await loadLogs();
   if (next === 'games') await loadGames(target => selectServer(target, true));
   if (next === 'community') await loadCommunity();
   if (next === 'access') await loadAccess();

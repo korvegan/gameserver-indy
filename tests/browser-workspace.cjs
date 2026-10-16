@@ -25,6 +25,9 @@ const fs = require('node:fs/promises');
         await page.waitForFunction(game => document.querySelector('#game-banner-art').getAttribute('src') === `/artwork/${game}-hero.jpg`, game);
         await page.waitForFunction(async game => { const {state} = await import('/state.js'); return state.selectedServer === game && state.available && !state.refreshing; }, game);
         await page.locator('#game-banner-art').evaluate(image => image.decode());
+        const card = page.locator(`[data-select-server="${game}"]`);
+        assert.equal(await card.getAttribute('aria-describedby'), `world-status-${game}`);
+        assert.ok((await page.locator(`#world-status-${game}`).innerText()).length > 0);
         const before = await page.locator('#workspace-controlbar').evaluate(position);
         for (const label of ['Übersicht', 'Einstellungen', 'Protokoll & Aufträge', 'Sicherungen', 'Updates', 'Mitteilungen']) {
           await page.getByRole('tab', {name: label, exact: true}).click();

@@ -45,7 +45,7 @@ export function initWorkspace(selectServer, go) {
     button.append(element('small', title), Object.assign(element('strong', value), {id}));
     button.addEventListener('click', () => go(target));
     if (target === 'backups') button.dataset.permission = 'backups.manage';
-    if (target === 'logs') button.dataset.permission = 'logs.read';
+    if (target === 'logs') button.dataset.permission = 'jobs.read';
     metricsPanel.append(button);
   }
   metrics.before(metricsPanel);
@@ -92,13 +92,16 @@ export function renderWorkspace() {
     for (const entry of state.catalog.servers) {
       const card = element('button', undefined, 'world-card'); card.type = 'button'; card.dataset.selectServer = entry.id;
       card.dataset.game = Object.hasOwn(artwork, entry.game) ? entry.game : 'generic';
-      card.setAttribute('aria-label', `${entry.label} auswählen`);
+      const gameLabel = artwork[entry.game]?.label || state.catalog.games.find(game => game.id === entry.game)?.label || entry.game;
+      card.setAttribute('aria-label', `${gameLabel} · ${entry.label} auswählen`);
+      card.setAttribute('aria-describedby', `world-status-${entry.id}`);
       if (Object.hasOwn(artwork, entry.game)) {
         const image = element('img'); image.src = `/artwork/${entry.game}-hero.jpg`; image.alt = ''; image.className = 'world-art'; card.append(image);
         const logo = element('img'); logo.src = `/artwork/${entry.game}-logo.png`; logo.alt = artwork[entry.game].label;
         const mark = element('span', undefined, 'game-wordmark'); mark.append(logo); card.append(mark);
       } else card.append(element('span', entry.game, 'world-game'));
-      card.append(element('strong', entry.label), element('span', '', 'world-status'), element('span', '', 'world-selection'));
+      const status = element('span', '', 'world-status'); status.id = `world-status-${entry.id}`;
+      card.append(element('strong', entry.label), status, element('span', '', 'world-selection'));
       list.append(card);
     }
     const allowed = new Set(state.catalog.servers.map(server => server.id));

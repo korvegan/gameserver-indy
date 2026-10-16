@@ -134,10 +134,11 @@ const {setTimeout: delay} = require('node:timers/promises');
     const privateHost = 'dashboard.test.ts.net';
     assert.equal((await post('/api/access/settings',{enabled:true,hostname:privateHost,port:18877})).status(),200);
     assert.equal((await post('/api/access/users',{login:'remote@example.test',name:'Remote owner',role:'owner',server_ids:null,enabled:true})).status(),200);
+    assert.equal((await post('/api/access/users',{login:'viewer@example.test',name:'Scoped viewer',role:'viewer',server_ids:['aska'],enabled:true})).status(),200);
     const grant = await post('/api/access/users',{login:'family@example.test',name:'Scoped family',role:'family',server_ids:['aska'],enabled:true}); assert.equal(grant.status(),200);
     const familyGrant = await grant.json();
     proxy = http.createServer((request,response) => {
-      const headers = {...request.headers,host:privateHost,'tailscale-user-login':request.headers['x-qa-identity'] === 'family' ? 'family@example.test' : 'remote@example.test'};
+      const headers = {...request.headers,host:privateHost,'tailscale-user-login':request.headers['x-qa-identity'] === 'family' ? 'family@example.test' : request.headers['x-qa-identity'] === 'viewer' ? 'viewer@example.test' : 'remote@example.test'};
       delete headers['x-qa-identity']; if (headers.origin === privateOrigin) headers.origin = 'https://'+privateHost;
       const upstream = http.request({hostname:'127.0.0.1',port:18877,path:request.url,method:request.method,headers},result => { response.writeHead(result.statusCode,result.headers); result.pipe(response); });
       upstream.on('error',() => { if (!response.headersSent) response.writeHead(503); response.end(); });
@@ -164,7 +165,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     // Restore the original scope required by the shared chronicle permission regression.
     assert.equal((await post('/api/access/users',{id:familyGrant.id,revision:2,login:'family@example.test',name:'Scoped family',role:'family',server_ids:['aska'],enabled:true})).status(),200);
     // The existing extensive chronicle and tapestry regressions also run against Symfony.
-    for (const script of ['tests/browser-chronicle.cjs','tests/browser-story.cjs','tests/browser-workspace.cjs']) {
+    for (const script of ['tests/browser-chronicle.cjs','tests/browser-story.cjs','tests/browser-workspace.cjs','tests/browser-workspace-access.cjs']) {
       const child = spawn(process.execPath,[script],{cwd:project,stdio:'inherit',env:{...process.env,INDY_BROWSER_ORIGIN:origin,INDY_BROWSER_FAMILY_ORIGIN:privateOrigin}});
       const [code] = await once(child,'exit'); assert.equal(code,0,script);
     }
