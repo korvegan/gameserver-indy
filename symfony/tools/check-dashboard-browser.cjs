@@ -18,11 +18,39 @@ const {setTimeout: delay} = require('node:timers/promises');
     child.on('error',error => { output += error.message; }); return child;
   };
   let fixture=launch(false);
+  async function privateAccess() {
+    const session=await(await fetch(origin+'/api/session')).json(),privateHost='dashboard.test.ts.net';
+    const post=async(route,data)=>{const response=await fetch(origin+route,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Manager-Token':session.token},body:JSON.stringify(data)});assert.equal(response.status,200);return response.json();};
+    await post('/api/access/settings',{enabled:true,hostname:privateHost,port:18877});
+    let family;
+    for(const [role,login] of [['owner','remote'],['viewer','viewer'],['family','family']]){
+      const grant=await post('/api/access/users',{login:login+'@example.test',name:'Fixture '+role,role,server_ids:role==='owner'?null:['aska'],enabled:true});
+      if(role==='family')family=grant;
+    }
+    proxy=http.createServer((request,response)=>{
+      const identity=['family','viewer'].includes(request.headers['x-qa-identity'])?request.headers['x-qa-identity']:'remote';
+      const headers={...request.headers,host:privateHost,'tailscale-user-login':identity+'@example.test'};
+      delete headers['x-qa-identity'];if(headers.origin===privateOrigin)headers.origin='https://'+privateHost;
+      const upstream=http.request({hostname:'127.0.0.1',port:18877,path:request.url,method:request.method,headers},result=>{response.writeHead(result.statusCode,result.headers);result.pipe(response);});
+      upstream.on('error',()=>{if(!response.headersSent)response.writeHead(503);response.end();});
+      response.on('close',()=>upstream.destroy());request.pipe(upstream);
+    });
+    await new Promise((resolve,reject)=>{proxy.once('error',reject);proxy.listen(18878,'127.0.0.1',resolve);});
+    return family;
+  }
   try {
     for (let attempt = 0; ; attempt++) {
       if (fixture.exitCode !== null || attempt >= 200) throw new Error('Fixture startup: '+output.slice(-6000));
       try { if ((await fetch(origin+'/api/session')).ok) break; } catch {}
       await delay(100);
+    }
+    if(process.argv.includes('--smoke')){
+      await privateAccess();
+      for(const script of ['tests/browser-core.cjs','tests/browser-workspace-access.cjs']){
+        const child=spawn(process.execPath,[script],{cwd:project,stdio:'inherit',env:{...process.env,INDY_BROWSER_ORIGIN:origin,INDY_BROWSER_FAMILY_ORIGIN:privateOrigin}});
+        const [code]=await once(child,'exit');assert.equal(code,0,script);
+      }
+      return;
     }
     browser = await chromium.launch({headless:true});
     const page = await browser.newPage({viewport:{width:1440,height:1000}}), errors = [];
@@ -131,20 +159,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     await page.locator('#start').click(); await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('Sitzung aktualisiert'));
     assert.equal(posts,1); await page.unrouteAll({behavior:'wait'});
     // Real private listener, with an isolated Serve-like proxy and persisted owner/family grants.
-    const privateHost = 'dashboard.test.ts.net';
-    assert.equal((await post('/api/access/settings',{enabled:true,hostname:privateHost,port:18877})).status(),200);
-    assert.equal((await post('/api/access/users',{login:'remote@example.test',name:'Remote owner',role:'owner',server_ids:null,enabled:true})).status(),200);
-    assert.equal((await post('/api/access/users',{login:'viewer@example.test',name:'Scoped viewer',role:'viewer',server_ids:['aska'],enabled:true})).status(),200);
-    const grant = await post('/api/access/users',{login:'family@example.test',name:'Scoped family',role:'family',server_ids:['aska'],enabled:true}); assert.equal(grant.status(),200);
-    const familyGrant = await grant.json();
-    proxy = http.createServer((request,response) => {
-      const headers = {...request.headers,host:privateHost,'tailscale-user-login':request.headers['x-qa-identity'] === 'family' ? 'family@example.test' : request.headers['x-qa-identity'] === 'viewer' ? 'viewer@example.test' : 'remote@example.test'};
-      delete headers['x-qa-identity']; if (headers.origin === privateOrigin) headers.origin = 'https://'+privateHost;
-      const upstream = http.request({hostname:'127.0.0.1',port:18877,path:request.url,method:request.method,headers},result => { response.writeHead(result.statusCode,result.headers); result.pipe(response); });
-      upstream.on('error',() => { if (!response.headersSent) response.writeHead(503); response.end(); });
-      response.on('close',() => upstream.destroy()); request.pipe(upstream);
-    });
-    await new Promise((resolve,reject) => { proxy.once('error',reject); proxy.listen(18878,'127.0.0.1',resolve); });
+    const familyGrant = await privateAccess();
     const remote = await browser.newPage({viewport:{width:390,height:844}}); await remote.goto(privateOrigin);
     await remote.waitForFunction(() => document.querySelector('#identity-label').textContent === 'Besitzer · privat');
     assert.equal(await remote.getByRole('button',{name:'WhatsApp',exact:true}).count(),0);

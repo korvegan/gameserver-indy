@@ -1,0 +1,44 @@
+// The family UI acceptance: real isolated PHP server; no crash or timing simulations.
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+(async()=>{
+  const origin=process.env.INDY_BROWSER_ORIGIN;
+  assert.ok(origin,'Use the owned PHP fixture runner.');
+  const browser=await chromium.launch({headless:true});
+  try{
+    const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+    page.on('pageerror',e=>errors.push(e.message));await page.goto(origin);
+    await page.waitForSelector('#world-list [data-select-server="aska"]');
+    const select=async game=>{
+      await page.locator(`[data-select-server="${game}"]`).click();
+      await page.waitForFunction(async game=>{const {state}=await import('/state.js');return state.selectedServer===game&&state.available&&!state.refreshing;},game);
+      await page.locator('#game-banner-art').evaluate(image=>image.decode());
+      assert.equal(await page.locator('#game-banner-art').getAttribute('src'),`/artwork/${game}-hero.jpg`);
+    };
+    for(const game of ['aska','enshrouded']){
+      await select(game);
+      for(const name of ['Übersicht','Einstellungen','Protokoll & Aufträge','Sicherungen','Updates','Mitteilungen']){
+        await page.getByRole('tab',{name,exact:true}).click();
+        assert.equal(await page.locator('#server-select').inputValue(),game);
+        assert.equal(await page.locator('#start').isEnabled(),true);
+      }
+    }
+    await page.getByRole('tab',{name:'Einstellungen',exact:true}).click();
+    await page.getByLabel('Servername',{exact:true}).fill('Familienentwurf');
+    await page.getByRole('tab',{name:'Updates',exact:true}).click();
+    await page.getByRole('tab',{name:'Einstellungen',exact:true}).click();
+    assert.equal(await page.getByLabel('Servername',{exact:true}).inputValue(),'Familienentwurf');
+    page.once('dialog',d=>d.dismiss());await page.locator('[data-select-server="aska"]').click();
+    assert.equal(await page.locator('#server-select').inputValue(),'enshrouded');
+    await fs.mkdir('artifacts',{recursive:true});
+    for(const width of [1440,390]){
+      await page.setViewportSize({width,height:1000});
+      await page.getByRole('tab',{name:'Übersicht',exact:true}).click();
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+      assert.equal(await page.locator('#quick-join-value').isVisible(),true);
+      await page.screenshot({path:`artifacts/symfony-core-${width}.png`,fullPage:true});
+    }
+    assert.deepEqual(errors,[]);console.log('Family UI passed: both games, server tabs, drafts, join details and desktop/mobile.');
+  }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});
