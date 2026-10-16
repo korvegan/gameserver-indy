@@ -7,15 +7,38 @@ const fs = require('node:fs');
   const browser = await chromium.launch({headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined});
   const page = await browser.newPage({viewport: {width: 1440, height: 960}});
   const errors = [];
+  let releaseIdentity, releaseCatalog;
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', entry => { if (entry.type() === 'error') errors.push(entry.text()); });
   page.on('dialog', dialog => dialog.accept());
   try {
     await page.clock.install();
+    let identityArrived;
+    const identitySeen = new Promise(resolve => { identityArrived = resolve; });
+    const identityGate = new Promise(resolve => { releaseIdentity = resolve; });
+    await page.route('**/api/session', async route => {
+      const response = await route.fetch(); identityArrived();
+      await identityGate; await route.fulfill({response});
+    });
+    let catalogArrived;
+    const catalogSeen = new Promise(resolve => { catalogArrived = resolve; });
+    const catalogGate = new Promise(resolve => { releaseCatalog = resolve; });
+    await page.route('**/api/servers', async route => {
+      const response = await route.fetch(); catalogArrived();
+      await catalogGate; await route.fulfill({response});
+    });
     await page.goto('http://127.0.0.1:8766');
+    await identitySeen;
     await page.getByRole('button', {name: 'Sturmklingen', exact: true}).click();
     await page.locator('#scene-qa-milestone').waitFor();
+    assert.equal(await page.locator('#new-moment').isDisabled(), true, 'Editor action waits for identity and catalog bootstrap');
+    releaseIdentity();
+    await catalogSeen;
+    assert.equal(await page.locator('#new-moment').isDisabled(), true, 'Identity alone cannot open the form before its catalog exists');
+    releaseCatalog();
     await page.locator('#new-moment').click();
+    await page.unroute('**/api/session');
+    await page.unroute('**/api/servers');
     await page.waitForFunction(() => document.querySelector('#moment-editor').open);
     await page.locator('#moment-title').fill('Unser Testlager am Fluss');
     await page.locator('#moment-game').selectOption('enshrouded');
@@ -184,5 +207,5 @@ const fs = require('node:fs');
     await page.waitForFunction(() => !document.querySelector('#moment-editor').open);
     assert.deepEqual(errors, []);
     console.log('Chronicle browser QA passed: create/upload, equal awards, retry, deep link/reload, correction/removal, filters, quiet updates, export, scoped permissions, mobile/reduced motion.');
-  } finally { await browser.close(); }
+  } finally { releaseIdentity?.(); releaseCatalog?.(); await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

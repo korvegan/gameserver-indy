@@ -28,6 +28,7 @@ export function controls() {
   $('#refresh').disabled = state.submitting;
   $('#refresh-logs').disabled = state.submitting;
   $('#check-updates').disabled = state.submitting || !state.selectedServer || !can('updates.check') || state.pending.has(`updates:${state.selectedServer}`);
+  $('#new-moment').disabled = !state.catalogAvailable || !can('community.write');
   for (const node of document.querySelectorAll('[data-permission]')) node.hidden = !can(node.dataset.permission);
   for (const button of document.querySelectorAll('#discord button')) button.disabled = state.submitting || !can('discord.write');
   $('#access-note').hidden = state.principal?.role === 'owner';
