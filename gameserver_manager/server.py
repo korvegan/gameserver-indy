@@ -112,7 +112,7 @@ class Handler(BaseHTTPRequestHandler):
             '/api/servers', '/api/jobs', '/api/status', '/api/state', '/api/config', '/api/start', '/api/stop',
             '/api/restart', '/api/setup', '/api/logs', '/api/events', '/api/discord/settings', '/api/discord/send',
             '/api/community', '/api/community/options', '/api/community/event', '/api/community/story',
-            '/api/community/media', '/api/community/export', '/api/connections/refresh', '/api/updates/check', '/api/backups') else 'request.unknown'
+            '/api/community/media', '/api/community/export', '/api/connections/refresh', '/api/connections/settings', '/api/updates/check', '/api/backups') else 'request.unknown'
 
     def do_GET(self):
         if not self.trusted_host():

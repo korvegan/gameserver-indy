@@ -1,7 +1,7 @@
 import {$, element} from '../dom.js';
 import {can, state} from '../state.js';
 import {renderUpdate} from './updates.js';
-import {renderConnection} from './connection.js';
+import {connectionControls, renderConnection} from './connection.js';
 import {backupControls} from './backups.js';
 
 export function controls() {
@@ -31,6 +31,7 @@ export function controls() {
   $('#new-moment').disabled = !state.catalogAvailable || !can('community.write');
   for (const node of document.querySelectorAll('[data-permission]')) node.hidden = !can(node.dataset.permission);
   for (const button of document.querySelectorAll('#discord button')) button.disabled = state.submitting || !can('discord.write');
+  connectionControls();
   $('#access-note').hidden = state.principal?.role === 'owner';
   backupControls();
   if (pending && state.available) {

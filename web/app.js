@@ -89,6 +89,9 @@ async function refresh() {
 }
 
 async function selectServer(target, openOverview = false) {
+  if (state.connectionDirty && !confirm('Ungespeicherte Beitrittsadresse verwerfen und das Serverprofil wechseln?')) {
+    $('#server-select').value = state.selectedServer; return false;
+  }
   if (state.dirty && !confirm('Ungespeicherte Spieleinstellungen verwerfen und das Serverprofil wechseln?')) {
     $('#server-select').value = state.selectedServer; return false;
   }
@@ -154,14 +157,19 @@ async function runOperation(operation, payload = {}) {
 
 async function mutate(path, body = {}) {
   if (state.submitting) return;
+  if (path === '/api/servers' && state.connectionDirty && !confirm('Ungespeicherte Beitrittsadresse verwerfen und zum neuen Serverprofil wechseln?')) return;
   if (path === '/api/servers' && state.dirty && !confirm('Ungespeicherte Spieleinstellungen verwerfen und zum neuen Serverprofil wechseln?')) return;
   const target = state.selectedServer, epoch = state.selectionEpoch;
+  const connectionDraft = $('#join-public-host').value;
   const {discordRevision, messageRevision} = state;
   state.submitting = true; controls(); notice('Wird ausgeführt …');
   try {
     const result = await api(path, body, target);
     if (path === '/api/servers') {
-      replaceSelection(result.server_id); clearConfig(); state.profileDirty = false; await refreshCatalog();
+      if (epoch === state.selectionEpoch && (!state.connectionDirty || $('#join-public-host').value === connectionDraft)) {
+        replaceSelection(result.server_id); clearConfig(); renderConnection();
+      }
+      state.profileDirty = false; await refreshCatalog();
     } else if ((path === '/api/config' || path === '/api/setup') && epoch === state.selectionEpoch) {
       state.dirty = false; state.rawDirty = false; state.config = null; state.schema = null;
     }
@@ -174,7 +182,7 @@ async function mutate(path, body = {}) {
   finally { state.submitting = false; controls(); }
 }
 
-bindNavigation(go); bindForms(mutate); bindConnections(); bindCommunity(); bindAccess(); bindBackups(runOperation);
+bindNavigation(go); bindForms(mutate); bindConnections(refresh); bindCommunity(); bindAccess(); bindBackups(runOperation);
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;

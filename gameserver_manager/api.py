@@ -65,6 +65,8 @@ class Api:
             return 200, self.app.chronicle.save(principal, body)
         if path == '/api/connections/refresh':
             return 202, self.app.refresh_connections(principal, body.get('server_id'))
+        if path == '/api/connections/settings':
+            return 200, self.app.save_connection(principal, body)
         if path == '/api/updates/check':
             job, _future = self.app.check_updates(principal, body.get('server_id'))
             return 202, {'job': self.app.job_view(principal, job)}

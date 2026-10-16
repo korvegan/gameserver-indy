@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 
 from .configuration import ManagerError, atomic_json
+from .connections import join_details
 
 WEBHOOK = r"https://(?:canary\.|ptb\.)?discord(?:app)?\.com/api(?:/v\d+)?/webhooks/\d+/[A-Za-z0-9_-]+"
 
@@ -44,6 +45,9 @@ class DiscordService:
         instance = self.instance
         with instance.settings_lock:
             return os.environ.get("DISCORD_WEBHOOK_URL", "") or instance.settings.get("discord", {}).get("webhook_url", "")
+
+    def join_message(self, config=None):
+        return join_details(self.instance, self.instance.config() if config is None else config)['share_message']
 
     def save(self, settings):
         if not isinstance(settings, dict) or type(settings.get("auto_notify")) is not bool:

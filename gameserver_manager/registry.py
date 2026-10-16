@@ -9,6 +9,7 @@ from .instances import GameServerManager
 from .paths import ROOT
 from .games import GAME_TYPES
 from .steam import branch_name
+from .connections import public_host
 
 
 class ServerRegistry:
@@ -65,6 +66,13 @@ class ServerRegistry:
                     raise ManagerError(f"{key}: Bitte einen absoluten lokalen Pfad angeben.")
         if 'steam_branch' in profile:
             branch_name(profile['steam_branch'])
+        if 'connection' in profile:
+            connection = profile['connection']
+            if not isinstance(connection, dict) or set(connection) - {'public_host'}:
+                raise ManagerError('Ungültige Beitrittseinstellungen.')
+            host = public_host(connection.get('public_host', ''))
+            if host and GAME_TYPES[profile['game']].schema.get('connection', {}).get('mode') != 'ip_query':
+                raise ManagerError('Für dieses Spiel ist kein direkter IP-/Domain-Beitritt eingerichtet.')
         if profile.get("launcher_script") and not GAME_TYPES[profile["game"]].schema.get("external_launcher"):
             raise ManagerError("Dieses Spielprofil unterstützt noch keine externen PowerShell-Starter.")
         if profile.get("launcher_script") and not profile["launcher_script"].lower().endswith(".ps1"):
@@ -89,7 +97,7 @@ class ServerRegistry:
             }
 
     def register(self, body):
-        profile = {key: body[key] for key in ("id", "game", "label", "server_directory", "config_path", "launcher_script", "log_directory", "steam_manifest", "steam_branch") if key in body}
+        profile = {key: body[key] for key in ("id", "game", "label", "server_directory", "config_path", "launcher_script", "log_directory", "steam_manifest", "steam_branch", "connection") if key in body}
         self.validate_profile(profile)
         with self.lock:
             if profile["id"] in self.managers:
@@ -106,3 +114,19 @@ class ServerRegistry:
             self.managers[profile["id"]] = GameServerManager(self.root, profile=profile, settings=self.settings, settings_lock=self.lock)
             self.managers[profile['id']].backups.peers = self.instances
         return {"message": "Serverprofil hinzugefügt. Spieldateien und Welten wurden nicht verändert.", "server_id": profile["id"]}
+
+    def save_connection(self, server_id, host):
+        host = public_host(host)
+        with self.lock:
+            manager = self.get(server_id, explicit=True)
+            profile = {**manager.profile, 'connection': {'public_host': host}}
+            self.validate_profile(profile)
+            updated = copy.deepcopy(self.settings)
+            for item in updated['servers']:
+                if item['id'] == server_id:
+                    item['connection'] = profile['connection']
+            atomic_json(self.path, updated)
+            self.settings.clear()
+            self.settings.update(updated)
+            manager.profile = profile
+        return {'message': 'Öffentliche Beitrittsadresse gespeichert.'}

@@ -6,7 +6,9 @@ import urllib.error
 import urllib.request
 from unittest.mock import Mock, patch
 
-from gameserver_manager.connections import ConnectionService, MAX_AGE, windows_network
+from gameserver_manager.connections import ConnectionService, MAX_AGE, public_host, windows_network
+from gameserver_manager.configuration import ManagerError
+from gameserver_manager.registry import ServerRegistry
 from gameserver_manager.security import Principal
 from test_manager import HTTPFixture, ManagerFixture
 
@@ -47,6 +49,31 @@ class ConnectionTests(ManagerFixture):
         for _ in range(3):
             self.view()
         self.provider.assert_called_once()
+
+    def test_configured_domain_is_stable_without_network_evidence_and_has_safe_share_text(self):
+        self.manager.profile['connection'] = {'public_host': 'Group.Example.ORG.'}
+        result = self.view()
+        self.assertEqual(result['external'], 'group.example.org:23456')
+        self.assertIsNone(result['external_ip'])
+        self.assertFalse(result['external_verified'])
+        self.assertIn('Adresse: `group.example.org:23456`', result['share_message'])
+        self.assertIn('Suche nach IPv4 / Domain', result['share_message'])
+        for group in self.config['userGroups']:
+            self.assertNotIn(group['password'], result['share_message'])
+        self.provider.assert_not_called()
+        self.config['ip'] = '127.0.0.1'
+        self.assertIsNone(self.view()['external'])
+        self.assertNotIn('group.example.org:', self.view()['share_message'])
+        self.config['ip'] = '0.0.0.0'; self.config['queryPort'] = 0
+        self.assertIsNone(self.view()['external'])
+
+    def test_public_host_rejects_urls_ports_private_ips_and_message_injection(self):
+        for value in ('https://group.example.org', 'group.example.org:15637', '127.0.0.1', '192.168.1.2',
+                      '999.1.2.3', 'group..org', '-group.example.org', 'group.example.org/path',
+                      'group.example.org\n@everyone', 'localhost', '.', 'group.example.org..', True, None, {}):
+            with self.subTest(value=value), self.assertRaises(ManagerError): public_host(value)
+        self.assertEqual(public_host('  Group.Example.ORG. '), 'group.example.org')
+        self.assertEqual(public_host('8.8.8.8'), '8.8.8.8')
 
     def test_invalid_addresses_are_filtered_and_multiple_interfaces_are_kept(self):
         self.provider.return_value = {'lan': ['192.168.1.20', '10.0.0.8', '127.0.0.1', '169.254.1.1',
@@ -108,6 +135,44 @@ class ConnectionTests(ManagerFixture):
 
 
 class ConnectionHTTPTests(HTTPFixture):
+    def test_public_host_requires_owner_csrf_and_explicit_profile_then_persists(self):
+        body = {'server_id': 'enshrouded', 'public_host': 'group.example.org'}
+        config_before = self.manager.config_path.read_bytes()
+        for payload, token, expected in ((body, None, 403), ({'public_host': 'group.example.org'}, self.server.token, 409)):
+            with self.assertRaises(urllib.error.HTTPError) as error: self.post('/api/connections/settings', payload, token)
+            self.assertEqual(error.exception.code, expected); error.exception.close()
+        self.server.identity = lambda _: Principal('family', 'family', frozenset({'enshrouded'}))
+        with self.assertRaises(urllib.error.HTTPError) as error: self.post('/api/connections/settings', body, self.server.token)
+        self.assertEqual(error.exception.code, 403); error.exception.close()
+        self.server.identity = lambda _: Principal('owner', 'owner')
+        with self.post('/api/connections/settings', body, self.server.token) as response: self.assertEqual(response.status, 200)
+        reloaded = ServerRegistry(self.root)
+        self.assertEqual(reloaded.get('enshrouded').profile['connection']['public_host'], 'group.example.org')
+        with urllib.request.urlopen(self.url + '/api/status?server=enshrouded') as response: result = json.load(response)
+        self.assertEqual(result['connection']['external'], 'group.example.org:15637')
+        self.assertEqual(self.manager.config_path.read_bytes(), config_before)
+        self.assertEqual(self.bridge.calls.count('Start'), 0)
+        for value in ('https://group.example.org', 'group.example.org:15637', False):
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                self.post('/api/connections/settings', {**body, 'public_host': value}, self.server.token)
+            self.assertEqual(error.exception.code, 409); error.exception.close()
+        self.assertEqual(self.manager.profile['connection']['public_host'], 'group.example.org')
+        with self.post('/api/connections/settings', {**body, 'public_host': ''}, self.server.token): pass
+        self.assertEqual(self.manager.profile['connection']['public_host'], '')
+
+    def test_domain_settings_do_not_cross_profile_or_authorization_scope(self):
+        other = self.root / 'OtherEnshrouded'; other.mkdir()
+        registry = self.server.registry
+        registry.register({'id': 'other', 'game': 'enshrouded', 'label': 'Other', 'server_directory': str(other)})
+        registry.save_connection('enshrouded', 'first.example.org')
+        registry.save_connection('other', 'second.example.org')
+        self.assertEqual(self.manager.profile['connection']['public_host'], 'first.example.org')
+        self.assertEqual(registry.get('other').profile['connection']['public_host'], 'second.example.org')
+        self.server.identity = lambda _: Principal('scoped-owner', 'owner', frozenset({'enshrouded'}))
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            self.post('/api/connections/settings', {'server_id': 'other', 'public_host': 'wrong.example.org'}, self.server.token)
+        self.assertEqual(error.exception.code, 403); error.exception.close()
+
     def test_refresh_requires_owner_and_explicit_authorized_profile_and_csrf(self):
         service = self.server.app.connections
         service.provider = Mock(return_value={'lan': ['192.168.1.20'], 'public': '8.8.8.8'})
