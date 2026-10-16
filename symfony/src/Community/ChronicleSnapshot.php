@@ -71,8 +71,18 @@ final class ChronicleSnapshot
                     if (!$event instanceof \stdClass || ($event->id ?? null) !== $row['id'] || ($event->revision ?? null) !== $row['revision']
                         || ($event->game_id ?? null) !== $row['game_id'] || ($event->instance_id ?? null) !== $row['instance_id']
                         || !GameCatalog::identifier($row['id']) || !is_int($row['revision']) || $row['revision'] < 1
-                        || !is_string($event->title ?? null) || !is_array($event->member_ids ?? null) || !is_string($event->badge_id ?? null)
+                        || !GameCatalog::identifier($row['game_id']) || ($row['instance_id'] !== null && !GameCatalog::identifier($row['instance_id']))
+                        || !is_string($event->title ?? null) || !is_array($event->member_ids ?? null) || !array_is_list($event->member_ids)
+                        || count($event->member_ids) < 1 || count($event->member_ids) > 16
+                        || array_filter($event->member_ids, fn ($id) => !GameCatalog::identifier($id))
+                        || count(array_unique($event->member_ids)) !== count($event->member_ids) || !GameCatalog::identifier($event->badge_id ?? null)
+                        || !in_array($event->source ?? null, ['test', 'manual', 'verified-game', 'steam-import'], true)
+                        || (property_exists($event, 'removed') && !is_bool($event->removed))
                         || (isset($event->media_id) && (!is_string($event->media_id) || !preg_match('/^[a-f0-9]{64}$/D', $event->media_id)))) { throw new \DomainException('Chronikreferenzen sind beschädigt.'); }
+                    foreach (['campaign_id', 'mod_profile_id'] as $key) { if (($event->{$key} ?? null) !== null && !GameCatalog::identifier($event->{$key})) { throw new \DomainException('Chronikkontext ist beschädigt.'); } }
+                    if (property_exists($event, 'member_names') && (!$event->member_names instanceof \stdClass
+                        || array_diff(array_keys(get_object_vars($event->member_names)), $event->member_ids)
+                        || array_filter(get_object_vars($event->member_names), fn ($name) => !is_string($name) || mb_strlen($name) < 1 || mb_strlen($name) > 80))) { throw new \DomainException('Chroniknamen sind beschädigt.'); }
                     if (isset($event->media_id)) {
                         if ($version !== 2) { throw new \DomainException('Screenshotreferenz ohne Medienschema.'); }
                         $query = $db->prepare('SELECT 1 FROM community_media WHERE id=:id'); $query->bindValue(':id', $event->media_id, SQLITE3_TEXT); $found = $query->execute();
