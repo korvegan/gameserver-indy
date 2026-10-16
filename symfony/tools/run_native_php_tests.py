@@ -27,7 +27,7 @@ native_temp = local(ps_value('[IO.Path]::GetTempPath()'))
 native_php = os.environ.get('INDY_NATIVE_PHP') or ps_value('(Join-Path $env:LOCALAPPDATA "GameServerIndy\\tools\\php85\\php.exe")')
 executable = str(local(native_php))
 modules = subprocess.check_output([executable, '-m'], text=True).splitlines()
-php_options = [] if 'zip' in modules else ['-d', 'extension=zip']
+php_options = [option for module in ('zip', 'intl') if module not in modules for option in ('-d', 'extension=' + module)]
 with tempfile.TemporaryDirectory(prefix='ib-', dir=native_temp) as directory:
     target = Path(directory)
     sources = subprocess.check_output(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard',

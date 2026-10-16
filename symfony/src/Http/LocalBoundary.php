@@ -35,7 +35,7 @@ final class LocalBoundary
                 $event->setResponse(new JsonResponse(['error' => 'Sitzung aktualisieren. Dieser Befehl wurde nicht ausgeführt.', 'code' => 'session_expired'], 403));
             } elseif ($request->getContentTypeFormat() !== 'json') {
                 $event->setResponse(new JsonResponse(['error' => 'JSON erforderlich.'], 415));
-            } elseif (strlen($request->getContent()) > ($request->getPathInfo() === '/api/config' ? 1048576 : 4096)) {
+            } elseif (strlen($request->getContent()) > (in_array($request->getPathInfo(), ['/api/config', '/api/community'], true) ? 1048576 : 4096)) {
                 $event->setResponse(new JsonResponse(['error' => 'Anfrage zu groß.'], 413));
             }
         }
@@ -72,7 +72,8 @@ final class LocalBoundary
                 || $event->getResponse()->getStatusCode() >= 400 || $request->getPathInfo() === '/api/session')) {
             $operation = in_array($request->getPathInfo(), ['/api/session', '/api/status', '/api/jobs', '/api/job-events',
                 '/api/access', '/api/access/users', '/api/access/settings', '/api/config', '/api/setup',
-                '/api/servers', '/api/connections/settings'], true) ? $request->getPathInfo() : 'request.unknown';
+                '/api/servers', '/api/connections/settings', '/api/community', '/api/community/options', '/api/community/event',
+                '/api/community/story', '/api/community/media', '/api/community/export'], true) ? $request->getPathInfo() : 'request.unknown';
             $this->access->audit($request->attributes->get('_indy_principal')?->id ?? 'unrecognized',
                 $operation, '', (string) $event->getResponse()->getStatusCode());
         }
