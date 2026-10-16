@@ -47,7 +47,7 @@ final class InstanceMutation
                 };
                 $guard();
                 $followersAllowed = $lifecycleFollowers && in_array($current['operation'] ?? '', ['stop', 'restart'], true);
-                if (!$followersAllowed && $this->jobs->pendingCount($id) !== ($current === null ? 0 : 1)) { throw new \DomainException('Für dieses Profil stehen noch Aufträge aus.'); }
+                if (!$followersAllowed && $this->jobs->pendingCount($id, 'control') !== ($current === null ? 0 : 1)) { throw new \DomainException('Für dieses Profil stehen noch Aufträge aus.'); }
                 return $change($guard);
             } finally { if ($current === null) { $execution->release(); } }
         } finally { if ($current === null) { $acceptance->release(); } }

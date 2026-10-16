@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Runtime;
 
 use App\Job\JobRepository;
+use App\Integration\IntegrationOperations;
 use App\Storage\PrivateFiles;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
@@ -36,13 +37,13 @@ final class RuntimeLifecycle
         $this->runtime->assertInitialized(); $factory = new LockFactory(new FlockStore($this->runtime->directory.'/locks'));
         $acceptance = $factory->createLock('acceptance'); $acceptance->acquire(true); $workers = [];
         try {
-            foreach ($this->jobs->pendingTargets() as $id) {
-                $lock = $factory->createLock('execute:'.$id);
+            foreach ($this->jobs->pendingResources() as ['server_id' => $id, 'lane' => $lane]) {
+                $lock = $factory->createLock(IntegrationOperations::lock($id, $lane));
                 if (!$lock->acquire()) { throw new \DomainException('Ein vorheriger Worker arbeitet noch. Kein zweiter Verwaltungslauf gestartet.'); }
                 $workers[] = $lock;
             }
             $this->jobs->interruptQueued('Verwaltung neu gestartet. Wartender Befehl wurde nicht automatisch erneut ausgeführt.');
-            foreach ($this->jobs->pendingTargets() as $id) { if ($this->jobs->hasRunning($id)) { $this->jobs->recover($id); } }
+            foreach ($this->jobs->pendingResources() as ['server_id' => $id, 'lane' => $lane]) { if ($this->jobs->hasRunning($id, $lane)) { $this->jobs->recover($id, $lane); } }
             $epoch = bin2hex(random_bytes(16));
             PrivateFiles::write($this->runtime->directory.'/runtime-lifecycle.json', PrivateFiles::json((object) ['active' => true, 'epoch' => $epoch]));
             return $epoch;

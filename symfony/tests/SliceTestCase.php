@@ -27,6 +27,8 @@ abstract class SliceTestCase extends WebTestCase
         static::getContainer()->get(\App\Access\AccessStore::class)->initialize();
         $repository->initialize();
         static::getContainer()->get('messenger.transport.async')->setup();
+        static::getContainer()->get('messenger.transport.metadata')->setup();
+        static::getContainer()->get(\App\Integration\Discord::class)->initialize();
         return $repository;
     }
     protected function handler(\App\Runtime\ServerControl $control): \App\Job\ExecuteServerJobHandler

@@ -2,3 +2,12 @@ services:
   App\Runtime\ProcessGateway:
     alias: App\Runtime\WindowsProcessGateway
     public: true
+  App\Integration\SteamProvider:
+    alias: App\Integration\SteamCmd
+    public: true
+  App\Integration\HostNetworkProvider:
+    alias: App\Integration\WindowsNetwork
+    public: true
+  App\Integration\DiscordTransport:
+    alias: App\Integration\DiscordWebhook
+    public: true

@@ -9,6 +9,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 interface ConfigurationAdapter
 {
     public function id(): string;
+    public function title(\stdClass $configuration): string;
     public function decode(string $bytes): \stdClass;
     public function encode(\stdClass $configuration, string $original): string;
     public function validate(\stdClass $configuration): void;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Job;
 
 use App\Access\Principal;
+use App\Integration\IntegrationOperations;
 use App\Runtime\SliceRuntime;
 use Doctrine\DBAL\Connection;
 
@@ -66,11 +67,11 @@ final class JobRepository
             'cursor' => (int) $this->db->fetchOne('SELECT COALESCE(MAX(sequence),0) FROM slice_events')]);
     }
 
-    public function pendingCount(?string $serverId = null): int
+    public function pendingCount(?string $serverId = null, ?string $lane = null): int
     {
         $this->ready();
         return (int) $this->db->fetchOne("SELECT COUNT(*) FROM slice_jobs WHERE state IN ('queued','running')"
-            .($serverId === null ? '' : ' AND server_id=?'), $serverId === null ? [] : [$serverId]);
+            .($serverId === null ? '' : ' AND server_id=?').($lane === null ? '' : ' AND '.IntegrationOperations::predicate($lane)), $serverId === null ? [] : [$serverId]);
     }
 
     public function insert(string $id, string $requestId, string $serverId, string $operation, Principal $actor,
@@ -92,16 +93,16 @@ final class JobRepository
         return $this->db->transactional($callback);
     }
 
-    public function next(string $serverId): ?array
+    public function next(string $serverId, string $lane = 'control'): ?array
     {
         $this->ready();
-        return $this->db->fetchAssociative("SELECT * FROM slice_jobs WHERE server_id=? AND state='queued' ORDER BY sequence LIMIT 1", [$serverId]) ?: null;
+        return $this->db->fetchAssociative("SELECT * FROM slice_jobs WHERE server_id=? AND state='queued' AND ".IntegrationOperations::predicate($lane).' ORDER BY sequence LIMIT 1', [$serverId]) ?: null;
     }
 
-    public function hasRunning(string $serverId): bool
+    public function hasRunning(string $serverId, string $lane = 'control'): bool
     {
         $this->ready();
-        return (bool) $this->db->fetchOne("SELECT 1 FROM slice_jobs WHERE server_id=? AND state='running'", [$serverId]);
+        return (bool) $this->db->fetchOne("SELECT 1 FROM slice_jobs WHERE server_id=? AND state='running' AND ".IntegrationOperations::predicate($lane), [$serverId]);
     }
 
     public function transition(string $id, string $state, string $message, ?array $result = null): void
@@ -115,17 +116,17 @@ final class JobRepository
 
     public function failWithFollowers(string $id, string $state, string $message): void
     {
-        $serverId = $this->get($id)['server_id'];
-        $this->transaction(function () use ($id, $state, $message, $serverId): void {
+        $job = $this->get($id); $serverId = $job['server_id']; $lane = IntegrationOperations::is($job['operation']) ? 'metadata' : 'control';
+        $this->transaction(function () use ($id, $state, $message, $serverId, $lane): void {
             $this->transition($id, $state, $message);
-            $this->interrupt($serverId, ['queued'], 'Ein vorheriger Auftrag ist fehlgeschlagen oder unklar. Dieser Befehl wurde nicht ausgeführt. Bitte neu beauftragen.');
+            $this->interrupt($serverId, ['queued'], 'Ein vorheriger Auftrag ist fehlgeschlagen oder unklar. Dieser Befehl wurde nicht ausgeführt. Bitte neu beauftragen.', $lane);
         });
     }
 
-    public function recover(string $serverId): void
+    public function recover(string $serverId, string $lane = 'control'): void
     {
         $this->transaction(fn () => $this->interrupt($serverId, ['queued', 'running'],
-            'Worker wurde unterbrochen. Ausgang unbekannt; Prozessstatus prüfen. Kein automatischer Wiederholungsversuch.'));
+            'Worker wurde unterbrochen. Ausgang unbekannt; Prozessstatus prüfen. Kein automatischer Wiederholungsversuch.', $lane));
     }
 
     public function events(int $after): array
@@ -134,9 +135,9 @@ final class JobRepository
         return $this->db->fetchAllAssociative('SELECT sequence,payload FROM slice_events WHERE sequence>? ORDER BY sequence LIMIT 100', [$after]);
     }
 
-    private function interrupt(string $serverId, array $states, string $message): void
+    private function interrupt(string $serverId, array $states, string $message, string $lane): void
     {
-        foreach ($this->db->fetchAllAssociative('SELECT id,state FROM slice_jobs WHERE server_id=?', [$serverId]) as $job) {
+        foreach ($this->db->fetchAllAssociative('SELECT id,state FROM slice_jobs WHERE server_id=? AND '.IntegrationOperations::predicate($lane), [$serverId]) as $job) {
             if (in_array($job['state'], $states, true)) {
                 $this->transition($job['id'], 'interrupted', $message);
             }
@@ -153,10 +154,20 @@ final class JobRepository
         $this->ready();
         return $this->db->fetchFirstColumn("SELECT DISTINCT server_id FROM slice_jobs WHERE state IN ('queued','running')");
     }
+    public function pendingResources(): array
+    {
+        $result = [];
+        foreach ($this->pendingTargets() as $id) {
+            foreach (['control', 'metadata'] as $lane) {
+                if ($this->pendingCount($id, $lane)) { $result[] = ['server_id' => $id, 'lane' => $lane]; }
+            }
+        }
+        return $result;
+    }
     public function hasExclusive(string $id): bool
     {
         $this->ready();
-        return (bool) $this->db->fetchOne("SELECT 1 FROM slice_jobs WHERE server_id=? AND state IN ('queued','running') AND operation NOT IN ('start','stop','restart') LIMIT 1", [$id]);
+        return (bool) $this->db->fetchOne("SELECT 1 FROM slice_jobs WHERE server_id=? AND state IN ('queued','running') AND operation NOT IN ('start','stop','restart') AND ".IntegrationOperations::predicate('control').' LIMIT 1', [$id]);
     }
     public function interruptQueued(string $message): void
     {

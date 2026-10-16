@@ -6,6 +6,7 @@ use App\Storage\UnicodeText;
 
 final class AskaConfiguration implements ConfigurationAdapter
 {
+    public function title(\stdClass $configuration): string { return $configuration->{'server name'} ?? 'ASKA'; }
     private const SECRETS = ['password', 'authentication token'];
     private const CHOICES = [
         'keep server world alive' => ['false', 'true'], 'mode' => ['normal', 'custom'],

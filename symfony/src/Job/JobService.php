@@ -7,12 +7,15 @@ use App\Access\AccessPolicy;
 use App\Access\Principal;
 use App\Backup\BackupOperations;
 use App\Instance\InstanceRegistry;
+use App\Integration\IntegrationOperations;
+use App\Integration\DiscordWebhook;
 use App\Runtime\RuntimeLifecycle;
 use App\Runtime\SliceRuntime;
 use App\Storage\PrivateFiles;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 final class JobService
 {
@@ -24,7 +27,7 @@ final class JobService
     {
         $this->runtime->assertInitialized();
         if ($this->runtime->driver === 'managed') { $this->registry->get($serverId); } else { $this->runtime->server($serverId); }
-        if (!in_array($operation, ['start', 'stop', 'restart', 'config', 'setup', ...BackupOperations::ALL], true) || !preg_match('/^[a-f0-9]{32}$/D', $requestId)) {
+        if (!in_array($operation, ['start', 'stop', 'restart', 'config', 'setup', ...BackupOperations::ALL, ...IntegrationOperations::ALL], true) || !preg_match('/^[a-f0-9]{32}$/D', $requestId)) {
             throw new \InvalidArgumentException('Befehl oder Anfragekennung ungültig.');
         }
         $actor ??= new Principal('local-owner', $this->runtime->role);
@@ -33,6 +36,9 @@ final class JobService
         if ($operation === 'config') {
             if (!$payload || !($payload->config ?? null) instanceof \stdClass || !is_string($payload->revision ?? null)
                 || !preg_match('/^[a-f0-9]{64}$/D', $payload->revision) || array_diff(array_keys(get_object_vars($payload)), ['config', 'revision'])) { throw new \InvalidArgumentException('Konfiguration und Dateistand erforderlich.'); }
+        } elseif ($operation === 'discord_send') {
+            if ($payload === null || array_keys(get_object_vars($payload)) !== ['message']) { throw new \InvalidArgumentException('Discord-Nachricht erforderlich.'); }
+            DiscordWebhook::message($payload->message);
         } elseif (in_array($operation, BackupOperations::ALL, true)) { BackupOperations::validate($operation, $payload); }
         elseif ($payload !== null) { throw new \InvalidArgumentException('Dieser Befehl nimmt keine Nutzdaten an.'); }
         $encoded = $payload === null ? null : PrivateFiles::json($payload);
@@ -49,8 +55,8 @@ final class JobService
                 }
                 return $existing;
             }
-            if (!in_array($operation, ['start', 'stop', 'restart'], true) && $this->jobs->pendingCount($serverId) > 0
-                || $this->jobs->hasExclusive($serverId)) { throw new \DomainException('Für dieses Ziel arbeitet bereits ein exklusiver Auftrag. Ergebnis abwarten.'); }
+            if (!IntegrationOperations::is($operation) && ((!in_array($operation, ['start', 'stop', 'restart'], true) && $this->jobs->pendingCount($serverId, 'control') > 0)
+                || $this->jobs->hasExclusive($serverId))) { throw new \DomainException('Für dieses Ziel arbeitet bereits ein exklusiver Auftrag. Ergebnis abwarten.'); }
             if ($this->jobs->pendingCount() >= 16 || $this->jobs->pendingCount($serverId) >= 8) {
                 throw new \DomainException('Auftragswarteschlange voll. Bitte Ergebnisse abwarten.');
             }
@@ -58,7 +64,7 @@ final class JobService
                 $id = bin2hex(random_bytes(16));
                 $this->jobs->insert($id, $requestId, $serverId, $operation, $actor, $encoded, $epoch);
                 // Same DBAL connection: operation ledger and delivery are committed together.
-                $this->bus->dispatch(new ExecuteServerJob($id));
+                $this->bus->dispatch(new ExecuteServerJob($id), IntegrationOperations::is($operation) ? [new TransportNamesStamp(['metadata'])] : []);
                 return $this->jobs->get($id);
             });
         } finally {
@@ -68,6 +74,7 @@ final class JobService
     public static function permission(string $operation): string
     {
         if (in_array($operation, BackupOperations::ALL, true)) { return 'backups.manage'; }
-        return match ($operation) { 'config' => 'config.write', 'setup' => 'server.setup', default => 'server.'.$operation };
+        return match ($operation) { 'config' => 'config.write', 'setup' => 'server.setup', 'check_updates' => 'updates.check',
+            'refresh_connections' => 'connections.refresh', 'discord_send' => 'discord.write', default => 'server.'.$operation };
     }
 }
