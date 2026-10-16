@@ -73,12 +73,8 @@ final class StateSnapshotTest extends SliceTestCase
         $db=DeliveryStore::open($target.'/state/data/whatsapp/deliveries.sqlite3'); self::assertSame(['sending','sent','uncertain'],$db->query('SELECT state FROM deliveries ORDER BY state')->fetchAll(\PDO::FETCH_COLUMN)); $db=null;
         $manifest=PrivateFiles::object(PrivateFiles::read($target.'/manifest.json'));
         foreach ($manifest->hashes as $relative=>$hash) { self::assertSame($hash,hash_file('sha256',$target.'/'.$relative),$relative); }
-        // A later explicit installer can mark the own working copy. Python sees the same new data.
+        // A later explicit installer can mark the own working copy for the PHP runtime.
         PrivateFiles::write($target.'/state/.indy-managed-state','{"format":"gameserver-indy-state","version":1,"access_layout":"shared-data"}');
-        $python=new Process([getenv('PYTHON') ?: 'python3','-c',
-            'from pathlib import Path; import sys; from gameserver_manager.runtime_state import validate_prepared_state; from gameserver_manager.application import Application; from gameserver_manager.registry import ServerRegistry; from gameserver_manager.sessions import signing_token; root=Path(sys.argv[1]); validate_prepared_state(root); app=Application(ServerRegistry(root=root)); assert app.access.principal("owner@example.test").role=="owner"; assert len(signing_token(root,"local-owner"))==64; app.close()',
-            $target.'/state'],dirname(__DIR__,2));
-        $python->mustRun(); self::assertSame(0,$python->getExitCode());
     }
     public function testBusyOriginalPortAndLifetimeLeaseRefuseBeforeCreatingAnyPackage(): void
     {

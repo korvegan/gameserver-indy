@@ -11,10 +11,11 @@ function Assert-True([bool]$condition, [string]$message) {
 }
 
 try {
+    $runtime = @{ RuntimeEngine = 'symfony'; RuntimeExecutable = '/opt/private php/php'; StateDirectory = '/srv/private state' }
     $parameters = @{ WslDistribution = 'Test Distro'; WslUser = 'testuser'; ProjectDirectory = '/home/test/project with spaces' }
-    $resolved = & $launcher @parameters -Describe
+    $resolved = & $launcher @parameters @runtime -Describe
     Assert-True ($resolved.ProjectDirectory -eq $parameters.ProjectDirectory) 'Project directory was changed.'
-    Assert-True ($resolved.RuntimeEngine -eq 'python') 'Legacy launcher no longer defaults to Python.'
+    Assert-True ($resolved.RuntimeEngine -eq 'symfony') 'Launcher must use Symfony.'
     $rejected = $false
     try { & $launcher -WslDistribution Test -ProjectDirectory 'relative/path' -Describe | Out-Null } catch { $rejected = $true }
     Assert-True $rejected 'A relative project directory was accepted.'
@@ -23,8 +24,8 @@ try {
     Assert-True $rejected 'Symfony accepted missing private runtime/state paths.'
     $application = Join-Path $temporary 'App Data'
     $desktop = Join-Path $temporary 'Desktop'
-    $first = & $installer @parameters -ApplicationDirectory $application -DesktopDirectory $desktop
-    $second = & $installer @parameters -ApplicationDirectory $application -DesktopDirectory $desktop
+    $first = & $installer @parameters @runtime -ApplicationDirectory $application -DesktopDirectory $desktop
+    $second = & $installer @parameters @runtime -ApplicationDirectory $application -DesktopDirectory $desktop
     Assert-True ($first.Shortcut -eq $second.Shortcut) 'Repeated installation created another shortcut.'
     $installedLauncher = Join-Path $application 'Start-Manager.ps1'
     $installedBytes = [Convert]::ToBase64String([IO.File]::ReadAllBytes($installedLauncher))
@@ -33,7 +34,6 @@ try {
     $settings = Get-Content (Join-Path $application 'launcher.local.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($settings.WslDistribution -eq 'Test Distro') 'Distribution was not saved.'
     Assert-True ($settings.ProjectDirectory -eq $parameters.ProjectDirectory) 'Project directory was not saved.'
-    $runtime = @{ RuntimeEngine = 'symfony'; RuntimeExecutable = '/opt/private php/php'; StateDirectory = '/srv/private state' }
     & $installer @parameters @runtime -Port 18888 -ApplicationDirectory $application -DesktopDirectory $desktop | Out-Null
     & $installer -ApplicationDirectory $application -DesktopDirectory $desktop | Out-Null
     $preserved = Get-Content (Join-Path $application 'launcher.local.json') -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -45,7 +45,7 @@ try {
     $shortcut.Arguments = '-NoProfile -Command Write-Output unrelated'
     $shortcut.Save()
     $rejected = $false
-    try { & $installer @parameters -ApplicationDirectory $application -DesktopDirectory $desktop | Out-Null } catch { $rejected = $true }
+    try { & $installer @parameters @runtime -ApplicationDirectory $application -DesktopDirectory $desktop | Out-Null } catch { $rejected = $true }
     Assert-True $rejected 'An unrelated shortcut would be overwritten.'
     Write-Output 'PASS: settings, paths with spaces, repeat installation, shortcut readback, preservation of unrelated shortcuts.'
 
@@ -78,8 +78,7 @@ public static class StandIn {
                 var buffer = new byte[8192];
                 stream.Read(buffer, 0, buffer.Length);
                 string body = "{\"token\":\"test\"}";
-                string server = Array.IndexOf(args, "symfony/bin/indy") >= 0 ? "GameServerIndy/Symfony" : "GameServerIndy/0.2";
-                if (server == "GameServerIndy/Symfony") { server = "FrankenPHP Caddy\r\nServer: " + server; }
+                string server = "FrankenPHP Caddy\r\nServer: GameServerIndy/Symfony";
                 string overrideFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "server-header.txt");
                 if (File.Exists(overrideFile)) { server = File.ReadAllText(overrideFile); }
                 byte[] response = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nServer: " + server + "\r\nContent-Type: application/json\r\nContent-Length: " + body.Length + "\r\nConnection: close\r\n\r\n" + body);
@@ -96,7 +95,9 @@ public static class StandIn {
     $listener.Start()
     $port = $listener.LocalEndpoint.Port
     $listener.Stop()
+    $env:GAMESERVER_TEST_PORT = [string]$port
     $arguments = $parameters.Clone()
+    foreach ($name in $runtime.Keys) { $arguments[$name] = $runtime[$name] }
     $arguments.Port = $port
     $arguments.WslExecutable = $executable
     $arguments.LogDirectory = Join-Path $temporary 'Logs'
@@ -112,9 +113,6 @@ public static class StandIn {
     Assert-True (-not $commandLine.Contains('"--distribution"')) 'WSL options must not be quoted.'
     $reused = & $launcher @arguments -NoBrowser -PassThru
     Assert-True ($reused.Running -and -not $reused.Started) 'A running manager was launched again.'
-    $other = $arguments.Clone()
-    foreach ($name in $runtime.Keys) { $other[$name] = $runtime[$name] }
-    Assert-True (-not (& $launcher @other -CheckOnly).Running) 'Symfony readiness incorrectly adopted a Python listener.'
     Write-Output 'PASS: cold start, argument preservation, readiness, reuse without duplicate process.'
     Stop-Process -Id $testProcess -Force
     Wait-Process -Id $testProcess -ErrorAction SilentlyContinue
@@ -128,9 +126,6 @@ public static class StandIn {
     Assert-True ($received[7] -eq $runtime.RuntimeExecutable -and $received[8] -eq 'symfony/bin/indy' -and $received[9] -eq $runtime.StateDirectory) 'Symfony tool, entrypoint or state arguments were changed or split.'
     $reused = & $launcher @arguments -NoBrowser -PassThru
     Assert-True (-not $reused.Started) 'Symfony readiness launched a duplicate.'
-    $pythonCheck = $arguments.Clone()
-    $pythonCheck.RuntimeEngine = 'python'
-    Assert-True (-not (& $launcher @pythonCheck -CheckOnly).Running) 'Python readiness adopted a combined Symfony header.'
     $headerOverride = Join-Path $temporary 'server-header.txt'
     [IO.File]::WriteAllText($headerOverride, "GameServerIndy/0.2, GameServerIndy/Symfony")
     Assert-True (-not (& $launcher @arguments -CheckOnly).Running) 'Ambiguous manager identities were accepted.'
@@ -140,16 +135,7 @@ public static class StandIn {
     Stop-Process -Id $testProcess -Force
     Wait-Process -Id $testProcess -ErrorAction SilentlyContinue
     $testProcess = $null
-    $arguments.RuntimeEngine = 'python'
-    $started = & $launcher @arguments -NoBrowser -PassThru
-    $testProcess = $started.ProcessId
-    $received = @(Get-Content -LiteralPath (Join-Path $temporary 'arguments.txt'))
-    $stateIndex = [Array]::IndexOf($received, '--state-dir')
-    Assert-True ($received[7] -eq 'python3' -and $stateIndex -ge 0 -and $received[$stateIndex + 1] -eq $runtime.StateDirectory) 'Python fallback did not use exactly the same shared state.'
-    Stop-Process -Id $testProcess -Force
-    Wait-Process -Id $testProcess -ErrorAction SilentlyContinue
-    $testProcess = $null
-    Write-Output 'PASS: Symfony entrypoint, private paths with spaces, readiness/reuse and Python fallback against the same state.'
+    Write-Output 'PASS: Symfony entrypoint, private paths with spaces and readiness/reuse.'
     $env:GAMESERVER_TEST_FAIL_START = '1'
     $rejected = $false
     try { & $launcher @arguments -NoBrowser | Out-Null } catch { $rejected = $_.Exception.Message.Contains('stderr.log') }
