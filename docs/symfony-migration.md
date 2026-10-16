@@ -1,12 +1,12 @@
 # Symfony-Migration
 
-Am 16.10.2026 hat der Nutzer die Migration freigegeben. Symfony ist ihm vertraut; Lesbarkeit und eigener Review des Anwendungskerns sind Auswahlkriterien. [Epic #45](https://github.com/korvegan/gameserver-indy/issues/45) koordiniert die Schritte. Der erste Durchstich #46 läuft getrennt von der bestehenden Python-Verwaltung. Das bisherige Architekturpapier dokumentiert deren weiterhin produktiven Stand.
+Am 16.10.2026 hat der Nutzer die Migration freigegeben und anschließend die autonome Weiterarbeit bis zur Umsetzung des Epics beauftragt. Symfony ist ihm vertraut; Lesbarkeit und eigener Review des Anwendungskerns sind Auswahlkriterien. [Epic #45](https://github.com/korvegan/gameserver-indy/issues/45) koordiniert die Schritte. Der erste Durchstich #46 ist abgeschlossen und läuft getrennt von der bestehenden Python-Verwaltung. Das bisherige Architekturpapier dokumentiert deren weiterhin produktiven Stand.
 
 ## Teilissues und Abgrenzung
 
 | Issue | Umfang | Grundlage |
 | --- | --- | --- |
-| [#46](https://github.com/korvegan/gameserver-indy/issues/46) | Isolierter Browser-/Auftrags-/Windows-Durchstich | erster Schritt, jetzt beauftragt |
+| [#46](https://github.com/korvegan/gameserver-indy/issues/46) | Isolierter Browser-/Auftrags-/Windows-Durchstich | abgeschlossen mit #55 |
 | [#47](https://github.com/korvegan/gameserver-indy/issues/47) | Persönliche Identität, Tailscale, Freigaben, stabile Sitzungen | #46; bestehendes #17 |
 | [#48](https://github.com/korvegan/gameserver-indy/issues/48) | Spielkatalog, Profile und exakte Konfigurationsadapter | #46/#47; bestehendes #5 |
 | [#49](https://github.com/korvegan/gameserver-indy/issues/49) | Produktive Aufträge und Windows-Steuerung | #46–#48; Betriebsgrenzen #7/#8/#14 |
@@ -14,9 +14,69 @@ Am 16.10.2026 hat der Nutzer die Migration freigegeben. Symfony ist ihm vertraut
 | [#51](https://github.com/korvegan/gameserver-indy/issues/51) | Chronikdaten, Medien und feste Szenenreferenzen | #46/#47; bestehendes #24/#25 |
 | [#52](https://github.com/korvegan/gameserver-indy/issues/52) | Vorhandenes Dashboard mit Twig/UX und gezielten Vue-/TypeScript-Komponenten | Fachmodule und #51 |
 | [#53](https://github.com/korvegan/gameserver-indy/issues/53) | Bestehende Steam-/Discord-Verträge und Providergrenzen | #47–#49/#51 |
-| [#54](https://github.com/korvegan/gameserver-indy/issues/54) | Nativer Betrieb, Release, geplante Umschaltung und Rückweg | abgenommene Fachmigration |
+| [#60](https://github.com/korvegan/gameserver-indy/issues/60) | Persönliche WhatsApp-Verknüpfung, Bereitschaft und dauerhafte Versandclaims | neuer Bestand aus #58/#59; #47–#49/#53/#52 |
+| [#54](https://github.com/korvegan/gameserver-indy/issues/54) | Nativer Betrieb, Release, geplante Umschaltung und Rückweg | abgenommene Fachmigration einschließlich #60 |
 
 Neue Funktionen aus den vorhandenen Issues bleiben dort beauftragt und abgenommen. Die Migration installiert keine Mods, erkennt keine neuen Errungenschaften und erklärt fehlende Bereitschafts-/Belegungsquellen nicht als vorhanden. Ein C#-Agent und AMP sind nicht Teil des ersten Durchstichs. Die Produktionsumschaltung gehört ausdrücklich zu #54.
+
+## Neue Bestandsaufnahme am 16.10.2026
+
+Referenz ist `main` mit Commit `dfbe7c29de08a6a44088e996bc95b3c711cd8d37` nach PR #59. Geprüft wurden Repository, abgeschlossene PRs, offene Issues und lesend die produktiven Datenbankversionen, Listener und der WhatsApp-Status. Private Inhalte wurden dafür nicht exportiert. Diese Aufnahme ersetzt den Umfang des ersten Durchstichs als Migrationsbaseline; spätere fachliche Änderungen müssen gegen dieselbe Matrix abgeglichen werden.
+
+### Änderungen seit dem ersten Symfony-Durchstich
+
+| Änderung | Neuer zu erhaltender Vertrag | Zuordnung |
+| --- | --- | --- |
+| [PR #56](https://github.com/korvegan/gameserver-indy/pull/56) | Chronik-Editor erst mit bestätigter Schreibberechtigung und geladenem Katalog bedienbar; verzögerte Startantworten dürfen keinen Klick verschlucken. | #47, #51, #52 |
+| [PR #57](https://github.com/korvegan/gameserver-indy/pull/57) | `servers[].connection.public_host`, feste öffentliche Adresse auch ohne frischen IP-Cache, gemeinsamer Beitrittstext in Übersicht und Discord; Entwürfe und Profilwechsel absichern. | #48, #52, #53 |
+| [PR #59](https://github.com/korvegan/gameserver-indy/pull/59), [Issue #58](https://github.com/korvegan/gameserver-indy/issues/58) | Verbundenes persönliches WhatsApp-Konto, gewählte Gruppe, Automatik je Profil, aktuelle Startbereitschaft und dauerhafter Versandstand. | eigenes neues #60; Schnittstellen zu #47/#49/#52/#53/#54 |
+
+Die frei bedienbaren Start-/Stopp-/Neustartaufträge und stabilen Browsersitzungen aus PR #44 sowie die 72h-Weltsicherung aus PR #43 bestanden schon vor #55. Sie gehören weiterhin zum vollständigen Bestand und sind durch den isolierten Symfony-Durchstich noch nicht vollständig für echte Profile übertragen.
+
+### Funktionsmatrix
+
+| Bereich | Produktiver Bestand in Python | Symfony-Stand und nächster Nachweis |
+| --- | --- | --- |
+| Rechte und Familienzugriff | Lokaler Besitzer, eigener privater Serve-Listener, persönliche revisionierte Freigaben und Audit. Die beiden eingerichteten Familienpersonen haben auf Nutzerwunsch Besitzerrechte. Persönliche WhatsApp-Kontoverwaltung bleibt trotzdem lokal. | #47: bislang nur fest beim Teststart gewählte Besitzer-/Leserrolle. Identität, Profilgrenzen, Entzug in Queue/Live-Abos und kompatible Schlüssel übernehmen. |
+| Spiele und Konfiguration | Enshrouded/ASKA, zusätzliche Katalogeinträge, getrennte Instanzen; Enshrouded-1.0-Felder und unbekannte Felder; externe ASKA-Textdatei/Save-ID/Starter. | #48: bislang ausschließlich `demo-a`/`demo-b`. Bytegenauigkeit und Bestandskopien statt produktiver Pfade prüfen; öffentliche Profiladresse ergänzen. |
+| Aufträge und Prozesse | FIFO der drei Serverbefehle, parallele getrennte Ziele, exklusive Änderungen/Backups, Wiederanlauf ohne Replay, kanonische native Windows-Pfade und externer Starter. | #49: Dispatcher/SQLite/Messenger/Claim/SSE für eigene Stellvertreter vorhanden. Echte Profiladapter, laufende Starter, Berechtigungs- und Lebenszyklusregeln fehlen noch. |
+| Bereitschaft und Logs | Bereinigte Logquellen. Seit #59 eine eng begrenzte aktuelle Bereitschaftsprüfung für WhatsApp; Prozess, Sitzungsbereitschaft und externer Beitritt bleiben verschieden. | #49/#60 übertragen vorhandene Quellen und Bereinigung. Die vollständige Zustandsverwaltung #7 und Shader-/Logausbauten #11/#12 sind weiterhin offen. |
+| Weltsicherungen | Vollständige Offline-Kopie, Manifest/Hashes, Anheften, 72h rollend nach neuem Erfolg, Rückwegsicherung und persistente Restore-Sperre. | #50: noch nicht migriert. ASKA-Köderwelt, Reparse-/Linkgrenzen, Scanfehler und vollständigen Restore ausschließlich in Kopien nachweisen. |
+| Sturmklingen | Manuelle Gruppenmomente, gemeinsame Auszeichnungen, Medien/Vorschauen, Korrekturen, Archivexport und feste Wandteppichkapitel/-plätze. | #51/#52: noch nicht migriert. Ereignis-/Szenen-IDs und Revisionen erhalten, Editorstart aus #56 mit übernehmen. |
+| Steam und Beitritt | Lesender Manifest-/SteamCMD-Vergleich, Branch/Cache/Takt/Unbekannt; native Windows-Netzadressen und gespeicherte öffentliche Domain. | #53: noch nicht migriert. Keine Aktualisierung oder externe Netzabfrage je Statuspoll ergänzen; Formatter aus #57 übertragen. |
+| Discord | Webhook, Start/Stopp/Neustart, Beitrittsinfos und manueller Entwurf; externer ASKA-Starter besitzt seine Startmeldung. Chronik besitzt bereits dauerhafte Versandzuordnungen. | #53: bestehende Verträge übernehmen. Neue Statuskarten und tatsächliche Chronik-Veröffentlichung bleiben #15/#26. |
+| WhatsApp | WAHA/GOWS auf Loopback, verknüpftes Konto, ausgewählte Gruppe, kurze Meldungen, revisionsgebundene Freigabe, private Claims ohne blindes Replay. | #60: noch nicht migriert. Konto/Container und bereits bestätigten Enshrouded-Versand erhalten; keine neue Testmeldung oder QR-Verknüpfung allein wegen der Migration. |
+| Oberfläche | Übersicht, Einstellungen, Logs, Sicherungen, Discord, WhatsApp, Profile, Spiele/Mods, Sturmklingen und Familienzugang; Profilwahl und Entwürfe bleiben stabil. | #52: bisher eigene kleine Twig-Testseite mit Aufträgen und SSE. Vorhandene Gestaltung und Browserverträge übertragen; Komponenten nach tatsächlichem Bedarf wählen. |
+| Betrieb | Windows-/WSL-Launcher, Desktop-Verknüpfung und Aufgabe im Besitzerkonto; privates Tailscale Serve; eigener WhatsApp-Container. | #54: noch kein produktiver Symfony-Start. Nur eine Verwaltung einschließlich Benachrichtigungsplaner aktiv; Datenkopie, Rückweg, Ressourcenvergleich und Betriebsabnahme erforderlich. |
+
+### Daten und Dienste beim Wechsel
+
+| Bestand | Übernahme und Rückweg |
+| --- | --- |
+| `manager.local.json` | Profile, externe Konfigurations-/Starterpfade, gemeinsame Einstellungen und `connection.public_host` explizit übernehmen. Unbekannte Felder erhalten. |
+| Spielkonfigurationen und externe ASKA-Dateien | Originalstand bytegenau sichern und vergleichen. Save-ID, Bestandswelt und Besitzer-/DPAPI-Kontext nicht aus einem Demo-Profil ableiten. |
+| `data/platform.sqlite3`, Schema 2 | Jobs, Ereignisrevisionen, Medien, feste Szenen und Ereignis-Versandzuordnungen übernehmen. Wartende/unklare Jobs nicht nachträglich ausführen. |
+| `data/access.sqlite3`, Schema 1; `access-settings.json`; `session-key` | Freigaben, IDs, Revisionen, Audit, Listenergrenzen und bestehenden Signaturschlüssel getrennt von Chronik/Welt-Restore erhalten. Alte gültige Sitzungen bleiben nutzbar, entzogene Freigaben bleiben ungültig. |
+| `data/world-backups/` und Wiederherstellungsmarkierungen | Archive, Index/Prüfsummen, Pins, Aufbewahrungsregeln und Pending-Sperren erhalten. Keine „Bereinigung“ als Importnebenwirkung. |
+| `data/whatsapp/settings.json`, `deliveries.sqlite3` | Tatsächliche Gruppen-ID, Profile, Revision und `sent`/unklare Claims kopieren und vergleichen. Die Claim-Datenbank besitzt derzeit keine `user_version`-Kennung; Struktur und erlaubte Zustände explizit prüfen, nicht als leere Datenbank behandeln. |
+| `data/whatsapp/credentials.json`, Sitzungsverzeichnis und Compose-Dienst | Private Kontoverknüpfung außerhalb des App-Releases erhalten. Keine Kontodaten in allgemeine Exporte oder öffentliche Migrationsberichte aufnehmen. Nur ein Benachrichtigungsplaner darf arbeiten. |
+| Steam-Cache und technische Verlaufs-/Launcherdateien | Geheimnisbereinigung und fachliche Bedeutung erhalten; ein Cache ist kein Nachweis eines aktuellen oder laufenden Builds. |
+| Desktop-/Boot-Starter und Tailscale Serve | Beim Cutover denselben Benutzerkontext, öffentliche private URL und Listenervertrag erhalten. Externer dedyn-Timer und vorhandener Gateway gehören zu anderer Infrastruktur und werden durch die Appmigration nicht umgestellt. |
+
+Die lesende Betriebsaufnahme bestätigte: Python bedient weiterhin Port 8765/8767; Enshrouded läuft, ASKA ist gestoppt. WhatsApp ist verbunden, für beide Profile aktiviert und besitzt genau einen bestätigten Claim des vereinbarten Enshrouded-Testversands. Das sind zeitgebundene Befunde, keine Zusicherung für einen späteren Cutoverzeitpunkt.
+
+### Reihenfolge und Abschlussgrenze
+
+1. #47 Identität/Freigaben/Sitzungen, anschließend #48 Profile/Konfiguration und #49 produktive Aufträge/Prozessgrenze.
+2. #50 Sicherungen und #51 Chronik auf Kopien mit vollständigem Rückweg. Bestehende Daten- und Berechtigungsgrenzen entscheiden über die Abnahme.
+3. #53 Steam/Beitritt/Discord und eigenes #60 WhatsApp mit demselben Beitrittsvertrag. Die Oberfläche #52 schließt alle übernommenen Bereiche einschließlich WhatsApp ein. Fachmodule erhalten ihre eigenen PRs; Rückmeldungen und Browserverträge werden beim jeweiligen Modul geprüft.
+4. #54 führt geprüfte Bausteine zusammen: konsistente Verwaltungssicherung, genau eine schreibende Verwaltung und genau ein Benachrichtigungsplaner, unveränderte Welten, kontrollierter Rückweg, Launcher und Familienzugriff.
+
+Für den aktuellen Python-Referenzstand sind 158 Backendtests im normalen Lauf erfolgreich (fünf optionale native Prüfungen dabei ausgelassen), 19 JS-Module und acht Browserabläufe geprüft; die sechs CI-Prüfungen von PR #59 und `main` sind grün und enthalten zusätzliche native Windows-Tests. Der Symfony-Durchstich hatte 20 PHP-Tests einschließlich nativer Windows-Abnahme sowie echte SSE-/Browserprüfungen. Diese Zahlen sind der Ausgangspunkt; entscheidend ist dieselbe beobachtbare Bedienung im Zielsystem.
+
+Die allgemeine Backlog-Bewertung vom 15.10. ist eine historische Priorisierung. Weiterhin offen sind insbesondere automatische Updates #9, Ressourcenverläufe #8, Spielerbelegung #14, Mehrserverkarten #10, Modinstallation/-quellen/-verteilung #19–#21, automatische Errungenschaften/Steam-Identitäten #23/#37 sowie Discord-Erfolgskarten #26. Die Migration setzt diese Funktionen nicht nebenbei um. #6/#24/#29/#58 sind implementierter Bestand; #17/#25 besitzen umgesetzte Teile und verbleibende Betriebs-/Geräteabnahmen.
+
+Ein Windows-Kaltstart ohne Desktop-Anmeldung, echter ASKA-Speicherabschluss und der externe Familienzugriff auf das neue Symfony-System bleiben konkrete Betriebsnachweise. Sie werden nicht aus Testprozessen, dem bisherigen Python-Betrieb oder grüner CI abgeleitet. Ein Neustart während einer laufenden Spielrunde ist weiterhin kein Einrichtungstest.
 
 ## Durchstich #46
 

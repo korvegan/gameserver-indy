@@ -1,5 +1,7 @@
 # Bewertung und Reihenfolge des Ausbauplans
 
+Diese Matrix bewahrt die Priorisierung vom 15.10.2026. Der aktuelle implementierte Bestand und der vollständige Umfang der beauftragten Symfony-Migration einschließlich WhatsApp stehen in der [Bestandsaufnahme vom 16.10.2026](symfony-migration.md#neue-bestandsaufnahme-am-16102026). Insbesondere #6, #24, #29 und #58 sind inzwischen umgesetzt; teilweise offene Fachissues können bereits übernommene Teilfunktionen enthalten.
+
 Stand 15.10.2026, Grundlage #5–#26 und der neue Wunsch #29. #27 führt Bewertung und gemeinsame Grundlagen zusammen. Schätzungen sind Nettoarbeitstage für Entwicklung/Prüfung, keine Terminzusage; Wartezeit auf Zugänge, Spielversionen und gemeinsame Spieltests kommt hinzu. Priorität P1 = benötigte Grundlage, P2 = folgender Nutzen, P3 = späterer Ausbau. Die Spannen berücksichtigen den vorhandenen Windows-/WSL-Betrieb; Unsicherheiten werden beim jeweiligen Auftrag erneut geprüft.
 
 Stufen: **A** = Refactoringgrundlagen #27; **B** = verlässlicher Betrieb/Datenerhalt; **C** = Familienbetrieb; **D** = Komfort und Gemeinschaft; **E** = konkrete Modintegration. Kleine eigenständige Verbesserungen dürfen vorgezogen werden, wenn ihre Voraussetzungen erfüllt sind. Die [Architektur](architecture.md) beschreibt Modulgrenzen, Verträge und die zwei Refactoring-PRs.
