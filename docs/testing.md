@@ -13,6 +13,10 @@ Auftragsannahme und Profiltrennung, Familienrechte, Konfigurationsspeicherung,
 Sicherung/Rückweg und Aufbewahrung, ASKA-Weltzuordnung, Chronikbeitrag, Beitrittsinformationen
 sowie den normalen nativen Prozessablauf. Das ist eine Auswahl nach praktischem
 Nutzen, keine pauschale Klassifizierung aller bisherigen Tests als wertlos.
+Allgemeine PHP-Fälle laufen regulär nur unter Linux. Windows führt nur den echten
+nativen Prozessablauf aus; dieselben HTTP-/Konfigurations-/Sicherungsfälle werden
+dort nicht nochmals regulär ausgeführt. Der manuelle erweiterte Lauf kann beide
+Plattformen vollständig vergleichen.
 
 Die CI ermittelt den vollständigen Git-Diff des geprüften Commits. Unbekannte Pfade,
 fehlende Vergleichsrevisionen und Änderungen an gemeinsamer Infrastruktur wählen

@@ -63,7 +63,7 @@ jobs:
       - run: php bin/console lint:container
       - run: php bin/console lint:twig templates
       - name: Regular family workflows
-        if: needs.plan.outputs.full != 'true'
+        if: needs.plan.outputs.full != 'true' && runner.os != 'Windows'
         run: node ../scripts/phpunit.cjs ${{ needs.plan.outputs.dashboard_only == 'true' && '--filter DashboardTest' || '' }}
       - name: Extended tests (manual only)
         if: needs.plan.outputs.full == 'true'
