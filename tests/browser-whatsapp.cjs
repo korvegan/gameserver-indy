@@ -44,6 +44,38 @@ const fs = require('node:fs');
     await page.locator('#wa-refresh').click();
     await page.waitForFunction(() => !document.querySelector('#wa-refresh').disabled);
     assert.equal(await page.locator('#wa-group').inputValue(), '987654321@g.us');
+    // Losing the service must not erase a selected, unsaved group.
+    await page.locator('#wa-group').selectOption('123456789@g.us');
+    await page.route('**/api/whatsapp', async route => {
+      const response = await route.fetch(); const data = await response.json(); data.state = 'UNAVAILABLE';
+      await route.fulfill({response, json: data});
+    });
+    await page.locator('#wa-refresh').click();
+    await page.waitForFunction(() => !document.querySelector('#wa-refresh').disabled);
+    assert.equal(await page.locator('#wa-group').inputValue(), '123456789@g.us');
+    await page.unroute('**/api/whatsapp');
+    await page.locator('#wa-refresh').click();
+    await page.waitForFunction(() => !document.querySelector('#wa-refresh').disabled);
+    assert.equal(await page.locator('#wa-group').inputValue(), '123456789@g.us');
+    // A second tab changing persisted settings must have an explicit recovery.
+    await page.evaluate(async () => {
+      const session = await (await fetch('/api/session')).json();
+      const current = await (await fetch('/api/whatsapp')).json();
+      const {group_id, enabled, server_ids, revision} = current.settings;
+      const response = await fetch('/api/whatsapp/settings', {method: 'POST', headers: {
+        'Content-Type': 'application/json', 'X-Manager-Token': session.token},
+        body: JSON.stringify({group_id, enabled, server_ids, revision})});
+      if (!response.ok) throw new Error('Fixture second-tab save failed');
+    });
+    await page.locator('#wa-refresh').click();
+    await page.waitForFunction(() => !document.querySelector('#wa-refresh').disabled);
+    assert.equal(await page.locator('#wa-conflict').isVisible(), true);
+    assert.equal(await page.locator('#wa-save').isDisabled(), true);
+    await page.locator('#wa-discard').click();
+    await page.waitForFunction(() => !document.querySelector('#wa-refresh').disabled);
+    assert.equal(await page.locator('#wa-conflict').isHidden(), true);
+    assert.equal(await page.locator('#wa-group').inputValue(), '987654321@g.us');
+    assert.equal(await page.locator('#wa-save').isDisabled(), false);
     // No automatic claim of readiness for a stopped fixture server.
     assert.equal(await page.locator('[data-wa-send="enshrouded"]').isDisabled(), true);
     await page.getByRole('button', {name: 'Übersicht', exact: true}).click();
@@ -67,6 +99,6 @@ const fs = require('node:fs');
     await page.waitForFunction(() => document.querySelector('#identity-label').textContent.includes('Besitzer'));
     assert.equal(await page.locator('[data-view="whatsapp"]').isHidden(), true);
     assert.deepEqual(errors, []);
-    console.log('WhatsApp QA passed: synthetic QR pairing, explicit group, saved/new drafts, no unready send, local account boundary, disconnect, mobile.');
+    console.log('WhatsApp QA passed: synthetic QR pairing, explicit group, saved/new drafts, outage and concurrent-tab recovery, no unready send, local account boundary, disconnect, mobile.');
   } finally { release?.(); await page.unrouteAll({behavior: 'wait'}); await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode = 1;});

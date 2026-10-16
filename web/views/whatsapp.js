@@ -3,7 +3,7 @@ import {$, element, notice} from '../dom.js';
 import {state} from '../state.js';
 
 let data, groups = [], groupsLoaded = false, busy = false, loading = false;
-let generation = 0, draftRevision = 0, settingsRevision = 0, qrURL;
+let generation = 0, draftRevision = 0, settingsRevision = 0, qrURL, draftGroup;
 const labels = {NOT_INSTALLED: 'Dienst noch nicht eingerichtet', UNAVAILABLE: 'Dienst nicht erreichbar',
   STOPPED: 'Noch nicht verknüpft', STARTING: 'Verbindung wird vorbereitet', SCAN_QR_CODE: 'QR-Code mit dem Handy scannen',
   WORKING: 'WhatsApp verbunden', FAILED: 'Verknüpfung prüfen', PASSKEY_REQUIRED: 'Bestätigung auf dem Handy erforderlich',
@@ -19,7 +19,11 @@ function controls() {
   $('#wa-connect').disabled = !local() || busy || !data || ['NOT_INSTALLED', 'WORKING', 'STARTING', 'SCAN_QR_CODE'].includes(data.state);
   $('#wa-disconnect').disabled = !local() || busy || !data || ['NOT_INSTALLED', 'UNAVAILABLE', 'STOPPED'].includes(data.state);
   $('#wa-refresh').disabled = busy || loading;
-  $('#wa-save').disabled = !local() || busy || loading || !data;
+  const conflict = state.whatsappDirty && data && settingsRevision !== data.settings.revision;
+  $('#wa-save').disabled = !local() || busy || loading || !data || conflict;
+  $('#wa-discard').hidden = !state.whatsappDirty;
+  $('#wa-discard').disabled = busy || loading;
+  $('#wa-conflict').hidden = !conflict;
   for (const button of document.querySelectorAll('[data-wa-send]')) {
     const preview = data?.previews.find(item => item.server_id === button.dataset.waSend);
     button.disabled = !local() || busy || loading || state.whatsappDirty || data?.state !== 'WORKING'
@@ -29,13 +33,14 @@ function controls() {
 }
 
 function renderGroups() {
-  const selected = state.whatsappDirty ? $('#wa-group').value : data.settings.group_id;
+  const selected = state.whatsappDirty ? draftGroup?.id : data.settings.group_id;
   $('#wa-group').replaceChildren(element('option', 'Bitte Zielgruppe auswählen …'));
   $('#wa-group').firstChild.value = '';
   const options = [...groups];
   if (data.settings.group_id && !options.some(group => group.id === data.settings.group_id)) {
     options.push({id: data.settings.group_id, label: data.settings.group_label});
   }
+  if (state.whatsappDirty && draftGroup?.id && !options.some(group => group.id === draftGroup.id)) options.push(draftGroup);
   for (const group of options) {
     const option = element('option', `${group.label} · ${group.id.replace('@g.us', '').slice(-6)}`);
     option.value = group.id; $('#wa-group').append(option);
@@ -48,6 +53,7 @@ function render() {
   $('#wa-error').textContent = data.error || '';
   if (data.state !== 'SCAN_QR_CODE') clearQR();
   if (!state.whatsappDirty) {
+    draftGroup = undefined;
     settingsRevision = data.settings.revision;
     $('#wa-enabled').checked = data.settings.enabled;
   }
@@ -123,7 +129,17 @@ export function bindWhatsApp() {
       act('/api/whatsapp/disconnect');
     }
   });
-  $('#wa-form').addEventListener('change', () => { state.whatsappDirty = true; draftRevision++; controls(); });
+  $('#wa-form').addEventListener('change', () => {
+    const id = $('#wa-group').value;
+    draftGroup = groups.find(group => group.id === id) || (draftGroup?.id === id ? draftGroup :
+      {id, label: data?.settings.group_id === id ? data.settings.group_label : id});
+    state.whatsappDirty = true; draftRevision++; controls();
+  });
+  $('#wa-discard').addEventListener('click', () => {
+    if (busy || loading) return;
+    state.whatsappDirty = false; draftGroup = undefined; draftRevision++;
+    loadWhatsApp(true);
+  });
   $('#wa-form').addEventListener('submit', event => {
     event.preventDefault();
     const revision = draftRevision;

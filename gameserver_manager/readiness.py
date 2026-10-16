@@ -35,12 +35,17 @@ def readiness(instance, status):
             if not directory.is_absolute():
                 directory = instance.directory / directory
             path = directory / 'enshrouded_server.log'
+            gap = False
             with path.open('rb') as file:
                 head = file.read(262144)
+                head_length = len(head.decode('utf-8', errors='replace'))
                 size = file.seek(0, 2)
                 if size > len(head):
-                    file.seek(max(len(head), size - 262144))
-                    head += b'\n' + file.read(262144).partition(b'\n')[2]
+                    offset = max(len(head), size - 262144)
+                    gap = offset > len(head)
+                    file.seek(offset)
+                    tail = file.read(262144)
+                    head += b'\n' + tail.partition(b'\n')[2] if gap else tail
             text = head.decode('utf-8', errors='replace')
             headers = list(re.finditer(r'Current UTC date: (\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})', text))
             if not headers:
@@ -50,7 +55,10 @@ def readiness(instance, status):
             # Enshrouded records UTC only to seconds; its current run must match
             # the native start second (or the immediately following second).
             difference = (log_start - started.replace(microsecond=0)).total_seconds()
-            transitions = re.findall(r"\[Session\] 'HostOnline' \((up|down)\)!", text[header.end():])
+            # With a gap, an unseen transition could supersede any marker in
+            # the head. Only the contiguous tail can establish the last state.
+            transition_start = max(header.end(), head_length + 1 if gap else 0)
+            transitions = re.findall(r"\[Session\] 'HostOnline' \((up|down)\)!", text[transition_start:])
             ready = difference in (0, 1) and bool(transitions) and transitions[-1] == 'up'
             source = 'Enshrouded · HostOnline / Startdatum UTC'
         elif instance.game.id == 'aska':

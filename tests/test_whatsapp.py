@@ -60,6 +60,22 @@ class ReadinessTests(ManagerFixture):
         self.assertIsNone(process_identity({'processes': [{'pid': 42, 'started': '2999-01-01T00:00:00Z'}]}))
         self.assertEqual(readiness(self.manager, STATUS)['state'], 'unknown')
 
+    def test_large_log_gap_never_reuses_up_before_an_unseen_down(self):
+        prefix = "Current UTC date: 2024.01.01 10:00:00\n[Session] 'HostOnline' (up)!\n"
+        middle = 'routine line\n' * 25000
+        self.log.write_text(prefix + middle + "[Session] 'HostOnline' (down)!\n" + middle)
+        self.assertEqual(readiness(self.manager, STATUS)['state'], 'unknown')
+        with self.log.open('a') as file:
+            file.write("[Session] 'HostOnline' (up)!\n")
+        self.assertEqual(readiness(self.manager, STATUS)['state'], 'ready')
+
+    def test_contiguous_read_boundary_does_not_split_down_transition(self):
+        prefix = b"Current UTC date: 2024.01.01 10:00:00\n[Session] 'HostOnline' (up)!\n"
+        offset = 262144 - 11
+        self.log.write_bytes(prefix + b'x' * (offset - len(prefix) - 1) + b'\n'
+                             + b"[Session] 'HostOnline' (down)!\n")
+        self.assertEqual(readiness(self.manager, STATUS)['state'], 'unknown')
+
     def test_aska_only_reads_timestamped_sanitized_owned_log_for_current_start(self):
         registry = ServerRegistry(self.root, self.manager)
         aska = add_aska(registry, self.root)
