@@ -79,6 +79,9 @@ public static class StandIn {
                 stream.Read(buffer, 0, buffer.Length);
                 string body = "{\"token\":\"test\"}";
                 string server = Array.IndexOf(args, "symfony/bin/indy") >= 0 ? "GameServerIndy/Symfony" : "GameServerIndy/0.2";
+                if (server == "GameServerIndy/Symfony") { server = "FrankenPHP Caddy\r\nServer: " + server; }
+                string overrideFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "server-header.txt");
+                if (File.Exists(overrideFile)) { server = File.ReadAllText(overrideFile); }
                 byte[] response = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nServer: " + server + "\r\nContent-Type: application/json\r\nContent-Length: " + body.Length + "\r\nConnection: close\r\n\r\n" + body);
                 stream.Write(response, 0, response.Length);
             }
@@ -125,6 +128,15 @@ public static class StandIn {
     Assert-True ($received[7] -eq $runtime.RuntimeExecutable -and $received[8] -eq 'symfony/bin/indy' -and $received[9] -eq $runtime.StateDirectory) 'Symfony tool, entrypoint or state arguments were changed or split.'
     $reused = & $launcher @arguments -NoBrowser -PassThru
     Assert-True (-not $reused.Started) 'Symfony readiness launched a duplicate.'
+    $pythonCheck = $arguments.Clone()
+    $pythonCheck.RuntimeEngine = 'python'
+    Assert-True (-not (& $launcher @pythonCheck -CheckOnly).Running) 'Python readiness adopted a combined Symfony header.'
+    $headerOverride = Join-Path $temporary 'server-header.txt'
+    [IO.File]::WriteAllText($headerOverride, "GameServerIndy/0.2, GameServerIndy/Symfony")
+    Assert-True (-not (& $launcher @arguments -CheckOnly).Running) 'Ambiguous manager identities were accepted.'
+    [IO.File]::WriteAllText($headerOverride, 'OtherServer/1.0')
+    Assert-True (-not (& $launcher @arguments -CheckOnly).Running) 'An unrelated HTTP server was accepted.'
+    Remove-Item -LiteralPath $headerOverride
     Stop-Process -Id $testProcess -Force
     Wait-Process -Id $testProcess -ErrorAction SilentlyContinue
     $testProcess = $null

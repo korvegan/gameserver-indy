@@ -54,8 +54,10 @@ try {
     function Test-Manager {
         try {
             $response = Invoke-WebRequest -Uri ($managerUrl + '/api/session') -UseBasicParsing -TimeoutSec 2
-            if ($response.StatusCode -ne 200 -or $response.Headers['Server'] -notlike 'GameServerIndy/*') { return $false }
-            $isSymfony = $response.Headers['Server'] -eq 'GameServerIndy/Symfony'
+            # FrankenPHP adds its own Server value; Windows combines repeated fields with commas.
+            $identities = @(([string]$response.Headers['Server'] -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -like 'GameServerIndy/*' })
+            if ($response.StatusCode -ne 200 -or $identities.Count -ne 1) { return $false }
+            $isSymfony = $identities[0] -eq 'GameServerIndy/Symfony'
             return ($isSymfony -eq ($settings.RuntimeEngine -eq 'symfony'))
         } catch { return $false }
     }
