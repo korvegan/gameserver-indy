@@ -3,7 +3,7 @@ param(
     [string]$WslDistribution,
     [string]$WslUser,
     [string]$ProjectDirectory,
-    [ValidateSet('python', 'symfony')][string]$RuntimeEngine,
+    [ValidateSet('symfony')][string]$RuntimeEngine,
     [string]$RuntimeExecutable,
     [string]$StateDirectory,
     [ValidateRange(1, 65535)][int]$Port = 8765,
@@ -34,8 +34,8 @@ try {
         if ($PSBoundParameters.ContainsKey($name)) { $settings[$name] = Get-Variable -Name $name -ValueOnly }
     }
     if (-not $settings.Port) { $settings.Port = $Port }
-    if (-not $settings.RuntimeEngine) { $settings.RuntimeEngine = 'python' }
-    if ($settings.RuntimeEngine -notin @('python', 'symfony')) { throw 'Unbekannte Verwaltungslaufzeit.' }
+    if (-not $settings.RuntimeEngine) { $settings.RuntimeEngine = 'symfony' }
+    if ($settings.RuntimeEngine -ne 'symfony') { throw 'Nur die Symfony-Verwaltung wird noch unterstuetzt.' }
     if (-not $settings.WslDistribution -or -not $settings.ProjectDirectory) {
         throw 'WSL-Distribution und Projektpfad fehlen. Bitte install-desktop-shortcut.ps1 aus dem WSL-Projektordner ausfuehren oder beide Parameter angeben.'
     }
@@ -58,7 +58,7 @@ try {
             $identities = @(([string]$response.Headers['Server'] -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -like 'GameServerIndy/*' })
             if ($response.StatusCode -ne 200 -or $identities.Count -ne 1) { return $false }
             $isSymfony = $identities[0] -eq 'GameServerIndy/Symfony'
-            return ($isSymfony -eq ($settings.RuntimeEngine -eq 'symfony'))
+            return $isSymfony
         } catch { return $false }
     }
 
@@ -76,12 +76,7 @@ try {
             $arguments = @('--distribution', [string]$settings.WslDistribution)
             if ($settings.WslUser) { $arguments += @('--user', [string]$settings.WslUser) }
             $arguments += @('--cd', [string]$settings.ProjectDirectory, '--exec')
-            if ($settings.RuntimeEngine -eq 'symfony') {
-                $arguments += @([string]$settings.RuntimeExecutable, 'symfony/bin/indy', [string]$settings.StateDirectory)
-            } else {
-                $arguments += @('python3', '-m', 'gameserver_manager', '--port', [string]$settings.Port)
-                if ($settings.StateDirectory) { $arguments += @('--state-dir', [string]$settings.StateDirectory) }
-            }
+            $arguments += @([string]$settings.RuntimeExecutable, 'symfony/bin/indy', [string]$settings.StateDirectory)
             # WSL parses its option names literally; quote only values with whitespace.
             $argumentLine = ($arguments | ForEach-Object {
                 if ($_ -match '\s') { '"' + $_ + '"' } else { $_ }

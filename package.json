@@ -11,7 +11,6 @@
     "check:js": "node tests/check-js.cjs",
     "test:php": "node scripts/phpunit.cjs",
     "test:ui": "npm run check:js && node symfony/tools/check-dashboard-browser.cjs --smoke",
-    "test:browser": "node tests/run-browser-check.cjs",
     "test:symfony-browser": "node symfony/tools/check-browser.cjs",
     "test:symfony-dashboard": "node symfony/tools/check-dashboard-browser.cjs"
   },

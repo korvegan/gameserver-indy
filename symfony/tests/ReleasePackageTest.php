@@ -19,7 +19,7 @@ final class ReleasePackageTest extends TestCase
         $this->source=$this->directory.'/own source'; PrivateFiles::directory($this->source);
         $package=['name'=>'own/package','version'=>'1.2.3','source'=>['reference'=>'own-ref'],'dist'=>['reference'=>'own-ref']];
         $files=['symfony/bin/indy'=>'<?php // own entry', 'web/app.js'=>'// own browser', 'profiles/enshrouded.json'=>'{}',
-            'gameserver_manager/__main__.py'=>'# own fallback', '.gitignore'=>"symfony/vendor/\nmanager.local.json\ndata/\n",
+            '.gitignore'=>"symfony/vendor/\nmanager.local.json\ndata/\n",
             'symfony/composer.lock'=>json_encode(['packages'=>[$package],'packages-dev'=>[]])];
         foreach ($files as $path=>$bytes) { PrivateFiles::directory(dirname($this->source.'/'.$path)); PrivateFiles::write($this->source.'/'.$path,$bytes); }
         $this->git(['init','--initial-branch=main']); $this->git(['add','.']); $this->commit=$this->commit();

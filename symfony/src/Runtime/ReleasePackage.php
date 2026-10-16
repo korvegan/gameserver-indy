@@ -137,7 +137,7 @@ final class ReleasePackage
                 finally { fclose($input); fclose($output); }
                 chmod($target.'/'.$relative,0600);
             }
-            foreach (['symfony/bin/indy','symfony/composer.lock','web/app.js','profiles/enshrouded.json','gameserver_manager/__main__.py'] as $required) {
+            foreach (['symfony/bin/indy','symfony/composer.lock','web/app.js','profiles/enshrouded.json'] as $required) {
                 if (!is_file($target.'/'.$required)) { throw new \DomainException('Unvollständiger Anwendungscode.'); }
             }
         } finally { $zip->close(); }

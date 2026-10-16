@@ -2,7 +2,7 @@ param(
     [string]$WslDistribution,
     [string]$WslUser,
     [string]$ProjectDirectory,
-    [ValidateSet('python', 'symfony')][string]$RuntimeEngine,
+    [ValidateSet('symfony')][string]$RuntimeEngine,
     [string]$RuntimeExecutable,
     [string]$StateDirectory,
     [ValidateRange(1, 65535)][int]$Port = 8765,

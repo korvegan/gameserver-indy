@@ -47,10 +47,6 @@ jobs:
         working-directory: symfony
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
-        if: needs.plan.outputs.full == 'true'
-        with:
-          python-version: '3.14.4' # Exact original migration runtime / Unicode 16 identity contract.
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'

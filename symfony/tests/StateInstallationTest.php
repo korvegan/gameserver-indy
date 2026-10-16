@@ -50,9 +50,6 @@ final class StateInstallationTest extends SliceTestCase
         $db=DeliveryStore::open($state.'/data/whatsapp/deliveries.sqlite3'); self::assertSame(['sending','sent','uncertain'],$db->query('SELECT state FROM deliveries ORDER BY state')->fetchAll(\PDO::FETCH_COLUMN)); $db=null;
         self::assertSame($before,hash_file('sha256',$this->source.'/data/whatsapp/deliveries.sqlite3'));
         self::assertTrue((new ReleasePackage())->verify($release,$commit)['verified']);
-        $python=new Process([getenv('PYTHON') ?: 'python3','-c',
-            'from pathlib import Path; import sys; from gameserver_manager.runtime_state import validate_prepared_state; from gameserver_manager.registry import ServerRegistry; from gameserver_manager.access import AccessService; root=Path(sys.argv[1]); validate_prepared_state(root); registry=ServerRegistry(root=root); assert registry.get("aska").profile["id"]=="aska"; assert AccessService(root,registry).principal("owner@example.test").role=="owner"', $state],dirname(__DIR__,2));
-        $python->mustRun(); self::assertSame(0,$python->getExitCode());
         $settings=PrivateFiles::object(PrivateFiles::read($state.'/runtime.local.json')); self::assertSame($this->port,$settings->port); self::assertSame($this->family,$settings->family_port);
         $socket=stream_socket_server('tcp://127.0.0.1:'.$this->port); self::assertIsResource($socket); fclose($socket);
     }
