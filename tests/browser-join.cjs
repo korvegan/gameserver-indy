@@ -75,8 +75,48 @@ const fs = require('node:fs');
     await page.screenshot({path: 'artifacts/join-info-mobile.png', fullPage: true});
     await host.fill(''); await save.click(); await notice('Beitrittsadresse gespeichert');
     assert.equal(await external.textContent(), '8.8.8.8:15637');
+    // Profile creation is another selection path: cancellation keeps the draft,
+    // and a late creation response must preserve newly typed input.
+    await page.setViewportSize({width: 1440, height: 960});
+    const catalog = await (await page.request.get(origin + '/api/servers')).json();
+    const directory = catalog.servers.find(server => server.id === 'aska').server_directory;
+    const prepareProfile = async id => {
+      await page.getByRole('button', {name: 'Serverprofile', exact: true}).click();
+      await page.locator('#profile-game').selectOption('aska');
+      await page.locator('#profile-id').fill(id); await page.locator('#profile-label').fill(id);
+      await page.locator('#profile-directory').fill(directory + '-' + id);
+      await page.locator('#profile-config').fill(''); await page.locator('#profile-launcher').fill('');
+    };
+    await host.fill('keep-draft.example.org'); await prepareProfile('join-extra');
+    let createRequests = 0, dismissed;
+    const dialogDismissed = new Promise(resolve => { dismissed = resolve; });
+    page.on('request', request => { if (request.method() === 'POST' && request.url() === origin + '/api/servers') createRequests++; });
+    page.removeAllListeners('dialog');
+    page.on('dialog', async dialog => { await dialog.dismiss(); dismissed(); });
+    await page.locator('#profile-form button[type="submit"]').click(); await dialogDismissed;
+    assert.equal(createRequests, 0, 'Rejecting draft loss must cancel profile creation');
+    await page.getByRole('button', {name: 'Übersicht', exact: true}).click();
+    assert.equal(await host.inputValue(), 'keep-draft.example.org');
+    page.removeAllListeners('dialog'); page.on('dialog', dialog => dialog.accept());
+    let created;
+    const profileCreated = new Promise(resolve => { created = resolve; });
+    const creationGate = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/servers', async route => {
+      if (route.request().method() !== 'POST') return route.continue();
+      const response = await route.fetch(); created(); await creationGate; await route.fulfill({response});
+    });
+    await prepareProfile('join-extra'); await page.locator('#profile-form button[type="submit"]').click(); await profileCreated;
+    await page.getByRole('button', {name: 'Übersicht', exact: true}).click();
+    await host.fill('new-draft.example.org');
+    release(); await page.unrouteAll({behavior: 'wait'}); await notice('Serverprofil hinzugefügt');
+    assert.equal(await page.locator('#server-select').inputValue(), 'enshrouded');
+    assert.equal(await host.inputValue(), 'new-draft.example.org');
+    assert.equal(await page.locator('#server-select option[value="join-extra"]').count(), 1);
+    await prepareProfile('join-confirmed'); await page.locator('#profile-form button[type="submit"]').click();
+    await notice('Serverprofil hinzugefügt');
+    assert.equal(await page.locator('#server-select').inputValue(), 'join-confirmed', 'An unchanged, confirmed draft may be discarded');
     assert.deepEqual(errors, []);
-    console.log('Join information QA passed: stable DNS, persistence, draft/selection races, Discord draft and fixture send, IP fallback, mobile.');
+    console.log('Join information QA passed: stable DNS, persistence, draft/selection/creation races, Discord draft and fixture send, IP fallback, mobile.');
   } finally {
     release?.(); await page.unrouteAll({behavior: 'wait'}); await browser.close();
   }
