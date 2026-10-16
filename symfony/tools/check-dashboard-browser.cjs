@@ -199,8 +199,48 @@ const {setTimeout: delay} = require('node:timers/promises');
     const [failedSupervisor]=await crashed; assert.notEqual(failedSupervisor,0);
     assert.equal(JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8')).active,false,'An owned child failure fences and closes the manager.');
     assert.equal(JSON.parse(await fs.readFile(path.join(root,'process-enshrouded.json'),'utf8')).running,true);
+    // Kill only the lifetime owner, with both control workers stopped and a real queued command.
+    fixture=launch(true);
+    for (let attempt=0; ; attempt++) {
+      if (fixture.exitCode!==null || attempt>200) throw new Error('Supervisor restart before hard crash failed.');
+      try { if ((await fetch(origin+'/api/session')).ok) break; } catch {}
+      await delay(100);
+    }
+    const beforeCrash=JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8'));
+    const beforeCrashChildren=JSON.parse(await fs.readFile(childFile,'utf8'));
+    for (const name of ['control-1','control-2']) process.kill(beforeCrashChildren.children[name],'SIGSTOP');
+    const crashRequest=require('node:crypto').randomBytes(16).toString('hex');
+    const waiting=await fetch(origin+'/api/jobs',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Manager-Token':session.token},
+      body:JSON.stringify({server_id:'enshrouded',operation:'stop',request_id:crashRequest})});
+    assert.equal(waiting.status,202); const waitingJob=(await waiting.json()).job;
+    assert.equal(waitingJob.state,'queued');
+    const hardCrash=once(fixture,'exit'); process.kill(beforeCrashChildren.supervisor,'SIGKILL'); await hardCrash;
+    for (let attempt=0; ; attempt++) {
+      const epoch=JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8'));
+      const live=[];
+      for (const pid of [...Object.values(beforeCrashChildren.children),beforeCrash.owner.guard.pid]) {
+        try { const stat=await fs.readFile('/proc/'+pid+'/stat','utf8'); if (!['Z','X'].includes(stat.slice(stat.lastIndexOf(')')+2).split(' ')[0])) live.push(pid); } catch {}
+      }
+      if (!epoch.active && !live.length) break;
+      if (attempt>250) throw new Error('Hard supervisor crash left an active epoch or owned processes: '+JSON.stringify({epoch,live}));
+      await delay(100);
+    }
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'process-enshrouded.json'),'utf8')).running,true,'Guardian never stops the fixture game.');
+    fixture=launch(true);
+    for (let attempt=0; ; attempt++) {
+      if (fixture.exitCode!==null || attempt>200) throw new Error('Restart after hard crash failed.');
+      try { if ((await fetch(origin+'/api/session')).ok) break; } catch {}
+      await delay(100);
+    }
+    const recovered=(await (await fetch(origin+'/api/jobs?id='+waitingJob.id)).json()).job;
+    assert.ok(['interrupted','uncertain'].includes(recovered.state),'Pre-crash command is fenced, never replayed.');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'process-enshrouded.json'),'utf8')).running,true);
+    // Losing the guard itself also fences the owner, instead of running without protection.
+    const guarded=JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8'));
+    const lostGuard=once(fixture,'exit'); process.kill(guarded.owner.guard.pid,'SIGKILL'); await lostGuard;
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8')).active,false);
     console.log('Symfony dashboard QA passed: Twig, full navigation, SSE recovery, FIFO controls, async config/drafts, broken profiles, backups/restore, updates, synthetic WhatsApp, private owner/mobile and unchanged chronicle/tapestry regressions.');
-    console.log('Supervisor QA passed: real workers/observer/scheduler, singleton before lifecycle, graceful stop, persistent key/restart, owned child failure and surviving fixture game state.');
+    console.log('Supervisor QA passed: real workers/observer/scheduler, singleton before lifecycle, graceful stop, persistent key/restart, owned child failure, hard owner/guard crash, no queued replay and surviving fixture game state.');
   } catch (error) { console.error(output.slice(-6000)); throw error; }
   finally {
     await browser?.close(); if (proxy) { proxy.closeAllConnections(); await new Promise(resolve => proxy.close(resolve)); }

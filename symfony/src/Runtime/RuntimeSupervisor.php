@@ -32,7 +32,7 @@ final class RuntimeSupervisor
         if (is_link($lockPath)) { throw new \DomainException('Controller-Sperre darf kein Link sein.'); }
         $lease = fopen($lockPath,'c+b'); chmod($lockPath,0600);
         if ($lease === false || !flock($lease,LOCK_EX|LOCK_NB)) { if (is_resource($lease)) fclose($lease); throw new \DomainException('Eine Verwaltung besitzt diese Datenablage bereits.'); }
-        $children = []; $opened = false; $listeners = [];
+        $children = []; $opened = false; $listeners = []; $guard = null;
         try {
             // Refuse existing listeners before changing lifecycle/claims; never adopt a foreign service.
             foreach ([$settings['port'],$settings['family_port']] as $port) {
@@ -41,7 +41,8 @@ final class RuntimeSupervisor
                 $listeners[] = $listener;
             }
             if ($this->stopping) return;
-            $epoch = $this->lifecycle->open(); $opened = true;
+            $guard = new RuntimeGuard($this->runtime->directory,$listeners);
+            $epoch = $this->lifecycle->open($guard->owner); $opened = true;
             $this->discord->reconcile(); $this->whatsapp->reconcile(); $this->community->reconcile();
             $folder = $this->runtime->directory.'/runtime'; PrivateFiles::directory($folder); PrivateFiles::directory($folder.'/logs');
             $public = str_replace('\\','/',$this->projectDirectory.'/public');
@@ -70,6 +71,7 @@ final class RuntimeSupervisor
             $this->record($children,$folder,$epoch);
             $deadline = microtime(true)+30; $ready = false;
             while (!$this->stopping && microtime(true)<$deadline) {
+                $guard->assertAlive();
                 $this->healthy($children,$folder,$epoch);
                 $context = stream_context_create(['http'=>['timeout'=>.5,'ignore_errors'=>true]]);
                 $bytes = @file_get_contents('http://127.0.0.1:'.$settings['port'].'/api/session',false,$context);
@@ -81,7 +83,7 @@ final class RuntimeSupervisor
             if ($ready) {
                 $access = $this->access->settings();
                 PrivateFiles::write($this->runtime->directory.'/listener-runtime.json',PrivateFiles::json((object) ['active'=>$access['enabled'] && $access['port']===$settings['family_port'], 'hostname'=>$access['hostname'], 'port'=>$settings['family_port'],'epoch'=>$epoch]));
-                while (!$this->stopping) { $this->healthy($children,$folder,$epoch); usleep(100000); }
+                while (!$this->stopping) { $guard->assertAlive(); $this->healthy($children,$folder,$epoch); usleep(100000); }
             }
         } finally {
             try { if ($opened) { $this->lifecycle->close(); } }
@@ -96,7 +98,7 @@ final class RuntimeSupervisor
                         // Only owned web/worker/observer processes; never the dedicated server EXE.
                         try { if ($child->isStarted() && $child->isRunning()) { $child->stop(max(0,$deadline-microtime(true))); } } catch (\Throwable) {}
                     }
-                } finally { flock($lease,LOCK_UN); fclose($lease); }
+                } finally { try { $guard?->finish(); } finally { flock($lease,LOCK_UN); fclose($lease); } }
             }
         }
     }

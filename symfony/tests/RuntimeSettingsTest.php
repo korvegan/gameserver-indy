@@ -7,6 +7,9 @@ use App\Access\Principal;
 use App\Access\SessionKeys;
 use App\Instance\NativePaths;
 use App\Runtime\RuntimeSettings;
+use App\Runtime\RuntimeLifecycle;
+use App\Runtime\LinuxProcess;
+use App\Job\JobRepository;
 use App\Runtime\SliceRuntime;
 use App\Storage\PrivateFiles;
 use PHPUnit\Framework\TestCase;
@@ -51,5 +54,22 @@ final class RuntimeSettingsTest extends TestCase
         self::assertSame(6,$settings->read()['threads']); self::assertSame(18876,$settings->read()['port']);
         PrivateFiles::write($this->directory.'/runtime.local.json',PrivateFiles::json((object) ['php'=>PHP_BINARY,'frankenphp'=>PHP_BINARY,'port'=>18876,'family_port'=>18876]));
         $this->expectException(\DomainException::class); $settings->read();
+    }
+    public function testReusedOwnerOrGuardPidImmediatelyFencesAnOtherwiseActiveEpoch(): void
+    {
+        if (PHP_OS_FAMILY !== 'Linux') { self::markTestSkipped('Linux /proc owner identity.'); }
+        $runtime=$this->runtime(); $runtime->initialize();
+        $db=\Doctrine\DBAL\DriverManager::getConnection(['driver'=>'pdo_sqlite','path'=>$this->directory.'/slice.sqlite']);
+        $jobs=new JobRepository($db,$runtime); $jobs->initialize(); $lifecycle=new RuntimeLifecycle($runtime,$jobs);
+        $identity=LinuxProcess::identity(getmypid()); self::assertNotNull($identity);
+        $owner=$identity+['guard'=>$identity]; $epoch=$lifecycle->open($owner); self::assertSame($epoch,$lifecycle->epoch());
+        foreach (['owner','guard'] as $target) {
+            $state=(object) ['active'=>true,'epoch'=>$epoch,'owner'=>json_decode(json_encode($owner))];
+            if ($target === 'owner') { $state->owner->start='0'; } else { $state->owner->guard->start='0'; }
+            PrivateFiles::write($this->directory.'/runtime-lifecycle.json',PrivateFiles::json($state));
+            try { $lifecycle->epoch(); self::fail('Reused '.$target.' PID accepted.'); }
+            catch (\DomainException $error) { self::assertStringContainsString('Laufzeitbesitzer',$error->getMessage()); }
+        }
+        $db->close();
     }
 }

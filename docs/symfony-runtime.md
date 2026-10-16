@@ -20,6 +20,8 @@ Ein regulär beendeter Messenger-Worker kann nach bestätigtem Nachrichtenabschl
 
 Private Protokolle stehen unter `runtime/logs/`; die Dateien und PHP-Prozesspuffer sind begrenzt. `runtime/children.json` dokumentiert nur eigene PIDs und Laufkennung. Die Familienlisteneranzeige bindet an diese aktuelle Laufkennung und die tatsächliche Listenerkonfiguration; sie bestätigt weiterhin keinen erfolgreichen externen Beitritt.
 
+Der Linux-Supervisor benötigt zusätzlich `pcntl` und `posix`. Vor Datenbankzugriffen und Unterprozessen wird ein unabhängiger Wächter geforkt. Er hält die geerbte Controllersperre und läuft außerhalb der eigenen Verwaltungsprozessgruppe. Laufkennungen binden an PID und Linux-Startkennung beider Prozesse: Schon unmittelbar nach Verlust des Besitzers oder Wächters werden neue Aktionen abgewiesen. Bei hartem Besitzerverlust schließt der Wächter die Laufkennung und beendet ausschließlich die eigene Linux-Verwaltungsgruppe, auch wenn ein gerade gestarteter Unterprozess noch nicht in `children.json` stand. Native Windows-Spielprozesse gehören nicht zu dieser Gruppe. Beim Verlust des Wächters beendet der noch lebende Supervisor seinen Lauf. Grundlage: [PHP-Prozesssteuerung](https://www.php.net/manual/en/book.pcntl.php), [POSIX-Prozessgruppen](https://www.php.net/manual/en/function.posix-kill.php).
+
 ## Gemeinsame Daten als Voraussetzung des Rückwegs
 
 Die vorbereitete Produktionsablage verwendet den bestehenden Datenvertrag unter `data/`, einschließlich Freigaben, `session-key`, Chronik, Sicherungen und WhatsApp-Zuordnungen. Nur diese ausdrücklich markierte Ablage verwendet für Zugriffe `data/access.sqlite3` und `data/session-key`; isolierte Durchstiche behalten ihre bisherigen Testpfade. So kann der spätere Rückweg dieselben neu entstandenen Daten weiterverwenden. Der eigentliche Datenkopier-/Aktivierungs- und Python-Rückweg ist in diesem Schritt noch nicht implementiert.
@@ -27,5 +29,7 @@ Die vorbereitete Produktionsablage verwendet den bestehenden Datenvertrag unter 
 ## Nachweise und offene Abnahme
 
 Die vollständige Dashboard-Browserfixture verwendet jetzt den echten PHP-Supervisor. Alle HTTP- und CLI-Einstiege erhalten dieselben reinen Testadapter. Zusätzlich zu den Fach-/Chronik-/Wandteppichprüfungen werden doppelter Start vor Laufkennungsänderung, Ersatz eines regulär beendeten Workers, geordnetes Beenden, gleichbleibender Sitzungsschlüssel beim Neustart und ein erzwungener Ausfall des eigenen Beobachters geprüft. Der simulierte Spielprozesszustand bleibt jeweils laufend. Ein echter ASKA-Speicherabschluss oder ein Windows-Neustart wird daraus nicht abgeleitet.
+
+Ein separater Browserfall beendet nur den Supervisor mit SIGKILL, während Steuerungsworker angehalten sind und ein Stoppbefehl wartet: Wächter, HTTP und Hintergrundprozesse müssen enden, der erneute Start muss gelingen und der wartende Befehl unterbrochen bleiben. Auch der harte Verlust des Wächters wird geprüft. Der simulierte Spielprozesszustand bleibt jeweils laufend.
 
 Für #54 bleiben die konsistente Originalübernahme samt Rückweg, Installations-/Launcherprüfung, Lastvergleich, externe Familienabnahme und tatsächlicher Windows-Kaltstart im richtigen Besitzerkonto erforderlich. Bestehende WAHA-Sitzungsvolumes und aktive ASKA-Diagnosepfade bleiben bei dieser Übernahme gebunden; kein erneutes Pairing oder Testversand.
