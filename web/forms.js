@@ -83,7 +83,7 @@ export function fromForm() {
 
 export function bindForms(mutate) {
   $('#config-form').addEventListener('input', event => {
-    state.dirty = true; $('#unsaved').hidden = false;
+    state.dirty = true; state.formRevision++; $('#unsaved').hidden = false;
     if (event.target.id === 'json-editor') state.rawDirty = true;
     else if (!state.rawDirty) $('#json-editor').value = JSON.stringify(fromForm(), null, 2);
   });
@@ -104,9 +104,14 @@ export function bindForms(mutate) {
   $('#discord-message').addEventListener('input', () => {
     state.messageDirty = true;
     state.messageRevision++;
-    $('#message-counter').textContent = `${$('#discord-message').value.length} / 2000 Zeichen`;
+    $('#message-counter').textContent = `${Array.from($('#discord-message').value).length} / 2000 Zeichen`;
   });
-  $('#message-form').addEventListener('submit', event => { event.preventDefault(); mutate('/api/discord/send', {message: $('#discord-message').value}); });
+  $('#discord-message').removeAttribute('maxlength');
+  $('#message-form').addEventListener('submit', event => {
+    event.preventDefault();
+    if (Array.from($('#discord-message').value.trim()).length > 2000) return notice('Die Discord-Nachricht darf höchstens 2000 Zeichen enthalten.', true);
+    mutate('/api/discord/send', {message: $('#discord-message').value});
+  });
   $('#profile-game').addEventListener('change', () => {
     $('#profile-directory').value = $('#profile-game').selectedOptions[0].dataset.directory;
     $('#profile-launcher').disabled = $('#profile-game').selectedOptions[0].dataset.launcher !== 'true';

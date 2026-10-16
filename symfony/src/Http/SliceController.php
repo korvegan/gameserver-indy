@@ -30,7 +30,8 @@ final class SliceController extends AbstractController
         private readonly JobService $service, private readonly ServerControl $control,
         private readonly JobReconciler $reconciler, private readonly AccessPolicy $policy,
         private readonly SessionKeys $keys, private readonly ListenerIdentity $identity,
-        private readonly InstanceRegistry $registry, private readonly ProcessObservation $observation) {}
+        private readonly InstanceRegistry $registry, private readonly ProcessObservation $observation,
+        private readonly \App\Dashboard\ServerOverview $overview) {}
 
     private function principal(): Principal
     {
@@ -47,6 +48,7 @@ final class SliceController extends AbstractController
     public function home(Request $request): Response
     {
         $this->denyAccessUnlessGranted('catalog.read'); $principal = $this->principal();
+        if ($this->runtime->driver === 'managed') { return $this->render('dashboard.html.twig'); }
         return $this->render('slice.html.twig', ['token' => $this->keys->token($principal, $request->attributes->get('_indy_scope')),
             'role' => $principal->role, 'permissions' => $principal->permissions(),
             'driver' => $this->runtime->driver, 'servers' => $this->servers($principal)]);
@@ -57,7 +59,7 @@ final class SliceController extends AbstractController
     {
         $this->denyAccessUnlessGranted('catalog.read'); $principal = $this->principal();
         return $this->json(['token' => $this->keys->token($principal, $request->attributes->get('_indy_scope')),
-            'role' => $principal->role, 'principal' => $principal->public(), 'grant_revision' => $principal->revision, 'api_version' => 1,
+            'role' => $principal->role, 'principal' => $principal->public(), 'grant_revision' => $principal->revision, 'api_version' => 2,
             'access_mode' => $request->attributes->get('_indy_scope') === 'local-owner' ? 'local' : 'private',
             'isolated' => $this->runtime->driver !== 'managed', 'driver' => $this->runtime->driver, 'servers' => $this->servers($principal)]);
     }
@@ -67,6 +69,7 @@ final class SliceController extends AbstractController
     {
         $serverId = (string) $request->query->get('server', 'demo-a');
         $this->denyAccessUnlessGranted('status.read', $serverId);
+        if ($this->runtime->driver === 'managed') { return $this->json($this->overview->view($this->principal(),$serverId)); }
         $status = $this->runtime->driver === 'managed' ? $this->observation->view($serverId) : $this->control->status($serverId);
         unset($status['user_profile']);
         return $this->json(['server_id' => $serverId, 'status' => $status]);
@@ -82,7 +85,9 @@ final class SliceController extends AbstractController
             $job = $this->jobs->get($id); $this->denyAccessUnlessGranted('jobs.read', $job['server_id']);
             return $this->json(['job' => JobRepository::public($job)]);
         }
-        $snapshot = $this->jobs->snapshot($principal->serverIds);
+        $server = $request->query->get('server');
+        if ($server !== null) { $this->denyAccessUnlessGranted('jobs.read',$server); }
+        $snapshot = $this->jobs->snapshot($server !== null ? [$server] : $principal->serverIds);
         $snapshot['jobs'] = array_map(JobRepository::public(...), $snapshot['jobs']);
         return $this->json($snapshot);
     }

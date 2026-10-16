@@ -67,7 +67,7 @@ final class LocalBoundary
         $headers->set('X-Content-Type-Options', 'nosniff');
         $headers->set('X-Frame-Options', 'DENY');
         $headers->set('Referrer-Policy', 'no-referrer');
-        $headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'");
+        $headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         $request = $event->getRequest();
         if (str_starts_with($request->getPathInfo(), '/api/') && ($request->isMethod('POST')
                 || $event->getResponse()->getStatusCode() >= 400 || $request->getPathInfo() === '/api/session')) {

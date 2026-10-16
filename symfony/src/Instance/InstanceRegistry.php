@@ -104,7 +104,11 @@ final class InstanceRegistry
             if (!$actor->allows('status.read', $profile->id)) { continue; }
             $profiles[] = $actor->allows('config.read', $profile->id) ? $profile : (object) ['id' => $profile->id, 'label' => $profile->label, 'game' => $profile->game];
         }
-        return ['servers' => $profiles, 'games' => $this->games->entries($settings->catalog_games ?? [])];
+        $games = array_map(function ($game) {
+            $schema = $game['schema'];
+            return [...$game,'default_directory'=>$schema->default_directory ?? '', 'external_launcher'=>$schema->external_launcher ?? false];
+        },$this->games->entries($settings->catalog_games ?? []));
+        return ['servers' => $profiles, 'games' => $games];
     }
     public function register(Principal $actor, \stdClass $profile): array
     {
@@ -112,7 +116,7 @@ final class InstanceRegistry
         if ($actor->serverIds !== null) { throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException('Neue Profile benötigen eine Freigabe ohne Profilbegrenzung.'); }
         if (array_diff(array_keys(get_object_vars($profile)), ['id', 'game', 'label', 'server_directory', 'config_path', 'launcher_script', 'log_directory', 'steam_manifest', 'steam_branch', 'connection'])) { throw new \InvalidArgumentException('Unbekannte Profilfelder.'); }
         $this->validateProfile($profile);
-        return $this->mutate($actor, function (\stdClass $settings) use ($profile): \stdClass { $settings->servers[] = $profile; return $this->validate($settings); });
+        return $this->mutate($actor, function (\stdClass $settings) use ($profile): \stdClass { $settings->servers[] = $profile; return $this->validate($settings); }) + ['server_id'=>$profile->id];
     }
     public function saveConnection(Principal $actor, string $id, mixed $host): array
     {

@@ -1,6 +1,6 @@
 """Run isolated PHP fixtures from a short, disposable NTFS checkout under WSL.
 
-Copies only versioned/nonignored Symfony sources, profiles/scripts and vendor.
+Copies only versioned/nonignored Symfony sources, profiles/scripts/web and vendor.
 No live manager data, environment credentials, game installs or global PHP config.
 """
 import os
@@ -31,7 +31,7 @@ php_options = [option for module in ('zip', 'intl') if module not in modules for
 with tempfile.TemporaryDirectory(prefix='ib-', dir=native_temp) as directory:
     target = Path(directory)
     sources = subprocess.check_output(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard',
-        'symfony', 'profiles', 'scripts'], cwd=ROOT).decode().split('\0')
+        'symfony', 'profiles', 'scripts', 'web'], cwd=ROOT).decode().split('\0')
     print('Preparing own short NTFS checkout (no live state).', flush=True)
     for name in sources:
         if not name:

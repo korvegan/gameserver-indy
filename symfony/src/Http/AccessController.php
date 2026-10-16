@@ -12,13 +12,14 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class AccessController extends AbstractController
 {
-    public function __construct(private readonly AccessStore $store, private readonly InstanceRegistry $registry) {}
+    public function __construct(private readonly AccessStore $store, private readonly InstanceRegistry $registry,
+        private readonly \App\Runtime\ListenerRuntime $listener) {}
     #[Route('/api/access', methods: ['GET'])]
     public function view(): JsonResponse
     {
         $this->denyAccessUnlessGranted('access.manage');
-        $labels = $this->registry->labels();
-        return $this->json($this->store->view() + ['servers' => array_map(
+        $labels = $this->registry->executionLabels();
+        return $this->json($this->store->view() + ['runtime'=>$this->listener->view(), 'servers' => array_map(
             fn ($id, $label) => ['id' => $id, 'label' => $label], array_keys($labels), $labels)]);
     }
     #[Route('/api/access/users', methods: ['POST'])]
@@ -26,7 +27,7 @@ final class AccessController extends AbstractController
     {
         $this->denyAccessUnlessGranted('access.manage');
         $actor = $this->getUser(); assert($actor instanceof Principal);
-        return $this->json($this->store->saveUser($actor, $request->toArray(), array_keys($this->registry->labels())));
+        return $this->json($this->store->saveUser($actor, $request->toArray(), array_keys($this->registry->executionLabels())));
     }
     #[Route('/api/access/settings', methods: ['POST'])]
     public function settings(Request $request): JsonResponse

@@ -1,3 +1,5 @@
 twig:
   file_name_pattern: '*.twig'
   strict_variables: true
+  paths:
+    '%kernel.project_dir%/../web': dashboard

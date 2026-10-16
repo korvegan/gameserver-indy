@@ -1,4 +1,4 @@
-import {api, onSessionExpired, setToken} from './api.js';
+import {api, onSessionExpired, requestId, setToken} from './api.js';
 import {$, notice} from './dom.js';
 import {can, replaceSelection, state} from './state.js';
 import {bindForms, clearConfig, populateConfig} from './forms.js';
@@ -13,13 +13,16 @@ import {bindConnections, renderConnection} from './views/connection.js';
 import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
 import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
+import {connectJobStream} from './job-stream.js';
 
 let statusRequest = 0, configRequest = 0, controller;
-const jobContexts = new Map();
+const jobContexts = new Map(), requestContexts = new Map();
 onSessionExpired(async () => {
   const session = await api('/api/session');
-  if (JSON.stringify(session.principal) !== JSON.stringify(state.principal)) { location.reload(); throw new Error('Zugriff geändert'); }
+  if (JSON.stringify(session.principal) !== JSON.stringify(state.principal)
+      || (state.apiVersion >= 2 && (session.grant_revision ?? null) !== state.grantRevision)) { location.reload(); throw new Error('Zugriff geändert'); }
   setToken(session.token);
+  state.apiVersion = session.api_version || 1;
 });
 const mayOpenFailureLogs = context => context && context.target === state.selectedServer
   && context.selectionEpoch === state.selectionEpoch && context.navigationEpoch === state.navigationEpoch
@@ -32,6 +35,7 @@ async function loadConfig() {
   try {
     const data = await api('/api/config', undefined, target);
     if (generation !== configRequest || epoch !== state.selectionEpoch || state.dirty || state.view !== 'settings') return;
+    state.configRevision = data.revision ?? null;
     if (JSON.stringify(state.config) !== JSON.stringify(data.config) || !state.schema) populateConfig(data.config, data.game_profile);
   } catch (error) {
     if (generation === configRequest && epoch === state.selectionEpoch) notice(error.message, true);
@@ -130,7 +134,13 @@ async function go(next, {keepNotice = false} = {}) {
 }
 
 async function finishJob(job) {
-  const context = jobContexts.get(job.id); jobContexts.delete(job.id);
+  const context = jobContexts.get(job.id) || requestContexts.get(job.request_id); jobContexts.delete(job.id); requestContexts.delete(job.request_id);
+  if (job.state === 'succeeded' && context?.mutation && context.target === state.selectedServer && context.selectionEpoch === state.selectionEpoch) {
+    if (['/api/config', '/api/setup'].includes(context.mutation) && context.formRevision === state.formRevision) {
+      state.dirty = false; state.rawDirty = false; state.config = null; state.schema = null; state.configRevision = null; $('#unsaved').hidden = true;
+    }
+    if (context.mutation === '/api/discord/send' && context.messageRevision === state.messageRevision) state.messageDirty = false;
+  }
   const label = state.catalog.servers.find(profile => profile.id === job.server_id)?.label || job.server_id;
   if (state.selectedServer === job.server_id && job.result?.update) renderUpdate(job.result.update);
   if (state.selectedServer === job.server_id) await refresh();
@@ -143,19 +153,22 @@ async function finishJob(job) {
 }
 
 async function runOperation(operation, payload = {}) {
+  if (state.submitting) return;
   const target = state.selectedServer;
   const context = {target, selectionEpoch: state.selectionEpoch, navigationEpoch: state.navigationEpoch};
-  if (state.submitting) return;
+  const id = state.apiVersion >= 2 ? requestId() : null;
+  if (id) requestContexts.set(id, context);
   state.submitting = true; controls(); notice('Auftrag wird angelegt …');
   let job;
-  try { job = (await api('/api/jobs', {...payload, operation}, target)).job; }
+  try { job = (await api('/api/jobs', {...payload, operation, ...(id ? {request_id: id} : {})}, target)).job; }
   catch (error) {
     notice(error.message, true);
     if (error.code !== 'session_expired' && mayOpenFailureLogs(context) && ['start', 'restart'].includes(operation)) {
       state.logSource = 'launcher'; $('#log-source').value = 'launcher'; await go('logs', {keepNotice: true});
     }
   } finally { state.submitting = false; controls(); }
-  if (job) { jobContexts.set(job.id, context); acceptJob(job, controls, finishJob); }
+  if (job) { if (!id || requestContexts.has(id)) jobContexts.set(job.id, context); acceptJob(job, controls, finishJob); }
+  else if (id) requestContexts.delete(id);
 }
 
 async function mutate(path, body = {}) {
@@ -165,9 +178,19 @@ async function mutate(path, body = {}) {
   const target = state.selectedServer, epoch = state.selectionEpoch;
   const connectionDraft = $('#join-public-host').value;
   const {discordRevision, messageRevision} = state;
+  const queuedPath = state.apiVersion >= 2 && ['/api/config', '/api/setup', '/api/discord/send'].includes(path);
+  const id = queuedPath ? requestId() : null;
+  const context = {target, selectionEpoch: epoch, navigationEpoch: state.navigationEpoch, mutation: path, formRevision: state.formRevision, messageRevision};
+  if (id) requestContexts.set(id, context);
   state.submitting = true; controls(); notice('Wird ausgeführt …');
   try {
-    const result = await api(path, body, target);
+    const result = await api(path, {...body, ...(id ? {request_id: id} : {})}, target);
+    if (result.job) {
+      if (requestContexts.has(id)) jobContexts.set(result.job.id, context);
+      const current = acceptJob(result.job, controls, finishJob);
+      if (['queued', 'running'].includes(current.state)) notice('Auftrag angenommen. Der Entwurf bleibt bis zum erfolgreichen Abschluss erhalten.');
+      return;
+    }
     if (path === '/api/servers') {
       if (epoch === state.selectionEpoch && (!state.connectionDirty || $('#join-public-host').value === connectionDraft)) {
         replaceSelection(result.server_id); clearConfig(); renderConnection();
@@ -181,11 +204,11 @@ async function mutate(path, body = {}) {
     }
     if (path === '/api/discord/send' && messageRevision === state.messageRevision) state.messageDirty = false;
     await refresh(); notice(result.message + (result.warning ? ` Hinweis: ${result.warning}` : ''), Boolean(result.warning));
-  } catch (error) { notice(error.message, true); }
+  } catch (error) { if (id) requestContexts.delete(id); notice(error.message, true); }
   finally { state.submitting = false; controls(); }
 }
 
-bindNavigation(go); bindForms(mutate); bindConnections(refresh); bindCommunity(); bindAccess(); bindBackups(runOperation);
+bindNavigation(go); bindForms(mutate); bindConnections(refresh, job => acceptJob(job, controls, finishJob)); bindCommunity(); bindAccess(); bindBackups(runOperation);
 bindWhatsApp();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
@@ -213,9 +236,14 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ![
 (async () => {
   try {
     const session = await api('/api/session'); setToken(session.token); state.principal = session.principal;
+    state.apiVersion = session.api_version || 1; state.grantRevision = session.grant_revision ?? null;
     $('#identity-label').textContent = {owner: session.access_mode === 'private' ? 'Besitzer · privat' : 'Besitzer · lokal', family: 'Familienbediener', viewer: 'Lesezugriff'}[session.principal.role] || 'Zugriff eingeschränkt';
     if (session.access_mode === 'private') $('#location-label').textContent = 'Privater Familienzugang';
     await refreshCatalog(); await refresh();
+    if (state.apiVersion >= 2) connectJobStream({
+      snapshot: jobs => { mergeJobs(jobs); renderJobs(); for (const job of jobs) watchJob(job, controls, finishJob); },
+      job: job => acceptJob(job, controls, finishJob), controls,
+    });
     if (isCommunityHash()) await go('community');
   } catch (error) { notice(error.message, true); }
   controls();

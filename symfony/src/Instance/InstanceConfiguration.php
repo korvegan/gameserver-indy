@@ -19,9 +19,9 @@ final class InstanceConfiguration
     {
         $this->policy->require($actor, 'config.read', $id); $profile = $this->registry->get($id);
         $path = $this->registry->configPath($profile); $adapter = $this->games->adapter($profile->game);
-        if (!is_file($path)) { return ['server_id' => $id, 'config' => null, 'revision' => null]; }
+        if (!is_file($path)) { return ['server_id' => $id, 'config' => null, 'revision' => null, 'game_profile'=>$this->games->schema($profile->game)]; }
         $bytes = PrivateFiles::read($path);
-        return ['server_id' => $id, 'config' => $adapter->publicConfiguration($adapter->decode($bytes)), 'revision' => hash('sha256', $bytes)];
+        return ['server_id' => $id, 'config' => $adapter->publicConfiguration($adapter->decode($bytes)), 'revision' => hash('sha256', $bytes), 'game_profile'=>$this->games->schema($profile->game)];
     }
     public function save(Principal $actor, string $id, \stdClass $configuration, string $revision): array
     {

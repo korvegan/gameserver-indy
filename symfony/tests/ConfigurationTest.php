@@ -186,6 +186,7 @@ final class ConfigurationTest extends SliceTestCase
         $client->request('GET', '/api/config'); self::assertResponseStatusCodeSame(400);
         $client->request('GET', '/api/config?server=enshrouded'); self::assertResponseIsSuccessful();
         $config = json_decode($client->getResponse()->getContent(), true); self::assertSame($profile->id, $config['server_id']);
+        unset($config['game_profile']); // Read-only form metadata is not a submitted configuration field.
         $client->request('GET', '/api/session'); $token = json_decode($client->getResponse()->getContent(), true)['token'];
         // The isolated control remains restricted to its own standins, even after metadata import.
         $client->request('POST', '/api/config', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://127.0.0.1:18865', 'HTTP_X_MANAGER_TOKEN' => $token], content: json_encode($config));

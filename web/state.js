@@ -5,6 +5,7 @@ try { selectedServer = localStorage.getItem('gameserver-indy-server') || ''; } c
 export const state = {
   selectedServer, selectionEpoch: 0, navigationEpoch: 0, view: 'overview', snapshot: null,
   catalog: {servers: [], games: []}, principal: null,
+  apiVersion: 1, grantRevision: null, configRevision: null, formRevision: 0,
   config: null, schema: null, dirty: false, rawDirty: false, discordDirty: false, messageDirty: false, profileDirty: false,
   discordRevision: 0, messageRevision: 0,
   communityDirty: false,
@@ -25,6 +26,6 @@ export function replaceSelection(serverId) {
   state.selectedServer = serverId;
   state.selectionEpoch++;
   Object.assign(state, {snapshot: null, config: null, schema: null, dirty: false, rawDirty: false,
-    available: false, configLoading: false, latestJobs: [], logSource: 'server'});
+    available: false, configLoading: false, latestJobs: [], logSource: 'server', configRevision: null});
   rememberServer();
 }
