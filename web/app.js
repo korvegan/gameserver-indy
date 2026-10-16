@@ -89,6 +89,9 @@ async function refresh() {
 }
 
 async function selectServer(target, openOverview = false) {
+  if (state.connectionDirty && !confirm('Ungespeicherte Beitrittsadresse verwerfen und das Serverprofil wechseln?')) {
+    $('#server-select').value = state.selectedServer; return false;
+  }
   if (state.dirty && !confirm('Ungespeicherte Spieleinstellungen verwerfen und das Serverprofil wechseln?')) {
     $('#server-select').value = state.selectedServer; return false;
   }
@@ -174,7 +177,7 @@ async function mutate(path, body = {}) {
   finally { state.submitting = false; controls(); }
 }
 
-bindNavigation(go); bindForms(mutate); bindConnections(); bindCommunity(); bindAccess(); bindBackups(runOperation);
+bindNavigation(go); bindForms(mutate); bindConnections(refresh); bindCommunity(); bindAccess(); bindBackups(runOperation);
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;

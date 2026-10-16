@@ -9,7 +9,7 @@
   "role_groups": true,
   "connection": {
     "mode": "ip_query", "port_key": "queryPort", "bind_key": "ip",
-    "instructions": "Enshrouded → Online-Spiele → Dedizierter Server → T (Suche nach IPv4 / Domain). Adresse samt Port eingeben. Alternativ nach dem Servernamen suchen.",
+    "instructions": "Enshrouded → Online-Spiele → Dedizierter Server → T (Suche nach IPv4 / Domain). Adresse samt Port eingeben. Bei der Namenssuche auch leere und passwortgeschützte Server anzeigen. Alternativ in Steam unter Ansicht → Spielserver → Favoriten die Adresse mit Query-Port hinzufügen.",
     "password_hint": "Mitspieler verwenden das Passwort ihrer Benutzergruppe, z. B. Friend. Du findest es unter Einstellungen → Benutzergruppen. Passwörter separat teilen."
   },
   "fields": [

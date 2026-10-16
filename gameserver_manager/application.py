@@ -69,6 +69,13 @@ class Application:
         self.connections.refresh()
         return {'connection': self.connections.view(instance, config)}
 
+    def save_connection(self, principal, body):
+        server_id = body.get('server_id')
+        self.instance(principal, server_id, 'catalog.write', explicit=True)
+        if server_id is None or set(body) - {'server_id', 'public_host'}:
+            raise ManagerError('Bitte Serverprofil und öffentliche Domain ausdrücklich angeben.')
+        return self.registry.save_connection(server_id, body.get('public_host'))
+
     def check_updates(self, principal, server_id):
         instance = self.instance(principal, server_id, 'updates.check', explicit=True)
         return self.jobs.submit(instance.profile['id'], 'check_updates', principal.id,

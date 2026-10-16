@@ -3,6 +3,12 @@ import {$, element, notice} from '../dom.js';
 import {can, state} from '../state.js';
 
 let submitting = false, currentConnection, renderRevision = 0;
+let formServer, draftRevision = 0, saving = false;
+
+export function connectionControls() {
+  $('#use-join-message').disabled = state.submitting || !can('discord.write') || !currentConnection?.share_message;
+  $('#save-join-public').disabled = saving || !can('catalog.write') || !state.selectedServer || currentConnection?.mode !== 'ip_query';
+}
 
 function addressCard(label, addresses, empty, id) {
   const card = element('div', undefined, 'join-card');
@@ -32,6 +38,11 @@ export function renderConnection(connection) {
   renderRevision += 1;
   currentConnection = connection;
   const data = connection || {}, container = $('#join-addresses');
+  if (formServer !== state.selectedServer) {
+    formServer = state.selectedServer; state.connectionDirty = false; draftRevision++;
+    $('#join-public-host').value = '';
+  }
+  if (connection && !state.connectionDirty) $('#join-public-host').value = data.public_host || '';
   const direct = data.mode === 'ip_query';
   const signature = JSON.stringify(data);
   if (container.dataset.snapshot !== signature) {
@@ -43,6 +54,8 @@ export function renderConnection(connection) {
       addressCard('Extern · für Mitspieler', data.external ? [data.external] : [], 'Keine aktuelle externe Beitrittsadresse ermittelt.', 'external'));
   }
   container.hidden = !direct;
+  $('#join-public-settings').hidden = !direct;
+  $('#join-server-name').textContent = data.server_name ? `Servername: ${data.server_name}` : '';
   $('#join-instructions').textContent = !connection ? 'Beitrittsinformationen werden geladen …'
     : data.instructions || (direct ? 'Im Spiel die Suche nach IP / Domain öffnen und die Adresse samt Port eingeben.'
       : 'Im Spiel die Serverliste öffnen und nach dem oben angezeigten Servernamen suchen. Für dieses Spiel ist hier noch kein direkter IP-Beitritt bestätigt.');
@@ -52,9 +65,32 @@ export function renderConnection(connection) {
     : data.checked_at ? `${data.stale ? 'Stand veraltet · ' : ''}Ermittelt: ${new Date(data.checked_at).toLocaleString('de-DE')} · Windows-Heimnetz / öffentliche IPv4 über ipify. Automatisch alle 15 Minuten.`
       : 'Noch keine Adressermittlung. Der Spielprozess wird dadurch nicht verändert.';
   $('#refresh-connections').disabled = submitting || Boolean(data.checking) || !state.selectedServer || !can('connections.refresh');
+  connectionControls();
 }
 
-export function bindConnections() {
+export function bindConnections(refresh) {
+  $('#join-public-host').addEventListener('input', () => { state.connectionDirty = true; draftRevision++; });
+  $('#join-public-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (saving || !can('catalog.write')) return;
+    const target = state.selectedServer, epoch = state.selectionEpoch, revision = draftRevision;
+    saving = true; connectionControls();
+    try {
+      const result = await api('/api/connections/settings', {public_host: $('#join-public-host').value}, target);
+      if (epoch !== state.selectionEpoch) return;
+      if (revision === draftRevision) state.connectionDirty = false;
+      await refresh();
+      if (epoch === state.selectionEpoch) notice(result.message);
+    } catch (error) { if (epoch === state.selectionEpoch) notice(error.message, true); }
+    finally { saving = false; connectionControls(); }
+  });
+  $('#use-join-message').addEventListener('click', () => {
+    if (!can('discord.write') || !currentConnection?.share_message) return;
+    if (state.messageDirty && !confirm('Den bisherigen Nachrichtenentwurf durch die Beitrittsinfos ersetzen?')) return;
+    $('#discord-message').value = currentConnection.share_message;
+    $('#discord-message').dispatchEvent(new Event('input', {bubbles: true}));
+    notice('Beitrittsinfos als Entwurf übernommen. Vor dem Senden kannst du den Text bearbeiten.');
+  });
   $('#refresh-connections').addEventListener('click', async () => {
     if (submitting) return;
     const target = state.selectedServer, epoch = state.selectionEpoch, revision = renderRevision;

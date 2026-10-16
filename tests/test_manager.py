@@ -115,6 +115,24 @@ class ManagerTests(ManagerFixture):
         self.assertIn("Discord", result["warning"])
         self.assertNotIn("secret", json.dumps(self.manager.events()))
 
+    def test_start_and_restart_notifications_include_public_join_instructions_without_secrets(self):
+        self.manager.setup()
+        self.manager.profile['connection'] = {'public_host': 'group.example.org'}
+        self.manager.save_discord({'webhook_url': 'https://discord.com/api/webhooks/123/secret', 'auto_notify': True})
+        with patch('gameserver_manager.operations.send_discord') as sender:
+            self.manager.action('start')
+            content = sender.call_args.args[1]
+            self.assertIn('group.example.org:15637', content)
+            self.assertIn('Suche nach IPv4 / Domain', content)
+            self.assertNotIn('127.0.0.1', content)
+            self.assertNotIn('secret', content)
+            for group in self.manager.config()['userGroups']:
+                self.assertNotIn(group['password'], content)
+            self.manager.action('restart')
+            self.assertIn('group.example.org:15637', sender.call_args.args[1])
+            self.manager.action('stop')
+            self.assertNotIn('group.example.org', sender.call_args.args[1])
+
     def test_webhook_can_be_kept_and_deleted_without_being_returned(self):
         url = "https://discord.com/api/webhooks/123/token"
         self.manager.save_discord({"webhook_url": url, "auto_notify": False})

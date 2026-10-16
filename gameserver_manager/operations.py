@@ -58,7 +58,10 @@ class InstanceOperations:
             if m.settings.get("discord", {}).get("auto_notify") and m.webhook() and not external_start:
                 name = m.game.title(m.config())
                 try:
-                    send_discord(m.webhook(), f"{name}: {'Server gestoppt.' if action == 'stop' else 'Serverprozess gestartet.'}")
+                    content = f"{name}: {'Server gestoppt.' if action == 'stop' else 'Serverprozess gestartet.'}"
+                    if action != 'stop':
+                        content += '\n\n' + m.discord.join_message()
+                    send_discord(m.webhook(), content)
                     m.event("Discord-Statusnachricht gesendet.")
                 except ManagerError as exc:
                     warning = str(exc)
