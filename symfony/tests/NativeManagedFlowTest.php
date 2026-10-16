@@ -54,6 +54,8 @@ final class NativeManagedFlowTest extends SliceTestCase
             self::assertTrue($a['running']); self::assertTrue($b['running']); self::assertNotSame($a['pid'], $b['pid']);
             self::assertNull($a['ready'], 'A process marker is not game readiness');
             self::assertNotEmpty($a['processes'][0]['started']);
+            self::assertGreaterThan(0,$a['processes'][0]['memory_bytes']);
+            self::assertGreaterThanOrEqual(0,$a['processes'][0]['cpu_seconds']);
             $execute('fixture-a', 'stop');
             self::assertFalse($gateway->call('fixture-a', 'Status')['running']);
             self::assertSame($b['pid'], $gateway->call('fixture-b', 'Status')['pid'], 'Same executable name in another installation survives');

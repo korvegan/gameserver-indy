@@ -29,7 +29,8 @@ final class WindowsProcessGateway implements ProcessGateway
         $arguments = (object) ['Action' => $action, 'ServerDirectory' => $this->powershell->windowsPath($profile->server_directory),
             'ExecutableName' => $schema->executable, 'SteamAppId' => $schema->launch_steam_app_id ?? 0,
             'ConfigArgument' => $schema->config_argument ?? '', 'ConfigPath' => $this->powershell->windowsPath($this->registry->configPath($profile)),
-            'DiagnosticDirectory' => $this->powershell->windowsPath($this->registry->diagnosticPath($profile))];
+            'DiagnosticDirectory' => $this->powershell->windowsPath($this->registry->diagnosticPath($profile)),
+            'MetricsCachePath'=>$this->powershell->windowsPath($this->runtime->directory.'/observations/host-metrics.json')];
         if (($profile->launcher_script ?? '') !== '') { $arguments->LauncherScript = $this->powershell->windowsPath($profile->launcher_script); }
         if ($action !== 'Status') {
             $arguments->RuntimeEpoch = $this->lifecycle->epoch();
@@ -63,10 +64,20 @@ final class WindowsProcessGateway implements ProcessGateway
                 || !is_string($process->started ?? null) || !preg_match('/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,7})?(?:Z|\+00:00)$/D', $process->started)) {
                 throw new \DomainException('Ungültige native Prozessidentität.');
             }
-            $processes[] = ['pid' => $process->pid, 'started' => $process->started];
+            $entry = ['pid' => $process->pid, 'started' => $process->started];
+            foreach (['cpu_seconds','memory_bytes','io_bytes'] as $metric) {
+                $value = $process->{$metric} ?? null;
+                $entry[$metric] = (is_int($value) || is_float($value)) && is_finite((float)$value) && $value>=0 ? $value : null;
+            }
+            $processes[] = $entry;
+        }
+        $host = [];
+        foreach (['logical_processors','cpu_percent','memory_used_bytes','memory_total_bytes','observed_at'] as $metric) {
+            $value = $response->host_metrics->{$metric} ?? null;
+            $host[$metric] = (is_int($value) || is_float($value)) && is_finite((float)$value) && $value>=0 ? $value : null;
         }
         return ['known' => true, 'running' => (bool) $processes, 'ready' => null,
             'starting' => $response->launcher_running && !$processes, 'launcher_running' => $response->launcher_running,
-            'pid' => count($processes) === 1 ? $processes[0]['pid'] : null, 'processes' => $processes, 'user_profile' => $response->user_profile];
+            'pid' => count($processes) === 1 ? $processes[0]['pid'] : null, 'processes' => $processes, 'user_profile' => $response->user_profile, 'host_metrics'=>$host];
     }
 }

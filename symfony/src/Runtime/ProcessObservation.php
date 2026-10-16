@@ -11,7 +11,7 @@ use Symfony\Component\Lock\Store\FlockStore;
 final class ProcessObservation
 {
     public function __construct(private readonly SliceRuntime $runtime, private readonly InstanceRegistry $registry,
-        private readonly ProcessGateway $gateway, private readonly Readiness $readiness) {}
+        private readonly ProcessGateway $gateway, private readonly Readiness $readiness, private readonly PerformanceHistory $performance) {}
     public function refresh(string $serverId): void
     {
         $profile = $this->registry->get($serverId);
@@ -48,6 +48,7 @@ final class ProcessObservation
                 // Equal status and timestamps still represent a newer completed observation/action.
                 'generation' => bin2hex(random_bytes(16)),
                 'fingerprint' => $fingerprint, 'observed_at' => time(), 'status' => (object) $status]));
+            try { $this->performance->record($serverId,$status); } catch (\Throwable) { /* Optional history cannot fail a server action. */ }
         } finally { $lock->release(); }
     }
     public function view(string $serverId): array

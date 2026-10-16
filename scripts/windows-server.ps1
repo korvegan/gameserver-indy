@@ -7,6 +7,7 @@
     [string]$ConfigPath = '',
     [string]$LauncherScript = '',
     [string]$DiagnosticDirectory = '',
+    [string]$MetricsCachePath = '',
     [string]$RuntimeFencePath = '',
     [string]$RuntimeEpoch = ''
 )
@@ -34,7 +35,7 @@ function Get-CanonicalPath([string]$path) {
 }
 
 function Assert-RuntimeFence {
-    # The Python manager has no fence; Symfony supplies both values for every action.
+    # Direct isolated diagnostics may omit the fence; managed actions supply both values.
     if (-not $RuntimeFencePath -and -not $RuntimeEpoch) { return }
     if (-not $RuntimeFencePath -or $RuntimeEpoch -notmatch '^[a-f0-9]{32}$') { throw 'Runtime fence is incomplete.' }
     $fence = [IO.File]::ReadAllText($RuntimeFencePath) | ConvertFrom-Json
@@ -149,10 +150,41 @@ public static class GameServerConsole {
         $processes = @(Get-ServerProcesses)
     }
     $entries = @($processes | ForEach-Object {
-        @{ pid = [int]$_.ProcessId; started = $_.CreationDate.ToUniversalTime().ToString('o') }
+        @{ pid = [int]$_.ProcessId; started = $_.CreationDate.ToUniversalTime().ToString('o')
+           cpu_seconds = ([double]$_.KernelModeTime + [double]$_.UserModeTime) / 10000000
+           memory_bytes = [long]$_.WorkingSetSize
+           io_bytes = [double]$_.ReadTransferCount + [double]$_.WriteTransferCount }
     })
+    $hostData = $null
+    try {
+      if ($Action -eq 'Status') {
+        if ($MetricsCachePath -and [IO.File]::Exists($MetricsCachePath) -and (Get-Item -LiteralPath $MetricsCachePath).Length -le 4096) {
+            try {
+                $cachedMetrics = [IO.File]::ReadAllText($MetricsCachePath) | ConvertFrom-Json
+                $age = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000 - [double]$cachedMetrics.observed_at
+                if ($age -ge 0 -and $age -lt 8) { $hostData = $cachedMetrics }
+            } catch { }
+        }
+        if ($null -eq $hostData) {
+        $processors = @(Get-CimInstance Win32_Processor)
+        $systemMemory = Get-CimInstance Win32_OperatingSystem
+        $loads = @($processors | Where-Object { $null -ne $_.LoadPercentage } | ForEach-Object { [double]$_.LoadPercentage })
+        $hostData = @{ logical_processors = [Environment]::ProcessorCount
+            observed_at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000
+            cpu_percent = $(if ($loads.Count -gt 0) { ($loads | Measure-Object -Average).Average } else { $null })
+            memory_used_bytes = ([long]$systemMemory.TotalVisibleMemorySize - [long]$systemMemory.FreePhysicalMemory) * 1024
+            memory_total_bytes = [long]$systemMemory.TotalVisibleMemorySize * 1024 }
+          if ($MetricsCachePath) {
+            try {
+                [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($MetricsCachePath)) | Out-Null
+                [IO.File]::WriteAllText($MetricsCachePath, ($hostData | ConvertTo-Json -Compress))
+            } catch { } # A missed/corrupt optional cache is sampled again, never used as zero.
+          }
+        }
+      }
+    } catch { } # Optional measurements never turn a successful game action into a failure.
     $launcher = Get-LauncherProcess
-    @{ processes = $entries; launcher_running = [bool]$launcher; user_profile = [Environment]::GetFolderPath('UserProfile') } | ConvertTo-Json -Compress -Depth 5
+    @{ processes = $entries; launcher_running = [bool]$launcher; user_profile = [Environment]::GetFolderPath('UserProfile'); host_metrics = $hostData } | ConvertTo-Json -Compress -Depth 5
 } catch {
     @{ error = $_.Exception.Message } | ConvertTo-Json -Compress
     exit 1

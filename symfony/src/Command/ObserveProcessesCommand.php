@@ -27,6 +27,7 @@ final class ObserveProcessesCommand extends Command implements SignalableCommand
         if ($this->runtime->driver !== 'managed') { $output->writeln('<error>Nur für den ausdrücklich aktivierten nativen Profilmodus.</error>'); return Command::FAILURE; }
         $epoch = $this->lifecycle->epoch();
         do {
+            $next = microtime(true) + 8;
             foreach (array_keys($this->registry->executionLabels()) as $id) {
                 if ($this->stopping) { return Command::SUCCESS; }
                 try { if ($this->lifecycle->epoch() !== $epoch) { return Command::SUCCESS; } }
@@ -34,7 +35,6 @@ final class ObserveProcessesCommand extends Command implements SignalableCommand
                 $this->observation->refresh($id);
             }
             if ($input->getOption('once')) { return Command::SUCCESS; }
-            $next = microtime(true) + 8;
             while (!$this->stopping && microtime(true) < $next) { usleep(100000); }
         } while (!$this->stopping);
         return Command::SUCCESS;
