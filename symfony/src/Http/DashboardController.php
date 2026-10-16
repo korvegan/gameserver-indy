@@ -16,13 +16,16 @@ final class DashboardController extends AbstractController
         private readonly InstanceRegistry $registry,private readonly TechnicalEvents $events) {}
     #[Route('/dashboard',methods:['GET'])]
     public function dashboard(): Response { $this->denyAccessUnlessGranted('catalog.read'); return $this->render('dashboard.html.twig'); }
-    #[Route('/{asset}',requirements:['asset'=>'(?:app|api|state|dom|forms|navigation|jobs|job-stream)\.js|style\.css|favicon\.svg|views/(?:server|logs|catalog|community|updates|connection|chronicle-form|story|story-art|access|backups|whatsapp)\.js'],methods:['GET'])]
+    #[Route('/{asset}',requirements:['asset'=>'(?:app|api|state|dom|forms|navigation|jobs|job-stream)\.js|(?:style|serverzentrale)\.css|favicon\.svg|views/(?:server|workspace|logs|catalog|community|updates|connection|chronicle-form|story|story-art|access|backups|whatsapp)\.js|artwork/(?:enshrouded|aska)-(?:hero\.jpg|logo\.png)'],methods:['GET'])]
     public function asset(string $asset): Response
     {
         $path = dirname($this->projectDirectory).'/web/'.$asset;
         if (!is_file($path) || is_link($path)) { throw $this->createNotFoundException(); }
-        $type = str_ends_with($asset,'.js') ? 'text/javascript' : (str_ends_with($asset,'.css') ? 'text/css' : 'image/svg+xml');
-        return new Response(file_get_contents($path),200,['Content-Type'=>$type.'; charset=utf-8']);
+        $type = match (pathinfo($asset,PATHINFO_EXTENSION)) {
+            'js'=>'text/javascript; charset=utf-8', 'css'=>'text/css; charset=utf-8',
+            'jpg'=>'image/jpeg', 'png'=>'image/png', default=>'image/svg+xml',
+        };
+        return new Response(file_get_contents($path),200,['Content-Type'=>$type]);
     }
     #[Route('/api/games',methods:['GET'])]
     public function games(): JsonResponse { $this->denyAccessUnlessGranted('catalog.read'); return $this->json(['games'=>$this->games->entries($this->registry->settings()->catalog_games ?? [])]); }

@@ -13,7 +13,7 @@ const fs = require('node:fs');
   const notice = text => page.waitForFunction(text => document.querySelector('#notice').textContent.includes(text), text);
   try {
     await page.goto(origin);
-    await page.getByRole('button', {name: 'WhatsApp', exact: true}).click();
+    await require('./browser-navigation.cjs').navigation(page)('WhatsApp').click();
     await page.waitForFunction(() => !document.querySelector('#wa-connect').disabled);
     await page.locator('#wa-connect').click();
     await page.locator('#wa-qr').waitFor({state: 'visible'});
@@ -78,8 +78,8 @@ const fs = require('node:fs');
     assert.equal(await page.locator('#wa-save').isDisabled(), false);
     // No automatic claim of readiness for a stopped fixture server.
     assert.equal(await page.locator('[data-wa-send="enshrouded"]').isDisabled(), true);
-    await page.getByRole('button', {name: 'Übersicht', exact: true}).click();
-    await page.getByRole('button', {name: 'WhatsApp', exact: true}).click();
+    await require('./browser-navigation.cjs').navigation(page)('Übersicht').click();
+    await require('./browser-navigation.cjs').navigation(page)('WhatsApp').click();
     await page.waitForFunction(() => !document.querySelector('#wa-refresh').disabled);
     assert.equal(await page.locator('#wa-group').inputValue(), '987654321@g.us');
     await page.setViewportSize({width: 390, height: 844});

@@ -2,6 +2,8 @@ import {$} from '../dom.js';
 
 export function renderUpdate(update) {
   const data = update || {};
+  $('#steam-summary').textContent = data.label || 'Prüfung offen';
+  $('#update-tab-hint').hidden = !['available', 'update_available', 'restart_required'].includes(data.state);
   $('#update-state').textContent = data.label || 'Unbekannt';
   $('#update-state').className = 'pill' + (data.state === 'current' ? ' running' : '');
   $('#installed-build').textContent = data.installed_build || 'Unbekannt';

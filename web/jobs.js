@@ -1,6 +1,7 @@
 import {api} from './api.js';
 import {$, element, notice} from './dom.js';
 import {state} from './state.js';
+import {renderWorkspaceJobs} from './views/workspace.js';
 
 const watching = new Set(), completed = new Set();
 const outstanding = new Map(), versions = new Map();
@@ -35,6 +36,7 @@ export function mergeJobs(jobs) {
 }
 
 export function renderJobs() {
+  renderWorkspaceJobs();
   const container = $('#job-list');
   container.replaceChildren();
   if (!state.latestJobs.length) container.append(element('p', 'Noch keine Aufträge für dieses Profil.', 'empty'));
