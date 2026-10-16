@@ -31,6 +31,7 @@ jobs:
           node-version-file: '.node-version'
       - run: node --test tests/ci-plan.test.cjs
       - run: node --test --test-name-pattern='release switch' tests/release.test.cjs
+      - run: node --test tests/log-lines.test.cjs
       - id: select
         run: node .github/ci-plan.cjs
   symfony:

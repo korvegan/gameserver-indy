@@ -45,7 +45,7 @@ final class ServerLogs
         $selected = $source ?? ($server !== null ? 'server' : ($launcher !== null ? 'launcher' : 'server')); $path = $selected === 'server' ? $server : $launcher;
         return ['source' => $selected, 'sources' => [['id' => 'server', 'label' => 'Spielserver'], ['id' => 'launcher', 'label' => 'Starter / Startfehler']],
             'file' => $path !== null ? basename($path) : null, 'updated_at' => $path !== null ? gmdate('Y-m-d\TH:i:s\Z', filemtime($path)) : null,
-            'text' => $path !== null ? ($broken && $selected === 'server' ? 'Die Konfiguration ist nicht lesbar; das Serverprotokoll kann deshalb gerade nicht bereinigt werden.' : LogText::tail($path, $values))
+            'text' => $path !== null ? ($broken && $selected === 'server' ? 'Die Konfiguration ist nicht lesbar; das Serverprotokoll kann deshalb gerade nicht bereinigt werden.' : LogText::tail($path, $values, 4000))
                 : ($selected === 'server' ? 'Noch keine Serverlogs vorhanden.' : 'Noch kein Starterprotokoll vorhanden. Der nächste Start über das Dashboard wird hier protokolliert.')];
     }
 }

@@ -11,7 +11,7 @@ function plan(files, event = 'pull_request') {
   if (['schedule','workflow_dispatch'].includes(event) || !files.length) all('All components; extended cases only on manual request');
   for (const file of files) {
     if (/^(docs\/|skills\/|archive\/)|\.md$/.test(file)) continue;
-    if (/^(web\/|symfony\/templates\/|tests\/browser-[^/]+\.cjs$)/.test(file)
+    if (/^(web\/|symfony\/templates\/|tests\/browser-[^/]+\.cjs$|tests\/log-lines\.test\.cjs$)/.test(file)
       || /^symfony\/(src\/Http\/DashboardController.php|tests\/DashboardTest.php)$/.test(file)) {
       result.symfony=true; result.ui=true; reasons.add('Dashboard and assets'); continue;
     }

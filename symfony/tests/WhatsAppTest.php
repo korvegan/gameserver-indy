@@ -136,6 +136,19 @@ final class WhatsAppTest extends SliceTestCase
         $view = static::getContainer()->get(ServerLogs::class)->read('fixture'); self::assertStringNotContainsString('SYNTHETIC-PASSWORD',$view['text']); self::assertStringContainsString('Error: still visible',$view['text']);
         PrivateFiles::write($this->directory.'/own-install/enshrouded_server.json','broken'); $view = static::getContainer()->get(ServerLogs::class)->read('fixture'); self::assertStringContainsString('nicht lesbar',$view['text']); self::assertStringNotContainsString('rotated',$view['text']);
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testShaderFloodRetainsTheStartContextAndSanitizesWithoutChangingTheFile(): void
+    {
+        $this->boot(); $path = $this->directory.'/own-install/logs/enshrouded_server.log';
+        $text = "Connected to Steam successfully\n".str_repeat("2026-10-15T14:59:38Z Trying to access a shader but no shaders were included in the build because Dedicated Server Optimizations is enabled.\n",300)
+            ."Built-in Resource Error: visible\nThe session is now open!\npassword=synthetic-password\n";
+        PrivateFiles::write($path,$text); $view = static::getContainer()->get(ServerLogs::class)->read('fixture');
+        self::assertStringContainsString('Connected to Steam successfully',$view['text']);
+        self::assertStringContainsString('Built-in Resource Error: visible',$view['text']);
+        self::assertStringContainsString('The session is now open!',$view['text']);
+        self::assertStringNotContainsString('synthetic-password',$view['text']);
+        self::assertSame($text,file_get_contents($path));
+    }
     public function testHttpQrAndAccountActionsRequireLocalOwnerAndCsrf(): void
     {
         $client = $this->createMock(WhatsAppClient::class); $client->expects(self::never())->method('connect'); $browser = $this->boot($client,http:true);

@@ -39,6 +39,17 @@ const fs=require('node:fs/promises');
       assert.equal(await page.locator('#world-list').isVisible(),true);
     }
     await fs.mkdir('artifacts',{recursive:true});
+    const shader = 'Trying to access a shader but no shaders were included in the build because Dedicated Server Optimizations is enabled.';
+    await page.route('**/api/logs?*', route => route.fulfill({json:{file:'own-fixture.log',updated_at:'2026-10-15T15:00:00Z',
+      text:new URL(route.request().url()).searchParams.get('source')==='launcher' ? 'Own launcher line' :
+        `Connected to Steam successfully\n${Array.from({length:250},()=>`2026-10-15T14:59:38Z ${shader}`).join('\n')}\nBuilt-in Resource Error: visible\nThe session is now open!`}}));
+    await page.getByRole('tab',{name:'Protokoll & Aufträge',exact:true}).click();
+    await page.getByText('Shader-Hinweis · 250 Wiederholungen', {exact:false}).click();
+    assert.match(await page.locator('#log-content').innerText(),/Built-in Resource Error: visible/);
+    await page.locator('#log-raw').check(); assert.match(await page.locator('#log-content').innerText(),/Connected to Steam successfully/);
+    await page.locator('#log-raw').uncheck(); await page.locator('#log-source').selectOption('launcher');
+    await page.waitForFunction(()=>document.querySelector('#log-content').textContent==='Own launcher line');
+    await page.unrouteAll({behavior:'wait'});
     for(const width of [1440,390]){
       await page.setViewportSize({width,height:1000});
       await page.getByRole('tab',{name:'Übersicht',exact:true}).click();
