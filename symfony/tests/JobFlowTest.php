@@ -17,6 +17,7 @@ use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
 
 final class JobFlowTest extends SliceTestCase
 {
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testAcceptanceIsDurableFifoAndRedeliveryCannotReplayCommands(): void
     {
         $jobs = $this->ledger();
@@ -110,6 +111,7 @@ final class JobFlowTest extends SliceTestCase
         self::assertSame([], $jobs->events(0));
     }
 
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testAnotherProfileWorksWhileOneProfileIsLocked(): void
     {
         $jobs = $this->ledger();

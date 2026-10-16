@@ -63,6 +63,7 @@ final class WorldBackupsTest extends SliceTestCase
         return $this->execute('backup_restore', (object) ['backup_id' => $id, 'token' => $preview['token'], 'confirmation' => $preview['confirmation']]);
     }
     protected function tearDown(): void { Clock::set(new NativeClock()); parent::tearDown(); }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testCompleteWorldAndExactConfigRoundTripWithoutResettingAccessOrChronicle(): void
     {
         $this->fixture(); $config = $this->directory.'/own-install/enshrouded_server.json'; $bytes = PrivateFiles::read($config);
@@ -84,6 +85,7 @@ final class WorldBackupsTest extends SliceTestCase
         self::assertStringNotContainsString('synthetic-private-world-password', json_encode($view));
         if (PHP_OS_FAMILY !== 'Windows') { self::assertSame(0600, fileperms($this->file($id, 'zip')) & 0777); }
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testRetentionNeedsNewVerifiedSuccessAndPreservesPins(): void
     {
         $this->fixture(); $old = $this->create(); $pinned = $this->create();
@@ -244,6 +246,7 @@ final class WorldBackupsTest extends SliceTestCase
         $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id']));
         self::assertSame('succeeded', $container->get(JobRepository::class)->get($job['id'])['state']);
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testAskaUsesServerWorldAndExactExternalConfigAndPreset(): void
     {
         $this->fixture(); $container = static::getContainer(); $registry = $container->get(InstanceRegistry::class);

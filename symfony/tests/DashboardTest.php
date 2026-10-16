@@ -25,6 +25,7 @@ final class DashboardTest extends SliceTestCase
         }
         static::getContainer()->get(RuntimeLifecycle::class)->open(); return $client;
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testManagedRootRendersFullTwigDashboardAndOnlyWhitelistedAssets(): void
     {
         $client = $this->boot(); $client->request('GET','/'); self::assertResponseIsSuccessful(); self::assertSelectorExists('#server-select'); self::assertSelectorExists('#community'); self::assertSelectorExists('#whatsapp'); self::assertSelectorExists('#new-moment[disabled]');
@@ -35,6 +36,7 @@ final class DashboardTest extends SliceTestCase
         $client->request('GET','/artwork/unknown-hero.jpg'); self::assertResponseStatusCodeSame(404);
         $client->request('GET','/views/../../composer.lock'); self::assertResponseStatusCodeSame(404);
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testOverviewNeverQueriesProcessesAndBrokenConfigDoesNotBreakCatalog(): void
     {
         $client = $this->boot(); $client->request('GET','/api/status?server=first'); self::assertResponseIsSuccessful(); $data = json_decode($client->getResponse()->getContent(),true);

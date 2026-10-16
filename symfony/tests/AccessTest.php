@@ -53,6 +53,7 @@ final class AccessTest extends SliceTestCase
         self::assertSame('family', $private['role']); self::assertSame(['demo-a'], array_keys($private['servers']));
         self::assertNotSame($local['token'], $private['token']);
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testFamilyScopesJobsAndRequiresPrivateOriginAndItsOwnToken(): void
     {
         $client = $this->client(); $this->grant();

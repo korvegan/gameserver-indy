@@ -127,6 +127,7 @@ final class ConfigurationTest extends SliceTestCase
             self::assertSame('/tmp/fixture', $paths->local('\\\\wsl$\\'.getenv('WSL_DISTRO_NAME').'\\tmp\\fixture'));
         }
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testStoppedSaveMakesExactPrivateBackupAndRejectsOldFileRevision(): void
     {
         $this->boot(); $profile = $this->profile(); $this->registry()->register($this->owner(), $profile);
