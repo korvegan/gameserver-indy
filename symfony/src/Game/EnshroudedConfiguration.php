@@ -7,6 +7,7 @@ use App\Storage\UnicodeText;
 
 final class EnshroudedConfiguration implements ConfigurationAdapter
 {
+    public function title(\stdClass $configuration): string { return $configuration->name ?? 'Enshrouded'; }
     public function id(): string { return 'enshrouded'; }
     public function decode(string $bytes): \stdClass { return PrivateFiles::object($bytes); }
     public function encode(\stdClass $configuration, string $original): string { return PrivateFiles::json($configuration); }

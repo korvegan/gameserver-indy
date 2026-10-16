@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Job;
 
+use App\Integration\IntegrationOperations;
 use App\Runtime\SliceRuntime;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
@@ -14,13 +15,13 @@ final class JobReconciler
 
     public function reconcile(): void
     {
-        foreach ($this->jobs->pendingTargets() as $serverId) {
-            if (!$this->jobs->hasRunning($serverId)) { continue; }
-            $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('execute:'.$serverId);
+        foreach ($this->jobs->pendingResources() as ['server_id' => $serverId, 'lane' => $lane]) {
+            if (!$this->jobs->hasRunning($serverId, $lane)) { continue; }
+            $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock(IntegrationOperations::lock($serverId, $lane));
             if (!$lock->acquire()) { continue; }
             try {
                 // A live worker holds this same lock through the terminal write.
-                if ($this->jobs->hasRunning($serverId)) { $this->jobs->recover($serverId); }
+                if ($this->jobs->hasRunning($serverId, $lane)) { $this->jobs->recover($serverId, $lane); }
             } finally { $lock->release(); }
         }
     }

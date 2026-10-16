@@ -8,6 +8,7 @@ use App\Access\Principal;
 use App\Backup\BackupOperations;
 use App\Backup\WorldBackups;
 use App\Instance\InstanceConfiguration;
+use App\Integration\IntegrationOperations;
 use App\Runtime\OutcomeUnknown;
 use App\Runtime\RuntimeLifecycle;
 use App\Runtime\ServerControl;
@@ -25,7 +26,8 @@ final class ExecuteServerJobHandler
     public function __construct(private readonly JobRepository $jobs, private readonly SliceRuntime $runtime,
         private readonly ServerControl $control, private readonly AccessPolicy $policy,
         private readonly RuntimeLifecycle $lifecycle, private readonly WorkerClaim $claim,
-        private readonly InstanceConfiguration $configuration, private readonly WorldBackups $backups) {}
+        private readonly InstanceConfiguration $configuration, private readonly WorldBackups $backups,
+        private readonly ?IntegrationOperations $integrations = null) {}
 
     public function __invoke(ExecuteServerJob $message): void
     {
@@ -43,24 +45,26 @@ final class ExecuteServerJobHandler
     {
         $trigger = $this->jobs->get($message->jobId);
         $serverId = $trigger['server_id'];
-        $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('execute:'.$serverId);
+        $lane = IntegrationOperations::is($trigger['operation']) ? 'metadata' : 'control';
+        $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock(IntegrationOperations::lock($serverId, $lane));
         if (!$lock->acquire()) {
             // Delivery may wait again only before any operation is claimed or executed.
             throw new RecoverableMessageHandlingException('Dieses Testprofil arbeitet bereits.', retryDelay: 500);
         }
         try {
-            if ($this->jobs->hasRunning($serverId)) {
+            if ($this->jobs->hasRunning($serverId, $lane)) {
                 // Lock is free but ledger is running: previous worker died. Never replay it.
-                $this->jobs->recover($serverId);
+                $this->jobs->recover($serverId, $lane);
                 return;
             }
-            while ($job = $this->jobs->next($serverId)) {
+            while ($job = $this->jobs->next($serverId, $lane)) {
                 $this->jobs->transition($job['id'], 'running', 'Wird ausgeführt.');
                 try {
                     $this->lifecycle->requireClaim($job);
                     $actor = Principal::fromClaim($job['actor']);
                     $this->policy->require($actor, JobService::permission($job['operation']), $serverId);
                     $result = $this->claim->run($job, function () use ($job, $actor, $serverId): ?array {
+                        if (IntegrationOperations::is($job['operation'])) { return ($this->integrations ?? throw new \LogicException('Integrationsdienst fehlt.'))->execute($job, $actor); }
                         if ($job['operation'] === 'config') {
                             $payload = PrivateFiles::object($job['payload']);
                             return $this->configuration->save($actor, $serverId, $payload->config, $payload->revision);

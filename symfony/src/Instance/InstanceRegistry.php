@@ -62,10 +62,10 @@ final class InstanceRegistry
     public static function publicHost(mixed $value): string
     {
         if (!is_string($value)) { throw new \InvalidArgumentException('Eine öffentliche Domain oder IPv4 ohne Protokoll und Port ist erforderlich.'); }
-        $host = strtolower(trim($value)); if ($host === '') { return ''; }
+        $host = strtolower(\App\Storage\UnicodeText::trim($value)); if ($host === '') { return ''; }
         if (str_ends_with($host, '.')) { $host = substr($host, 0, -1); }
         if (strlen($host) > 253 || !str_contains($host, '.') || !preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/D', $host)
-            || (preg_match('/^[0-9.]+$/D', $host) && filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE) === false)) { throw new \InvalidArgumentException('Ungültige öffentliche Domain oder IPv4.'); }
+            || (preg_match('/^[0-9.]+$/D', $host) && \App\Storage\IPv4::address($host, true) === null)) { throw new \InvalidArgumentException('Ungültige öffentliche Domain oder IPv4.'); }
         return $host;
     }
     public function get(string $id): \stdClass

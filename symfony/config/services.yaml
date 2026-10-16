@@ -16,8 +16,14 @@ services:
       $localPort: '%env(int:SLICE_PORT)%'
   App\:
     resource: '../src/'
-    exclude: ['../src/Kernel.php', '../src/Job/ExecuteServerJob.php', '../src/Access/Principal.php', '../src/Runtime/ServerStopped.php']
+    exclude: ['../src/Kernel.php', '../src/Job/ExecuteServerJob.php', '../src/Access/Principal.php', '../src/Runtime/ServerStopped.php', '../src/Runtime/ServerActionCompleted.php']
   App\Runtime\ServerControl:
     alias: App\Runtime\SelectedServerControl
   App\Runtime\ProcessGateway:
     alias: App\Runtime\WindowsProcessGateway
+  App\Integration\SteamProvider:
+    alias: App\Integration\SteamCmd
+  App\Integration\HostNetworkProvider:
+    alias: App\Integration\WindowsNetwork
+  App\Integration\DiscordTransport:
+    alias: App\Integration\DiscordWebhook

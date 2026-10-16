@@ -73,7 +73,9 @@ final class LocalBoundary
             $operation = in_array($request->getPathInfo(), ['/api/session', '/api/status', '/api/jobs', '/api/job-events',
                 '/api/access', '/api/access/users', '/api/access/settings', '/api/config', '/api/setup',
                 '/api/servers', '/api/connections/settings', '/api/community', '/api/community/options', '/api/community/event',
-                '/api/community/story', '/api/community/media', '/api/community/export'], true) ? $request->getPathInfo() : 'request.unknown';
+                '/api/community/story', '/api/community/media', '/api/community/export',
+                '/api/updates', '/api/updates/check', '/api/connections', '/api/connections/refresh',
+                '/api/discord', '/api/discord/settings', '/api/discord/send'], true) ? $request->getPathInfo() : 'request.unknown';
             $this->access->audit($request->attributes->get('_indy_principal')?->id ?? 'unrecognized',
                 $operation, '', (string) $event->getResponse()->getStatusCode());
         }

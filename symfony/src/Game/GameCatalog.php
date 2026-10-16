@@ -68,6 +68,7 @@ final class GameCatalog
             $capabilities['configuration'] = ['state' => $hosted ? 'supported' : 'unsupported',
                 'reason' => $hosted ? 'Vorhandener Konfigurationsadapter; Schreiben benötigt bestätigten Prozesszustand.' : 'Kein Dedicated-Server-Adapter eingerichtet.'];
             if (!$hosted) { $capabilities['process_control'] = ['state' => 'unsupported', 'reason' => 'Kein Prozessadapter eingerichtet.']; }
+            else { $capabilities['update_detection'] = ['state' => 'supported', 'reason' => 'Lokales Steam-Appmanifest und anonymer SteamCMD-Branchvergleich; benötigt eingerichtetes SteamCMD.']; }
             $result[] = [...$entry, 'server_adapter' => $hosted, 'capabilities' => $capabilities,
                 'schema' => $hosted ? $this->schemas[$id] : null];
         }

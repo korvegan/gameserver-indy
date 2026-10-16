@@ -23,7 +23,7 @@ final class WorldBackups
         private readonly AccessPolicy $policy, private readonly InstanceMutation $mutation, private readonly WorkerClaim $claim,
         private readonly ProcessGateway $gateway, private readonly ProcessObservation $observations, private readonly JobRepository $jobs,
         private readonly BackupPlan $plans, private readonly BackupFiles $files, private readonly BackupArchive $archives,
-        private readonly ClockInterface $clock) {}
+        private readonly ClockInterface $clock, private readonly ?\App\Integration\SteamInstallation $steam = null) {}
     private function folder(string $id): string
     {
         $this->registry->get($id); $path = $this->runtime->directory.'/data/world-backups/'.$id;
@@ -152,8 +152,10 @@ final class WorldBackups
         $folder = $this->folder($id); PrivateFiles::directory($folder);
         $this->files->space($folder, $inventory['size'] * 2 + BackupFiles::MANIFEST_LIMIT);
         $identifier = bin2hex(random_bytes(16)); $partial = $folder.'/'.$identifier.'.partial'; $archive = $folder.'/'.$identifier.'.zip';
+        try { $installation = $this->steam?->read($id); $build = $installation && $installation['complete'] && !$installation['busy'] ? $installation['build'] : null; }
+        catch (\Throwable) { $build = null; }
         $manifest = (object) ['schema' => 1, 'id' => $identifier, 'created_at' => $this->now(), 'binding' => $plan['binding'],
-            'directories' => $inventory['directories'], 'files' => [], 'build' => null];
+            'directories' => $inventory['directories'], 'files' => [], 'build' => $build];
         try {
             $this->phase($id, 'Sichere Dateien', 0, count($inventory['entries'])); $guard(); $this->archives->create($partial, $inventory, $manifest);
             $status = $this->offline($id, $guard); $after = $this->files->inventory($plan['world'], $plan['files']);
@@ -161,7 +163,7 @@ final class WorldBackups
                 || !$this->plans->sameBinding($this->plans->resolve($id, $status)['binding'], $plan['binding'])) { throw new \DomainException('Welt oder Konfiguration während der Sicherung geändert.'); }
             $this->phase($id, 'Prüfe Archiv und Prüfsummen'); $this->archives->inspect($partial, $manifest); $guard();
             $record = (object) ['id' => $identifier, 'created_at' => $manifest->created_at, 'verified_at' => $this->now(), 'pinned' => $pinned,
-                'reason' => $reason, 'bytes' => filesize($partial), 'count' => count($inventory['entries']), 'build' => null,
+                'reason' => $reason, 'bytes' => filesize($partial), 'count' => count($inventory['entries']), 'build' => $build,
                 'manifest' => $manifest, 'sha256' => $this->files->digest($partial)];
             $guard(); if (!rename($partial, $archive)) { throw new \DomainException('Archiv nicht übernommen.'); } $this->store($id, $record);
         } finally { if (is_file($partial)) { unlink($partial); } }

@@ -34,6 +34,7 @@ final class ManagedServerControl implements ServerControl
                 if (($state['running'] ?? null) !== false || ($state['launcher_running'] ?? null) !== false) { throw new OutcomeUnknown('Der reguläre Stopp ist noch nicht eindeutig abgeschlossen.'); }
                 $this->observation->record($serverId, $state);
                 $this->events->dispatch(new ServerStopped($serverId));
+                if ($operation === 'stop') { $this->events->dispatch(new ServerActionCompleted($serverId, 'stop')); }
             }
             if ($operation !== 'stop') {
                 $adapter = $this->games->adapter($profile->game);
@@ -44,6 +45,7 @@ final class ManagedServerControl implements ServerControl
                 $attempted = true; $state = $this->gateway->call($serverId, 'Start');
             }
             $this->observation->record($serverId, $state);
+            if ($operation !== 'stop') { $this->events->dispatch(new ServerActionCompleted($serverId, 'start')); }
         } catch (\Throwable $error) {
             try { $this->observation->record($serverId, ['known' => false, 'running' => null, 'ready' => null, 'pid' => null]); } catch (\Throwable) {}
             if ($attempted && !$error instanceof OutcomeUnknown) { throw new OutcomeUnknown('Serveraktion wurde unterbrochen. Prozesszustand und Protokoll prüfen; kein automatischer Wiederholungsversuch.', previous: $error); }
