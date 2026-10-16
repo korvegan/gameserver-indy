@@ -32,3 +32,10 @@ Die CI-Auswahl steht in [docs/testing.md](docs/testing.md). Nach einer Korrektur
 Eine Aufgabe ist abgeschlossen, wenn die vereinbarte Funktion, der relevante Review, die passenden Prüfungen und nötige Installation samt kurzer Abnahme erledigt sind. Danach keine Suche nach weiteren hypothetischen Randfällen. Bei größeren Aufgaben Entwicklungs-, externe Warte- und Installationszeit gelegentlich getrennt berichten; ungefähre Phasen nicht als exakt gemessene Arbeitszeit ausgeben. Vor neuen Abstraktionen gegenprüfen, ob eine vorhandene Funktion, ein direkter Befehl oder eine kurze Regel genügt. Keine Erweiterungsplattform für einen einzelnen Anwendungsfall bauen.
 
 Die Reasoning-Einstellung bleibt bis zu einer neuen ausdrücklichen Entscheidung des Nutzers unverändert.
+
+## Werkzeuge gezielt einsetzen
+
+- Mit rg zunächst relevante Pfade und Stellen ermitteln; unabhängige Such- und Lesezugriffe bündeln. Nur benötigte Felder bzw. Abschnitte ausgeben und vorhandene Ergebnisse weiterverwenden.
+- Zusammenhängende UI-Befunde in einem Browserlauf sammeln und gemeinsam auswerten. Ohne Änderung oder offenen Befund keine wiederholte vollständige Browserabnahme.
+- Für laufende CI- oder andere lange Prüfungen einen Beobachter verwenden. Zusätzliche Statusabfragen dienen einer konkreten Diagnose; keine konkurrierenden Poll-Schleifen starten.
+- Quellen durch gezielte Patches ändern und vorhandene Projektbefehle bevorzugen. Wiederkehrende Installationsschritte versionieren; keine neue Plugin- oder Orchestrierungsschicht ohne konkrete fehlende Fähigkeit einführen.
