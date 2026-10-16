@@ -29,6 +29,11 @@ final class JobRepository
             $this->db->executeStatement('ALTER TABLE slice_jobs ADD COLUMN actor TEXT NOT NULL DEFAULT '
                 .$this->db->quote((new Principal('local-owner', 'owner'))->claim()));
         }
+        foreach (['payload' => 'TEXT', 'result' => 'TEXT', 'runtime_epoch' => "TEXT NOT NULL DEFAULT 'isolated'"] as $column => $type) {
+            if (!in_array($column, array_column($this->db->fetchAllAssociative('PRAGMA table_info(slice_jobs)'), 'name'), true)) {
+                $this->db->executeStatement('ALTER TABLE slice_jobs ADD COLUMN '.$column.' '.$type);
+            }
+        }
         $this->db->executeStatement('CREATE TABLE IF NOT EXISTS slice_events (
             sequence INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
         chmod($this->runtime->directory.'/slice.sqlite', 0600);
@@ -68,13 +73,15 @@ final class JobRepository
             .($serverId === null ? '' : ' AND server_id=?'), $serverId === null ? [] : [$serverId]);
     }
 
-    public function insert(string $id, string $requestId, string $serverId, string $operation, Principal $actor): void
+    public function insert(string $id, string $requestId, string $serverId, string $operation, Principal $actor,
+        ?string $payload = null, string $epoch = 'isolated'): void
     {
         $this->ready();
         $time = gmdate('Y-m-d\TH:i:s\Z');
         $this->db->insert('slice_jobs', ['id' => $id, 'request_id' => $requestId, 'server_id' => $serverId,
             'operation' => $operation, 'state' => 'queued', 'message' => 'Wartet auf Ausführung.',
             'actor' => $actor->claim(),
+            'payload' => $payload, 'runtime_epoch' => $epoch,
             'created_at' => $time, 'updated_at' => $time]);
         $this->event($id);
     }
@@ -97,11 +104,11 @@ final class JobRepository
         return (bool) $this->db->fetchOne("SELECT 1 FROM slice_jobs WHERE server_id=? AND state='running'", [$serverId]);
     }
 
-    public function transition(string $id, string $state, string $message): void
+    public function transition(string $id, string $state, string $message, ?array $result = null): void
     {
-        $this->transaction(function () use ($id, $state, $message): void {
-            $this->db->executeStatement('UPDATE slice_jobs SET state=?,message=?,updated_at=?,revision=revision+1 WHERE id=?',
-                [$state, $message, gmdate('Y-m-d\TH:i:s\Z'), $id]);
+        $this->transaction(function () use ($id, $state, $message, $result): void {
+            $this->db->executeStatement('UPDATE slice_jobs SET state=?,message=?,updated_at=?,revision=revision+1,result=? WHERE id=?',
+                [$state, $message, gmdate('Y-m-d\TH:i:s\Z'), $result === null ? null : json_encode($result, JSON_THROW_ON_ERROR), $id]);
             $this->event($id);
         });
     }
@@ -141,7 +148,28 @@ final class JobRepository
         $this->db->insert('slice_events', ['payload' => json_encode(self::public($this->get($id)), JSON_THROW_ON_ERROR)]);
     }
 
-    public static function public(array $job): array { unset($job['actor']); return $job; }
+    public function pendingTargets(): array
+    {
+        $this->ready();
+        return $this->db->fetchFirstColumn("SELECT DISTINCT server_id FROM slice_jobs WHERE state IN ('queued','running')");
+    }
+    public function hasExclusive(string $id): bool
+    {
+        $this->ready();
+        return (bool) $this->db->fetchOne("SELECT 1 FROM slice_jobs WHERE server_id=? AND state IN ('queued','running') AND operation NOT IN ('start','stop','restart') LIMIT 1", [$id]);
+    }
+    public function interruptQueued(string $message): void
+    {
+        $this->transaction(function () use ($message): void {
+            foreach ($this->db->fetchFirstColumn("SELECT id FROM slice_jobs WHERE state='queued'") as $id) { $this->transition($id, 'interrupted', $message); }
+        });
+    }
+    public static function public(array $job): array
+    {
+        unset($job['actor'], $job['payload'], $job['runtime_epoch']);
+        if (isset($job['result']) && is_string($job['result'])) { $job['result'] = json_decode($job['result'], true, flags: JSON_THROW_ON_ERROR); }
+        return $job;
+    }
 
     private function ready(): void
     {

@@ -50,14 +50,36 @@ def main():
                        INDY_CACHE_DIR=str(state.with_name(state.name + '.cache')),
                        XDG_CONFIG_HOME=str(state / 'caddy-config'), XDG_DATA_HOME=str(state / 'caddy-data'))
     command = [options.php, 'bin/console']
+    # Hold one lifetime lease, including restarts on a different test port.
+    state.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    lease_path = state.with_name(state.name + '.supervisor.lock')
+    if lease_path.is_symlink():
+        parser.error('Supervisor lock cannot be a link.')
+    lease = lease_path.open('a+b')
+    lease_path.chmod(0o600)
+    try:
+        if os.name == 'nt':
+            import msvcrt
+            lease.seek(0)
+            if not lease.read(1):
+                lease.write(b'0'); lease.flush()
+            lease.seek(0); msvcrt.locking(lease.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lease.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lease.close()
+        parser.error('Another supervisor owns this data folder; no existing runtime is adopted.')
     subprocess.run(command + ['slice:init'], cwd=root, env=environment, check=True)
     family_config = state / 'family.caddy'
     family_config.write_text('' if options.family_port is None else (
         f'http://:{options.family_port} {{\n bind 127.0.0.1\n root * public\n'
-        f' request_body {{\n max_size 8KB\n }}\n php_server {{\n env INDY_LISTENER_PORT {options.family_port}\n }}\n}}\n'), encoding='utf-8')
+        f' @configuration path /api/config\n request_body @configuration {{\n max_size 1048576\n }}\n'
+        f' @small not path /api/config\n request_body @small {{\n max_size 8KB\n }}\n php_server {{\n env INDY_LISTENER_PORT {options.family_port}\n }}\n}}\n'), encoding='utf-8')
     environment['SLICE_FAMILY_CONFIG'] = family_config.as_posix()
     children = []
     try:
+        subprocess.run(command + ['indy:runtime', 'open'], cwd=root, env=environment, check=True)
         for _ in range(2):
             children.append(subprocess.Popen(command + ['messenger:consume', 'async', '--sleep=0.2', '--memory-limit=128M', '--no-interaction'], cwd=root, env=environment))
         children.append(subprocess.Popen([options.frankenphp, 'run', '--config', 'Caddyfile'], cwd=root, env=environment))
@@ -68,14 +90,20 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        for child in reversed(children):
-            if child.poll() is None: child.terminate()
-        for child in children:
-            try: child.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                child.kill(); child.wait()
-        if options.driver == 'windows':
-            subprocess.run(command + ['slice:cleanup'], cwd=root, env=environment, check=True, timeout=100)
+        try:
+            subprocess.run(command + ['indy:runtime', 'close'], cwd=root, env=environment, check=True, timeout=15)
+        finally:
+            for child in reversed(children):
+                if child.poll() is None: child.terminate()
+            for child in children:
+                try: child.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    child.kill(); child.wait()
+            try:
+                if options.driver == 'windows':
+                    subprocess.run(command + ['slice:cleanup'], cwd=root, env=environment, check=True, timeout=100)
+            finally:
+                lease.close()
 
 
 if __name__ == '__main__':

@@ -41,9 +41,10 @@ final class ConfigurationTest extends SliceTestCase
     {
         $container = static::getContainer(); $control = $this->createMock(ServerControl::class);
         $control->method('status')->willReturn($status); $control->expects(self::never())->method('execute');
-        $mutation = new InstanceMutation($container->get(SliceRuntime::class), $container->get(JobRepository::class), $control, $container->get(AccessPolicy::class));
+        $mutation = new InstanceMutation($container->get(SliceRuntime::class), $container->get(JobRepository::class), $control, $container->get(AccessPolicy::class),
+            $container->get(\App\Job\WorkerClaim::class), $container->get(\App\Runtime\RuntimeLifecycle::class));
         return new InstanceConfiguration($this->registry(), $container->get(GameCatalog::class), $container->get(AccessPolicy::class), $mutation,
-            $container->get(NativePaths::class), $container->get(WorldBinding::class), $container->get(SliceRuntime::class), dirname(__DIR__));
+            $container->get(NativePaths::class), $container->get(\App\Instance\InstanceWorldGuard::class), $container->get(SliceRuntime::class));
     }
     public function testEnshroudedRetainsUnknownNestedJsonTypesAndValidatesOnePointZeroBounds(): void
     {

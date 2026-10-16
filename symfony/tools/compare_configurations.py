@@ -36,7 +36,8 @@ def main():
                       'profile': profile or {}, 'start': start})
 
     add('enshrouded', enshrouded)
-    for field, values in [('slotCount', [True, 0, 17, 4]), ('queryPort', [False, -1, 65536, 15637]),
+    for field, values in [('name', ['\u00a0', '\x1c', '\u180e', ' German ']),
+                          ('slotCount', [True, 0, 17, 4]), ('queryPort', [False, -1, 65536, 15637]),
                           ('gameSettingsPreset', ['Custom', 'unknown']), ('tags', [{'bad': 1}, ['German'], [7]])]:
         for value in values:
             changed = copy.deepcopy(enshrouded)
@@ -50,7 +51,8 @@ def main():
     changed['userGroups'][1]['name'] = 'ADMIN'
     add('enshrouded', changed)
     add('aska', aska, {'launcher_script': 'synthetic.ps1'}, True)
-    for field, value in [('server name', 'Neu'), ('steam game port', '０'), ('steam game port', '27016'),
+    for field, value in [('server name', 'Neu'), ('server name', '\u00a0'), ('server name', '\x1c'),
+                         ('steam game port', '０'), ('steam game port', '27016'),
                          ('steam game port', '65536'), ('region', 'europe'), ('region', 'unknown'),
                          ('unknown', 'line\nbreak'), ('mode', 'custom'), ('save id', 'another-world')]:
         changed = copy.deepcopy(aska)

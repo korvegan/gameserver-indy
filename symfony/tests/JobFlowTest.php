@@ -33,7 +33,7 @@ final class JobFlowTest extends SliceTestCase
         self::assertSame('queued', $first['state']);
         self::assertSame(3, static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM messenger_messages'));
         self::assertSame($first['id'], $service->submit('demo-a', 'start', str_repeat('a', 32))['id']);
-        $handler = new ExecuteServerJobHandler($jobs, static::getContainer()->get(SliceRuntime::class), $control, static::getContainer()->get(\App\Access\AccessPolicy::class));
+        $handler = $this->handler($control);
         $handler(new ExecuteServerJob($second['id'])); // Out-of-order delivery still drains FIFO.
         self::assertSame([['demo-a', 'start'], ['demo-a', 'stop']], $calls);
         self::assertSame('queued', $jobs->get($other['id'])['state']);
@@ -57,7 +57,7 @@ final class JobFlowTest extends SliceTestCase
         };
         $first = $service->submit('demo-a', 'restart', str_repeat('a', 32));
         $second = $service->submit('demo-a', 'start', str_repeat('b', 32));
-        $handler = new ExecuteServerJobHandler($jobs, static::getContainer()->get(SliceRuntime::class), $control, static::getContainer()->get(\App\Access\AccessPolicy::class));
+        $handler = $this->handler($control);
         $handler(new ExecuteServerJob($first['id']));
         $handler(new ExecuteServerJob($first['id']));
         $handler(new ExecuteServerJob($second['id']));
@@ -75,7 +75,7 @@ final class JobFlowTest extends SliceTestCase
         $jobs->transition($first['id'], 'running', 'Worker lost after claim.');
         $control = $this->createMock(ServerControl::class);
         $control->expects(self::never())->method('execute');
-        $handler = new ExecuteServerJobHandler($jobs, static::getContainer()->get(SliceRuntime::class), $control, static::getContainer()->get(\App\Access\AccessPolicy::class));
+        $handler = $this->handler($control);
         $handler(new ExecuteServerJob($first['id']));
         self::assertSame('interrupted', $jobs->get($first['id'])['state']);
         self::assertSame('interrupted', $jobs->get($second['id'])['state']);
@@ -123,7 +123,7 @@ final class JobFlowTest extends SliceTestCase
             public function status(string $serverId): array { return []; }
             public function execute(string $serverId, string $operation): void { $this->calls[] = $serverId; }
         };
-        $handler = new ExecuteServerJobHandler($jobs, $runtime, $control, static::getContainer()->get(\App\Access\AccessPolicy::class));
+        $handler = $this->handler($control);
         $lock = (new LockFactory(new FlockStore($runtime->directory.'/locks')))->createLock('execute:demo-a');
         self::assertTrue($lock->acquire());
         try {
@@ -150,7 +150,7 @@ final class JobFlowTest extends SliceTestCase
             public function status(string $serverId): array { return []; }
             public function execute(string $serverId, string $operation): void { ++$this->calls; }
         };
-        $handler = new ExecuteServerJobHandler($jobs, static::getContainer()->get(SliceRuntime::class), $control, static::getContainer()->get(\App\Access\AccessPolicy::class));
+        $handler = $this->handler($control);
         try { $handler(new ExecuteServerJob($first['id'])); self::fail('Expected storage error'); }
         catch (RecoverableMessageHandlingException) { self::assertSame('running', $jobs->get($first['id'])['state']); }
         $db->executeStatement('DROP TRIGGER fail_success');

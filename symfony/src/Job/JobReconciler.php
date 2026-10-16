@@ -14,7 +14,7 @@ final class JobReconciler
 
     public function reconcile(): void
     {
-        foreach (array_keys(SliceRuntime::SERVERS) as $serverId) {
+        foreach ($this->jobs->pendingTargets() as $serverId) {
             if (!$this->jobs->hasRunning($serverId)) { continue; }
             $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('execute:'.$serverId);
             if (!$lock->acquire()) { continue; }

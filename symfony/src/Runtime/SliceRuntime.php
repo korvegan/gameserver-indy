@@ -11,7 +11,7 @@ final class SliceRuntime
 
     public function __construct(string $stateDirectory, public readonly string $driver, public readonly string $role)
     {
-        if (!in_array($driver, ['simulated', 'windows'], true) || !in_array($role, ['owner', 'viewer'], true)) {
+        if (!in_array($driver, ['simulated', 'windows', 'managed'], true) || !in_array($role, ['owner', 'viewer'], true)) {
             throw new \RuntimeException('Ungültiger isolierter Laufzeitmodus.');
         }
         $this->directory = rtrim($stateDirectory, '/\\');

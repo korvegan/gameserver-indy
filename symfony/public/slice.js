@@ -3,7 +3,7 @@ const jobs = new Map(), requestVersions = new Map();
 let selected = $('#server-select').value, submitting = false;
 let token = $('meta[name="manager-token"]').content;
 const permissions = JSON.parse(document.body.dataset.permissions);
-let revoked = false, events;
+let revoked = false, events, reconnectTimer;
 const phases = {queued: 'Wartet', running: 'Läuft', succeeded: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen'};
 const operations = {start: 'Starten', stop: 'Stoppen', restart: 'Neu starten'};
 function notice(message) { $('#notice').textContent = message; }
@@ -31,7 +31,8 @@ async function refreshStatus(target = selected) {
   try {
     const {status} = await api('/api/status?server=' + encodeURIComponent(target));
     if (target !== selected || requestVersions.get(target) !== revision) return;
-    $('#server-state').textContent = status.running ? `Prozess läuft${status.ready ? ' · Testprogramm bereit' : ''} · PID ${status.pid}` : 'Gestoppt';
+    $('#server-state').textContent = status.known === false ? 'Prozessstatus unbekannt' : status.running
+      ? `Prozess läuft${status.ready ? (document.body.dataset.driver === 'managed' ? ' · Sitzung bereit' : ' · Testprogramm bereit') : ''} · PID ${status.pid}` : 'Gestoppt';
   } catch (error) { if (target === selected && requestVersions.get(target) === revision) $('#server-state').textContent = 'Status unbekannt · ' + error.message; }
 }
 function renderJobs() {
@@ -65,8 +66,13 @@ $('#server-select').addEventListener('change', () => {
 });
 $('#refresh').addEventListener('click', () => refreshStatus());
 function revokeAccess() {
+  clearTimeout(reconnectTimer); reconnectTimer = undefined;
   revoked = true; events?.close(); controls();
   $('#live-state').textContent = 'Freigabe geändert'; notice('Deine Freigabe wurde geändert. Bitte die Seite neu laden.');
+}
+function reconnect() {
+  if (revoked || reconnectTimer !== undefined) return;
+  reconnectTimer = setTimeout(() => { reconnectTimer = undefined; connectEvents(); }, 2000);
 }
 async function checkSession() {
   if (revoked) return;
@@ -83,21 +89,25 @@ async function connectEvents() {
     const {jobs: initial, cursor} = await api('/api/jobs');
     for (const job of initial) mergeJob(job);
     renderJobs(); refreshStatus();
-    events = new EventSource('/api/job-events?after=' + cursor);
-    events.addEventListener('open', () => { if (!revoked) $('#live-state').textContent = 'Live verbunden'; });
-    events.addEventListener('error', async () => {
-      if (revoked) return;
+    const stream = new EventSource('/api/job-events?after=' + cursor); events = stream;
+    stream.addEventListener('open', () => { if (!revoked && events === stream) $('#live-state').textContent = 'Live verbunden'; });
+    stream.addEventListener('error', async () => {
+      if (revoked || events !== stream) return;
+      // HTTP failures can permanently close EventSource. Own one bounded retry loop.
+      stream.close();
       $('#live-state').textContent = 'Live-Verbindung wird erneuert …';
       await checkSession();
+      if (!revoked && events === stream) reconnect();
     });
-    events.addEventListener('job', event => {
+    stream.addEventListener('job', event => {
+      if (revoked || events !== stream) return;
       const job = JSON.parse(event.data); mergeJob(job); renderJobs();
       if (['succeeded', 'failed', 'interrupted'].includes(job.state)) refreshStatus(job.server_id);
     });
-    events.addEventListener('access-revoked', revokeAccess);
+    stream.addEventListener('access-revoked', revokeAccess);
   } catch (error) {
     notice(error.message); await checkSession();
-    if (!revoked) { $('#live-state').textContent = 'Live-Verbindung wird erneuert …'; setTimeout(connectEvents, 2000); }
+    if (!revoked) { $('#live-state').textContent = 'Live-Verbindung wird erneuert …'; reconnect(); }
   }
 }
 connectEvents();

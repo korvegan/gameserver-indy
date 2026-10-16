@@ -123,8 +123,7 @@ final class AccessTest extends SliceTestCase
         $store->saveUser(new Principal('local-owner', 'owner'), ['id' => $principal->id, 'revision' => $principal->revision,
             'login' => 'owner@example.test', 'name' => 'Fixture owner', 'role' => 'viewer', 'server_ids' => ['demo-a'], 'enabled' => true], ['demo-a', 'demo-b']);
         $control = $this->createMock(ServerControl::class); $control->expects(self::never())->method('execute');
-        $handler = new ExecuteServerJobHandler($jobs, static::getContainer()->get(SliceRuntime::class), $control,
-            static::getContainer()->get(AccessPolicy::class));
+        $handler = $this->handler($control);
         $handler(new ExecuteServerJob($first['id']));
         self::assertSame('interrupted', $jobs->get($first['id'])['state']);
         self::assertSame('interrupted', $jobs->get($second['id'])['state']);
@@ -150,8 +149,7 @@ final class AccessTest extends SliceTestCase
         $job = static::getContainer()->get(JobService::class)->submit('demo-a', 'start', str_repeat('a', 32), $principal);
         $this->store()->configure(new Principal('local-owner', 'owner'), ['enabled' => false, 'hostname' => self::HOST, 'port' => self::PORT]);
         $control = $this->createMock(ServerControl::class); $control->expects(self::never())->method('execute');
-        (new ExecuteServerJobHandler($jobs, static::getContainer()->get(SliceRuntime::class), $control,
-            static::getContainer()->get(AccessPolicy::class)))(new ExecuteServerJob($job['id']));
+        ($this->handler($control))(new ExecuteServerJob($job['id']));
         self::assertSame('interrupted', $jobs->get($job['id'])['state']);
         static::getContainer()->get(AccessPolicy::class)->require(new Principal('local-owner', 'owner'), 'server.start', 'demo-a');
     }

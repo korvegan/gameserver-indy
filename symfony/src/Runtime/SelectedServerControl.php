@@ -7,9 +7,9 @@ final class SelectedServerControl implements ServerControl
 {
     private ServerControl $control;
 
-    public function __construct(SliceRuntime $runtime, WindowsStandinControl $windows)
+    public function __construct(SliceRuntime $runtime, WindowsStandinControl $windows, ManagedServerControl $managed)
     {
-        $this->control = $runtime->driver === 'windows' ? $windows : new SimulatedServerControl($runtime);
+        $this->control = match ($runtime->driver) { 'windows' => $windows, 'managed' => $managed, default => new SimulatedServerControl($runtime) };
     }
 
     public function status(string $serverId): array { return $this->control->status($serverId); }

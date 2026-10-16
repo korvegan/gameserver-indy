@@ -1,0 +1,4 @@
+services:
+  App\Runtime\ProcessGateway:
+    alias: App\Runtime\WindowsProcessGateway
+    public: true

@@ -7,10 +7,12 @@ use App\Access\AccessPolicy;
 use App\Access\Principal;
 use App\Access\SessionKeys;
 use App\Access\ListenerIdentity;
+use App\Instance\InstanceRegistry;
 use App\Job\JobRepository;
 use App\Job\JobReconciler;
 use App\Job\JobService;
 use App\Runtime\ServerControl;
+use App\Runtime\ProcessObservation;
 use App\Runtime\SliceRuntime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\EventStreamResponse;
@@ -26,7 +28,8 @@ final class SliceController extends AbstractController
     public function __construct(private readonly SliceRuntime $runtime, private readonly JobRepository $jobs,
         private readonly JobService $service, private readonly ServerControl $control,
         private readonly JobReconciler $reconciler, private readonly AccessPolicy $policy,
-        private readonly SessionKeys $keys, private readonly ListenerIdentity $identity) {}
+        private readonly SessionKeys $keys, private readonly ListenerIdentity $identity,
+        private readonly InstanceRegistry $registry, private readonly ProcessObservation $observation) {}
 
     private function principal(): Principal
     {
@@ -36,7 +39,7 @@ final class SliceController extends AbstractController
     }
     private function servers(Principal $principal): array
     {
-        return array_filter(SliceRuntime::SERVERS, fn ($id) => $principal->allows('status.read', $id), ARRAY_FILTER_USE_KEY);
+        return array_filter($this->registry->executionLabels(), fn ($id) => $principal->allows('status.read', $id), ARRAY_FILTER_USE_KEY);
     }
 
     #[Route('/', methods: ['GET'])]
@@ -55,7 +58,7 @@ final class SliceController extends AbstractController
         return $this->json(['token' => $this->keys->token($principal, $request->attributes->get('_indy_scope')),
             'role' => $principal->role, 'principal' => $principal->public(), 'grant_revision' => $principal->revision, 'api_version' => 1,
             'access_mode' => $request->attributes->get('_indy_scope') === 'local-owner' ? 'local' : 'private',
-            'isolated' => true, 'driver' => $this->runtime->driver, 'servers' => $this->servers($principal)]);
+            'isolated' => $this->runtime->driver !== 'managed', 'driver' => $this->runtime->driver, 'servers' => $this->servers($principal)]);
     }
 
     #[Route('/api/status', methods: ['GET'])]
@@ -63,7 +66,9 @@ final class SliceController extends AbstractController
     {
         $serverId = (string) $request->query->get('server', 'demo-a');
         $this->denyAccessUnlessGranted('status.read', $serverId);
-        return $this->json(['server_id' => $serverId, 'status' => $this->control->status($serverId)]);
+        $status = $this->runtime->driver === 'managed' ? $this->observation->view($serverId) : $this->control->status($serverId);
+        unset($status['user_profile']);
+        return $this->json(['server_id' => $serverId, 'status' => $status]);
     }
 
     #[Route('/api/jobs', methods: ['GET'])]

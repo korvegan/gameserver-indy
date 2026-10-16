@@ -29,6 +29,13 @@ abstract class SliceTestCase extends WebTestCase
         static::getContainer()->get('messenger.transport.async')->setup();
         return $repository;
     }
+    protected function handler(\App\Runtime\ServerControl $control): \App\Job\ExecuteServerJobHandler
+    {
+        $container = static::getContainer();
+        return new \App\Job\ExecuteServerJobHandler($container->get(JobRepository::class), $container->get(SliceRuntime::class), $control,
+            $container->get(\App\Access\AccessPolicy::class), $container->get(\App\Runtime\RuntimeLifecycle::class),
+            $container->get(\App\Job\WorkerClaim::class), $container->get(\App\Instance\InstanceConfiguration::class));
+    }
 
     protected function tearDown(): void
     {
