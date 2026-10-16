@@ -20,6 +20,7 @@ final class PlatformDatabase
     public function path(): string { return $this->runtime->directory.'/data/platform.sqlite3'; }
     public function initialize(): void
     {
+        ChronicleValues::assertUnicodeRuntime();
         $this->runtime->assertInitialized(); PrivateFiles::directory(dirname($this->path()));
         if (is_link($this->path())) { throw new \DomainException('Verknüpfte Plattformdatenbank abgewiesen.'); }
         $db = self::open($this->path()); $db->exec('BEGIN IMMEDIATE');

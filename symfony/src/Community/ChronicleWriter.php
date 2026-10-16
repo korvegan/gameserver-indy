@@ -38,7 +38,7 @@ final class ChronicleWriter
         if ($previous !== null && ($game !== $previous['game_id'] || $instance !== ($previous['instance_id'] ?? null))) { throw new \DomainException('Spiel und Serverzuordnung bleiben bei Korrekturen erhalten.'); }
         if (!is_array($body->members ?? null) || !array_is_list($body->members) || count($body->members) < 1 || count($body->members) > 16) { throw new \InvalidArgumentException('Bitte 1 bis 16 Beteiligte angeben.'); }
         $previousNames = []; $names = [];
-        foreach ($previous['member_ids'] ?? [] as $member) { $previousNames[ChronicleValues::normalized($previous['member_names'][$member] ?? $member)] = $member; }
+        foreach ($previous['member_ids'] ?? [] as $member) { $previousNames[ChronicleValues::normalized($previous['member_names']->{$member} ?? $member)] = $member; }
         foreach ($body->members as $value) {
             $name = ChronicleValues::text($value, 80, true); $member = $previousNames[ChronicleValues::normalized($name)] ?? ChronicleValues::nameId('member-', $name);
             if (isset($names[$member])) { throw new \InvalidArgumentException('Beteiligte bitte jeweils nur einmal eintragen.'); } $names[$member] = $name;
@@ -53,7 +53,7 @@ final class ChronicleWriter
         $event = (object) ['id' => $body->id, 'revision' => $body->revision, 'game_id' => $game, 'instance_id' => $instance,
             'campaign_id' => $campaignId, 'campaign_label' => $campaign, 'mod_profile_id' => $previous['mod_profile_id'] ?? null,
             'title' => ChronicleValues::text($body->title ?? '', 160, true), 'description' => ChronicleValues::text($body->description ?? '', 1000),
-            'source' => 'manual', 'member_ids' => array_keys($names), 'member_names' => (object) $names, 'badge_id' => $badgeId, 'badge_label' => $badge,
+            'source' => 'manual', 'member_ids' => array_map(strval(...), array_keys($names)), 'member_names' => (object) $names, 'badge_id' => $badgeId, 'badge_label' => $badge,
             'occurred_at' => $occurred, 'actor_id' => $actor->id, 'correction_reason' => $reason];
         $media = null;
         if (isset($body->image) && $body->image !== '') {

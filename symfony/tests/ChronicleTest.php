@@ -106,6 +106,19 @@ final class ChronicleTest extends SliceTestCase
         foreach ([['cursor' => '%'], ['game' => "' OR 1=1"], ['from' => 'bad'], ['to' => '9999-12-31'], ['limit' => '0'], ['limit' => '51'], ['unknown' => 'x']] as $query) { $this->rejected(fn () => $this->reader->page($this->owner, $query)); }
         foreach ([['chapter' => '-1'], ['chapter' => '١'], ['chapter' => 1], ['limit' => '1'], ['cursor' => 'x']] as $query) { $this->rejected(fn () => $this->reader->story($this->owner, $query)); }
     }
+    public function testEmptyNameObjectsAndNumericLegacyMemberIdsSurviveCorrectionsAndRemoval(): void
+    {
+        $ledger = static::getContainer()->get(CommunityLedger::class);
+        $event = (object) ['id' => 'empty-names', 'revision' => 1, 'game_id' => 'enshrouded', 'title' => 'Old names', 'source' => 'manual', 'member_ids' => ['one'], 'member_names' => new \stdClass(), 'badge_id' => 'first'];
+        $ledger->record($event); self::assertInstanceOf(\stdClass::class, $this->reader->detail($this->owner, 'empty-names')['event']['member_names']);
+        $this->writer->save($this->owner, (object) ['id' => 'empty-names', 'revision' => 2, 'remove' => true, 'reason' => 'Archived']);
+        self::assertInstanceOf(\stdClass::class, $this->reader->detail($this->owner, 'empty-names')['event']['member_names']);
+        $event->id = 'numeric-names'; $event->member_ids = ['0', '76561198000000001', '10', '2']; $event->member_names = (object) ['0' => 'Zero', '76561198000000001' => 'One', '10' => 'Ten', '2' => 'Two']; $ledger->record($event);
+        $body = $this->body('numeric-names', ['revision' => 2, 'instance_id' => null, 'members' => ['Zero', 'One', 'Ten', 'Two'], 'badge' => 'first', 'campaign' => '', 'reason' => 'Correction']);
+        $this->writer->save($this->owner, $body); $detail = $this->reader->detail($this->owner, 'numeric-names')['event'];
+        self::assertSame($event->member_ids, $detail['member_ids']); self::assertSame('Zero', $detail['member_names']->{'0'});
+        self::assertSame('{"10": "Ten", "2": "Two"}', ChronicleValues::payload((object) ['2' => 'Two', '10' => 'Ten']));
+    }
     public function testScopedFamilyReadAndActualRevocationProtectDetailsMediaAndExports(): void
     {
         $store = static::getContainer()->get(AccessStore::class); $store->configure($this->owner, ['enabled' => true, 'hostname' => 'indy.private.ts.net']);

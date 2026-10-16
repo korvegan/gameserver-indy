@@ -6,6 +6,7 @@
   "require": {
     "php": ">=8.4",
     "ext-iconv": "*",
+    "ext-intl": "*",
     "ext-mbstring": "*",
     "ext-pdo_sqlite": "*",
     "ext-sqlite3": "*",

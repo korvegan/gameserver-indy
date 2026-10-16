@@ -1,6 +1,7 @@
 """Original SQLite payloads, revisions and real byte exports across Python/PHP, on own data."""
 import base64
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -20,7 +21,7 @@ from gameserver_manager.community import CommunityService
 from gameserver_manager.instances import GameServerManager
 from gameserver_manager.registry import ServerRegistry
 from gameserver_manager.security import Principal
-from gameserver_manager.storage import Database
+from gameserver_manager.storage import Database, chronicle_time
 from test_manager import FakeBridge
 from test_profiles import add_aska
 from test_chronicle import contribution, JPEG
@@ -49,8 +50,11 @@ with tempfile.TemporaryDirectory(prefix='indy-chronicle-parity-') as directory:
         game = 'aska' if index % 2 else 'enshrouded'
         service.save(owner, contribution('event-' + str(index), game_id=game, instance_id=game, members=['Änne', 'Ｓtraße'],
             title='<script>own text</script>' if index == 0 else 'Moment ' + str(index), occurred_at=f'2026-10-{index+1:02}T20:00:00+02:00'))
-    for event_id, occurred in [('early-offset', '2026-10-15T00:30:00+02:00'), ('later-z', '2026-10-14T23:30:00Z')]:
+    for event_id, occurred in [('early-offset', '2026-10-15T00:30:00+02:00'), ('later-z', '2026-10-14T23:30:00Z'), ('old-offset-format', '2026-10-15T12:00:00+0200')]:
         community.record({'id': event_id, 'revision': 1, 'game_id': 'enshrouded', 'title': event_id, 'source': 'verified-game', 'member_ids': ['legacy-one'], 'badge_id': 'badge', 'occurred_at': occurred})
+    community.record({'id': 'empty-names', 'revision': 1, 'game_id': 'enshrouded', 'title': 'Old empty names', 'source': 'manual', 'member_ids': ['one'], 'member_names': {}, 'badge_id': 'first'})
+    community.record({'id': 'numeric-names', 'revision': 1, 'game_id': 'enshrouded', 'title': 'Old numeric names', 'source': 'manual', 'member_ids': ['0', '76561198000000001', '10', '2'],
+        'member_names': {'0': 'Zero', '76561198000000001': 'One', '10': 'Ten', '2': 'Two'}, 'badge_id': 'first'})
     community.record({'id': 'old-identities', 'revision': 1, 'game_id': 'aska', 'title': 'Alt', 'source': 'manual', 'member_ids': ['old-one'], 'badge_id': 'old-badge', 'campaign_id': 'old-campaign', 'mod_profile_id': 'old-mods'}, publish=True)
     with database.connect(write=True) as db:
         db.execute("UPDATE scenes SET template='milestone' WHERE event_id='old-identities'")
@@ -60,9 +64,24 @@ with tempfile.TemporaryDirectory(prefix='indy-chronicle-parity-') as directory:
     first = service.page(owner, limit='10')
     queries.append({'scope': 'owner', 'query': {'limit': '10', 'cursor': first['next_cursor']}})
     expected = [service.page(family if q['scope'] == 'family' else owner, **q['query']) for q in queries]
-    new = contribution('php-new', members=['ÄNNE', 'strasse'], title='PHP Moment', image=base64.b64encode(JPEG).decode())
+    new = contribution('php-new', members=['ÄNNE', 'strasse', 'ꟲhris'], title='PHP Moment', image=base64.b64encode(JPEG).decode())
+    corrections = [{'id': 'empty-names', 'revision': 2, 'remove': True, 'reason': 'Archived'},
+        contribution('numeric-names', revision=2, instance_id=None, reason='Correction', members=['Zero', 'One', 'Ten', 'Two'], badge='first', campaign='')]
+    time_values = ['2026-10-15T12:00:00+0200', '2026-10-15T12+02', '20261015T120000Z', '2026-W42-4T12Z', '2026W424T12Z',
+        '2026-W42T12Z', '2026W42T12Z', '2026-10-15🙂12:00:00Z', '2026-10-15T12:00:00.123456789Z', '2026-10-15T12:00:00,123Z',
+        '2026-10-15T12:00:00+01:99', '2026-10-15T12:00:00-02:30:15.1234567', '2026-10-15T12:00:00+00:00:00.5',
+        '0001-01-01T00:00:00+02:00', '9999-12-31T23:00:00-02', '2026-10-15T12:00:00', '2026-02-30T12Z', '0000-01-01T12Z',
+        '2026-W54-1T12Z', '2026-10-15T12:00:00+24', '2026-10-15T24:00:00Z', '9999-12-31T24:00:00+02', '9999-W52-6T00+23', 'not-a-time']
+    expected_times = []
+    for value in time_values:
+        try:
+            moment = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            occurred = moment.astimezone(timezone.utc).isoformat() if moment.tzinfo is not None else None
+        except (ValueError, OverflowError):
+            occurred = None
+        expected_times.append({'read': chronicle_time(value, '2026-01-01T00:00:00Z'), 'occurred': occurred})
     fixture = {'marker': root.name, 'database': str(database.path), 'settings': str(legacy / 'manager.local.json'), 'queries': queries,
-        'retries': retries, 'new': new, 'race': {**new, 'revision': 2, 'reason': 'Konkurrenz'}}
+        'retries': retries, 'corrections': corrections, 'time_values': time_values, 'new': new, 'race': {**new, 'revision': 2, 'reason': 'Konkurrenz'}}
     (root / 'fixture.json').write_text(json.dumps(fixture), encoding='utf-8')
     original = database.path.read_bytes()
     command = [os.environ.get('SLICE_PHP', 'php'), str(Path(__file__).with_name('chronicle_compatibility.php')), str(root)]
@@ -72,14 +91,18 @@ with tempfile.TemporaryDirectory(prefix='indy-chronicle-parity-') as directory:
     assert actual['story'] == service.story(owner, chapter='0')
     assert actual['family_story'] == service.story(family, chapter='1')
     assert actual['media_sha256'] == hashlib.sha256(JPEG).hexdigest()
+    assert actual['times'] == expected_times, [(time_values[i], a, b) for i, (a, b) in enumerate(zip(actual['times'], expected_times)) if a != b]
     assert database.path.read_bytes() == original, 'Import or retries modified source database'
     copy = Database(root / 'php-state/data/platform.sqlite3')
     rollback = ChronicleService(CommunityService(copy, GameCatalog(), registry))
     assert rollback.save(owner, new)['event_id'] == 'php-new', 'PHP payload cannot be replayed by Python'
     assert rollback.media(owner, 'php-new') == JPEG
+    for body in corrections:
+        rollback.save(owner, body)
+    assert rollback.detail(owner, 'numeric-names')['event']['member_ids'] == ['0', '76561198000000001', '10', '2']
     with zipfile.ZipFile(root / 'php-export.zip') as archive:
         events = json.loads(archive.read('chronicle.json'))['events']
-        assert len(events) == 22
+        assert len(events) == 27
         assert archive.read('media/' + hashlib.sha256(JPEG).hexdigest() + '.jpg') == JPEG
         assert b'<script>' not in archive.read('index.html')
     def race(title):

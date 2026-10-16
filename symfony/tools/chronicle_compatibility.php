@@ -8,6 +8,7 @@ use App\Community\ChronicleExport;
 use App\Community\ChronicleMedia;
 use App\Community\ChronicleReader;
 use App\Community\ChronicleSnapshot;
+use App\Community\ChronicleValues;
 use App\Community\ChronicleWriter;
 use App\Community\PlatformDatabase;
 use App\Instance\InstanceRegistry;
@@ -40,7 +41,13 @@ $story = $reader->story($owner, ['chapter' => '0']); $familyStory = $reader->sto
 foreach ($input->retries as $body) { $writer->save($owner, $body); }
 $after = $database->read(fn (PDO $db) => $db->query('SELECT * FROM community_events ORDER BY rowid')->fetchAll());
 if ($before !== $after) { throw new RuntimeException('Historical replay rewrote stored evidence.'); }
+foreach ($input->corrections as $body) { $writer->save($owner, $body); }
+$times = [];
+foreach ($input->time_values as $value) {
+    try { $occurred = ChronicleValues::occurred($value); } catch (Throwable) { $occurred = null; }
+    $times[] = ['read' => ChronicleValues::time($value, '2026-01-01T00:00:00Z'), 'occurred' => $occurred];
+}
 $writer->save($owner, $input->new); $archive = $container->get(ChronicleExport::class)->archive($owner); PrivateFiles::write($root.'/php-export.zip', $archive);
 $media = $container->get(ChronicleMedia::class)->get($owner, 'original', '2'); $newEvent = $reader->detail($owner, $input->new->id)['event']; $kernel->shutdown();
-echo json_encode(['views' => $views, 'story' => $story, 'family_story' => $familyStory, 'snapshot' => $snapshot,
+echo json_encode(['views' => $views, 'story' => $story, 'family_story' => $familyStory, 'snapshot' => $snapshot, 'times' => $times,
     'media_sha256' => hash('sha256', $media), 'new_event' => $newEvent], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);

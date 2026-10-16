@@ -58,7 +58,7 @@ final class ChronicleExport
             <=> [ChronicleValues::time($one['occurred_at'] ?? null, $one['recorded_at']), $one['scene']['position']]);
         $escape = fn (mixed $value) => htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); $cards = '';
         foreach ($latest as $event) {
-            $members = implode(', ', array_map(fn ($id) => $event['member_names'][$id] ?? $id, $event['member_ids']));
+            $members = implode(', ', array_map(fn ($id) => $event['member_names']->{$id} ?? $id, $event['member_ids']));
             $picture = isset($event['media_id']) ? '<img alt="Screenshot" src="media/'.$escape($event['media_id']).'.jpg">' : '';
             $cards .= '<article id="'.$escape($event['id']).'"><h2>'.$escape($event['title']).(($event['removed'] ?? false) ? ' · entfernt' : '').'</h2>'
                 .'<p>'.$escape($event['game_id']).' · '.$escape($event['campaign_label'] ?? '').' · '.$escape(($event['occurred_at'] ?? '') ?: $event['recorded_at']).'</p>'

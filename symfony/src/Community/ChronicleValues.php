@@ -17,21 +17,28 @@ final class ChronicleValues
         if ($required && $value === '') { throw new \InvalidArgumentException('Bitte alle Pflichtfelder des Moments ausfüllen.'); }
         return $value;
     }
+    public static function assertUnicodeRuntime(): void
+    {
+        if (!extension_loaded('intl') || \IntlChar::getUnicodeVersion() < [16, 0, 0, 0]) { throw new \RuntimeException('Chronikidentitäten benötigen natives Intl mit Unicode mindestens 16.'); }
+    }
     public static function normalized(string $value): string
     {
-        return mb_convert_case(\Normalizer::normalize($value, \Normalizer::FORM_KC), MB_CASE_FOLD, 'UTF-8');
+        self::assertUnicodeRuntime();
+        // Preserve the existing Python Unicode-16 identity contract even on newer ICU.
+        // Code points unassigned in 16 are normalization boundaries and stay literal.
+        $result = ''; $segment = '';
+        foreach (preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY) as $character) {
+            $age = \IntlChar::charAge($character);
+            if ($age[0] === 0 || $age > [16, 0, 0, 0]) {
+                $result .= mb_convert_case(\Normalizer::normalize($segment, \Normalizer::FORM_KC), MB_CASE_FOLD, 'UTF-8').$character; $segment = '';
+            } else { $segment .= $character; }
+        }
+        return $result.mb_convert_case(\Normalizer::normalize($segment, \Normalizer::FORM_KC), MB_CASE_FOLD, 'UTF-8');
     }
     public static function nameId(string $prefix, string $value): string { return $prefix.substr(hash('sha256', self::normalized($value)), 0, 24); }
     private static function parse(string $value): \DateTimeImmutable
     {
-        // Python's existing contract requires a timezone, rejects relative dates and invalid calendar values.
-        if (!preg_match('/^\d{4}-\d\d-\d\d[Tt ]\d\d:\d\d(?::\d\d(?:[.,]\d{1,6})?)?(?:[Zz]|[+-]\d\d:\d\d)$/D', $value)) {
-            throw new \InvalidArgumentException('Ereigniszeit benötigt ein gültiges Datum mit Zeitzone.');
-        }
-        if (preg_match('/[+-](\d\d):(\d\d)$/D', $value, $zone) && ((int) $zone[1] > 23 || (int) $zone[2] > 59)) { throw new \InvalidArgumentException('Ungültige Zeitzone.'); }
-        $moment = new \DateTimeImmutable(str_replace(',', '.', $value)); $errors = \DateTimeImmutable::getLastErrors();
-        if ($errors !== false && ($errors['warning_count'] || $errors['error_count']) || (int) $moment->format('Y') < 1) { throw new \InvalidArgumentException('Ungültige Ereigniszeit.'); }
-        return $moment->setTimezone(new \DateTimeZone('UTC'));
+        return ChronicleTime::parse($value);
     }
     public static function occurred(string $value): string
     {
@@ -77,7 +84,7 @@ final class ChronicleValues
     public static function blueprint(string $game): string { return 'landscape-v1-'.(['enshrouded' => 'mountains', 'aska' => 'woodland', 'raft' => 'coast'][$game] ?? 'meadow'); }
     public static function event(array $row): array
     {
-        $event = json_decode($row['payload'], true, flags: JSON_THROW_ON_ERROR); $position = (int) $row['position'];
+        $decoded = json_decode($row['payload'], flags: JSON_THROW_ON_ERROR); $event = get_object_vars($decoded); $position = (int) $row['position'];
         $scene = ['id' => $row['scene_id'], 'position' => $position, 'template' => $row['template'],
             'blueprint' => $row['template'] === 'milestone' ? self::blueprint($row['original_game']) : $row['template'],
             'chapter' => intdiv($position, 6), 'slot' => $position % 6];
@@ -87,7 +94,7 @@ final class ChronicleValues
     /** Canonical semantic comparison also accepts historical Python whitespace/float encoding. */
     public static function canonical(mixed $value): string
     {
-        if ($value instanceof \stdClass) { $properties = get_object_vars($value); ksort($properties); $value = (object) array_map(fn ($item) => json_decode(self::canonical($item)), $properties); }
+        if ($value instanceof \stdClass) { $properties = get_object_vars($value); ksort($properties, SORT_STRING); $value = (object) array_map(fn ($item) => json_decode(self::canonical($item)), $properties); }
         elseif (is_array($value)) { $value = array_map(fn ($item) => json_decode(self::canonical($item)), $value); }
         return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
     }
@@ -95,7 +102,7 @@ final class ChronicleValues
     public static function payload(mixed $value): string
     {
         if ($value instanceof \stdClass) {
-            $properties = get_object_vars($value); ksort($properties); $items = [];
+            $properties = get_object_vars($value); ksort($properties, SORT_STRING); $items = [];
             foreach ($properties as $key => $item) { $items[] = self::payload((string) $key).': '.self::payload($item); }
             return '{'.implode(', ', $items).'}';
         }
