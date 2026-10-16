@@ -16,6 +16,9 @@ const fs = require('node:fs');
     if (message.type() === 'error' && !message.text().includes('409 (Conflict)')) errors.push(message.text());
   });
   page.on('dialog', dialog => dialog.accept());
+  // A Python process started before the migration still has its old in-memory asset allowlist.
+  let requestedSymfonyStream = false;
+  await page.route('**/job-stream.js',route => { requestedSymfonyStream = true; return route.fulfill({status:404,body:'old Python asset list'}); });
   const notice = page.locator('#notice');
   async function expectNotice(text) {
     await page.waitForFunction(expected => document.querySelector('#notice').textContent.includes(expected), text);
@@ -25,6 +28,7 @@ const fs = require('node:fs');
     await page.goto('http://127.0.0.1:8766');
     await page.getByRole('button', {name: 'Server vorbereiten', exact: true}).waitFor();
     await page.waitForFunction(() => !document.querySelector('#setup').disabled);
+    assert.equal(requestedSymfonyStream,false,'API v1 must bootstrap without requesting a Symfony-only module.');
     assert.equal(await page.locator('#start').isDisabled(), false, 'Commands are accepted; missing setup is checked by the worker.');
     await page.locator('#setup').click();
     await expectNotice('Server vorbereitet');
