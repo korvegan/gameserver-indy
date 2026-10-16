@@ -6,9 +6,20 @@ if ($name -notmatch '^request-([a-f0-9]{32})\.json$') { throw 'Invalid request n
 $nonce = $Matches[1]
 $directory = Split-Path -Parent $RequestPath
 $stateDirectory = Split-Path -Parent (Split-Path -Parent $directory)
-$marker = Join-Path $stateDirectory '.indy-symfony-slice'
-if (-not (Test-Path -LiteralPath $marker -PathType Leaf) -or
-    [IO.File]::ReadAllText($marker) -cne 'isolated-slice-v1') { throw 'Manager data marker missing.' }
+$managedMarker = Join-Path $stateDirectory '.indy-managed-state'
+if (Test-Path -LiteralPath $managedMarker -PathType Leaf) {
+    if ((Get-Item -LiteralPath $managedMarker).Length -gt 4096) { throw 'Invalid manager data marker.' }
+    # PowerShell 5.1 unwraps a singleton JSON array in the pipeline; check its root before parsing.
+    $markerText = [IO.File]::ReadAllText($managedMarker)
+    if (-not $markerText.TrimStart().StartsWith('{')) { throw 'Invalid manager data marker.' }
+    $state = $markerText | ConvertFrom-Json
+    if ($state -isnot [pscustomobject] -or $state.format -cne 'gameserver-indy-state' -or $state.version -isnot [int] -or $state.version -ne 1 -or
+        $state.access_layout -cne 'shared-data') { throw 'Invalid manager data marker.' }
+} else {
+    $marker = Join-Path $stateDirectory '.indy-symfony-slice'
+    if (-not (Test-Path -LiteralPath $marker -PathType Leaf) -or
+        [IO.File]::ReadAllText($marker) -cne 'isolated-slice-v1') { throw 'Manager data marker missing.' }
+}
 $destination = Join-Path $directory ('reply-' + $nonce + '.json')
 $result = @{ ok = $false }
 try {
