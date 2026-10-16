@@ -3,7 +3,6 @@ declare(strict_types=1);
 namespace App\Runtime;
 
 use App\Access\AccessSnapshot;
-use App\Access\AccessStore;
 use App\Community\ChronicleSnapshot;
 use App\Instance\InstanceRegistry;
 use App\Instance\NativePaths;
@@ -14,7 +13,8 @@ use App\WhatsApp\WhatsAppSnapshot;
 final class StateSnapshot
 {
     public function __construct(private readonly NativePaths $paths,private readonly InstanceRegistry $registry,
-        private readonly AccessSnapshot $access,private readonly ChronicleSnapshot $chronicle,private readonly WhatsAppSnapshot $whatsapp) {}
+        private readonly AccessSnapshot $access,private readonly ChronicleSnapshot $chronicle,private readonly WhatsAppSnapshot $whatsapp,
+        private readonly LegacyLease $lease) {}
 
     public function copy(string $source,string $destination,int $port=8765): array
     {
@@ -31,24 +31,9 @@ final class StateSnapshot
         $original=PrivateFiles::read($source.'/manager.local.json');
         $configuration=$this->registry->validate(PrivateFiles::object($original));
         if (!property_exists(PrivateFiles::object($original),'servers')) { throw new \DomainException('Ausdrückliche Originalprofile erforderlich.'); }
-        $accessSettings=AccessStore::configuration(json_decode(PrivateFiles::read($source.'/data/access-settings.json',16384),true,flags:JSON_THROW_ON_ERROR));
-        $ports=[$port,$accessSettings['port']];
-        if ($ports[0] === $ports[1] || min($ports)<1024 || max($ports)>65535) { throw new \DomainException('Getrennte gültige Originalports erforderlich.'); }
-        $lock=$source.'/.indy-controller.lock';
-        if (is_link($lock)) { throw new \DomainException('Verknüpfte Controllersperre abgewiesen.'); }
-        $lease=fopen($lock,'c+b');
-        if ($lease === false || !flock($lease,LOCK_EX|LOCK_NB)) {
-            if (is_resource($lease)) { fclose($lease); }
-            throw new \DomainException('Die ursprüngliche Verwaltung arbeitet noch.');
-        }
-        $listeners=[]; $created=false;
+        return $this->lease->run($source,$port,function () use($source,$destination,$configuration,$original,$port): array {
+        $created=false;
         try {
-            // Hold both original ports as well: an older Python process may not yet own the lease.
-            foreach ($ports as $number) {
-                $socket=@stream_socket_server('tcp://127.0.0.1:'.$number,$errno,$error);
-                if ($socket === false) { throw new \DomainException('Ursprüngliche Verwaltung zuerst geordnet beenden.'); }
-                $listeners[]=$socket;
-            }
             $excluded=['data/whatsapp/sessions'];
             foreach ($configuration->servers as $profile) {
                 $relative='data'.($profile->id==='enshrouded' ? '' : '/servers/'.$profile->id).'/logs';
@@ -108,6 +93,7 @@ final class StateSnapshot
             $hashes=$this->scan($destination,'',[]);
             $manifest=(object) ['format'=>'gameserver-indy-state-snapshot','version'=>1,'source'=>$source,'created_at'=>gmdate('Y-m-d\TH:i:s\Z'),
                 'hashes'=>(object) $hashes,'configurations'=>(object) $configurations,'excluded'=>$excluded,
+                'source_hashes'=>(object) $before,'source_manager_sha256'=>hash('sha256',$original),'source_port'=>$port,
                 'access'=>$access,'chronicle'=>$chronicle,'whatsapp'=>$whatsapp];
             PrivateFiles::write($destination.'/manifest.json',PrivateFiles::json($manifest));
             // Deliberately no production marker, runtime tools, listener, worker or activation pointer.
@@ -115,9 +101,40 @@ final class StateSnapshot
         } catch (\Throwable $error) {
             if ($created) { $this->remove($destination); }
             throw $error;
-        } finally {
-            foreach ($listeners as $listener) { fclose($listener); }
-            flock($lease,LOCK_UN); fclose($lease);
+        }
+        });
+    }
+
+    public function verify(string $package): \stdClass
+    {
+        if (!is_dir($package) || is_link($package)) { throw new \DomainException('Lokales Verwaltungspaket erforderlich.'); }
+        $manifest=PrivateFiles::object(PrivateFiles::read($package.'/manifest.json',33554432));
+        if (($manifest->format ?? null)!=='gameserver-indy-state-snapshot' || ($manifest->version ?? null)!==1
+            || !(($manifest->hashes ?? null) instanceof \stdClass) || !(($manifest->source_hashes ?? null) instanceof \stdClass)
+            || !is_string($manifest->source ?? null) || !is_array($manifest->excluded ?? null)
+            || !is_int($manifest->source_port ?? null) || $manifest->source_port<1024 || $manifest->source_port>65535
+            || !(($manifest->configurations ?? null) instanceof \stdClass)) { throw new \DomainException('Vollständiger Übernahmenachweis fehlt.'); }
+        $actual=$this->scan($package,'',[]); unset($actual['manifest.json']);
+        if ($actual!==get_object_vars($manifest->hashes) || file_exists($package.'/state/.indy-managed-state') || file_exists($package.'/state/slice.sqlite')) {
+            throw new \DomainException('Verwaltungspaket verändert oder schon als Laufzeit verwendet.');
+        }
+        return $manifest;
+    }
+    /** Caller holds the original lifetime/port lease throughout preparation. */
+    public function assertCurrent(\stdClass $manifest): void
+    {
+        $source=$this->paths->local($this->paths->absolute($manifest->source));
+        if (!is_dir($source) || is_link($source) || !is_dir($source.'/data') || is_link($source.'/data')
+            || file_exists($source.'/.indy-managed-state') || file_exists($source.'/slice.sqlite')
+            || !hash_equals($manifest->source_manager_sha256 ?? '',hash('sha256',PrivateFiles::read($source.'/manager.local.json')))
+            || get_object_vars($manifest->source_hashes)!==$this->scan($source.'/data','data',$manifest->excluded)) {
+            throw new \DomainException('Originalbestand seit Kopie verändert; neues Paket erforderlich.');
+        }
+        foreach ($manifest->configurations as $evidence) {
+            $path=$this->paths->local($this->paths->absolute($evidence->path));
+            if (is_link($path) || !hash_equals($evidence->sha256,hash('sha256',PrivateFiles::read($path)))) {
+                throw new \DomainException('Spielkonfiguration seit Kopie verändert; neues Paket erforderlich.');
+            }
         }
     }
 
@@ -147,7 +164,7 @@ final class StateSnapshot
             $info=lstat($path);
             if ($info===false || ($info['mode'] & 0170000)!==0100000 || $info['nlink']!==1) { throw new \DomainException('Verwaltungsdatei ist keine gewöhnliche unabhängige Datei.'); }
             // SQLite may update its shared-memory bookkeeping even on a read-only snapshot.
-            if (str_ends_with($relative,'.sqlite3-shm')) { continue; }
+            if (in_array($relative,['data/access.sqlite3-shm','data/platform.sqlite3-shm','data/whatsapp/deliveries.sqlite3-shm'],true)) { continue; }
             $hash=hash_file('sha256',$path);
             if (!is_string($hash)) { throw new \DomainException('Verwaltungsdatei nicht vollständig lesbar.'); }
             $result[$relative]=$hash;
