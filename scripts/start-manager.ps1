@@ -3,6 +3,9 @@ param(
     [string]$WslDistribution,
     [string]$WslUser,
     [string]$ProjectDirectory,
+    [ValidateSet('python', 'symfony')][string]$RuntimeEngine,
+    [string]$RuntimeExecutable,
+    [string]$StateDirectory,
     [ValidateRange(1, 65535)][int]$Port = 8765,
     [string]$WslExecutable = (Join-Path $env:WINDIR 'System32\wsl.exe'),
     [string]$LogDirectory = (Join-Path $env:LOCALAPPDATA 'GameServerIndy\logs'),
@@ -27,16 +30,22 @@ try {
         if (-not $settings.WslDistribution) { $settings.WslDistribution = $Matches[1] }
         if (-not $settings.ProjectDirectory) { $settings.ProjectDirectory = '/' + $Matches[2].Replace('\', '/') }
     }
-    foreach ($name in @('WslDistribution', 'WslUser', 'ProjectDirectory', 'Port')) {
+    foreach ($name in @('WslDistribution', 'WslUser', 'ProjectDirectory', 'Port', 'RuntimeEngine', 'RuntimeExecutable', 'StateDirectory')) {
         if ($PSBoundParameters.ContainsKey($name)) { $settings[$name] = Get-Variable -Name $name -ValueOnly }
     }
     if (-not $settings.Port) { $settings.Port = $Port }
+    if (-not $settings.RuntimeEngine) { $settings.RuntimeEngine = 'python' }
+    if ($settings.RuntimeEngine -notin @('python', 'symfony')) { throw 'Unbekannte Verwaltungslaufzeit.' }
     if (-not $settings.WslDistribution -or -not $settings.ProjectDirectory) {
         throw 'WSL-Distribution und Projektpfad fehlen. Bitte install-desktop-shortcut.ps1 aus dem WSL-Projektordner ausfuehren oder beide Parameter angeben.'
     }
     if ([string]$settings.ProjectDirectory -notmatch '^/') { throw 'ProjectDirectory muss ein absoluter Linux-Pfad sein.' }
-    foreach ($name in @('WslDistribution', 'WslUser', 'ProjectDirectory')) {
+    foreach ($name in @('WslDistribution', 'WslUser', 'ProjectDirectory', 'RuntimeExecutable', 'StateDirectory')) {
         if ([string]$settings[$name] -match '["\r\n\x00]') { throw ('Ungueltiger Wert fuer ' + $name + '.') }
+    }
+    if ($settings.StateDirectory -and [string]$settings.StateDirectory -notmatch '^/') { throw 'StateDirectory muss ein absoluter Linux-Pfad sein.' }
+    if ($settings.RuntimeEngine -eq 'symfony' -and (-not $settings.StateDirectory -or [string]$settings.RuntimeExecutable -notmatch '^/')) {
+        throw 'Symfony benoetigt einen vorbereiteten absoluten Datenordner und ein absolutes PHP-Werkzeug.'
     }
     if ([int]$settings.Port -lt 1 -or [int]$settings.Port -gt 65535) { throw 'Ungueltiger Port.' }
     $managerUrl = 'http://127.0.0.1:' + [int]$settings.Port
@@ -45,7 +54,9 @@ try {
     function Test-Manager {
         try {
             $response = Invoke-WebRequest -Uri ($managerUrl + '/api/session') -UseBasicParsing -TimeoutSec 2
-            return ($response.StatusCode -eq 200 -and $response.Headers['Server'] -like 'GameServerIndy/*')
+            if ($response.StatusCode -ne 200 -or $response.Headers['Server'] -notlike 'GameServerIndy/*') { return $false }
+            $isSymfony = $response.Headers['Server'] -eq 'GameServerIndy/Symfony'
+            return ($isSymfony -eq ($settings.RuntimeEngine -eq 'symfony'))
         } catch { return $false }
     }
 
@@ -62,7 +73,13 @@ try {
         if (-not $ready) {
             $arguments = @('--distribution', [string]$settings.WslDistribution)
             if ($settings.WslUser) { $arguments += @('--user', [string]$settings.WslUser) }
-            $arguments += @('--cd', [string]$settings.ProjectDirectory, '--exec', 'python3', '-m', 'gameserver_manager', '--port', [string]$settings.Port)
+            $arguments += @('--cd', [string]$settings.ProjectDirectory, '--exec')
+            if ($settings.RuntimeEngine -eq 'symfony') {
+                $arguments += @([string]$settings.RuntimeExecutable, 'symfony/bin/indy', [string]$settings.StateDirectory)
+            } else {
+                $arguments += @('python3', '-m', 'gameserver_manager', '--port', [string]$settings.Port)
+                if ($settings.StateDirectory) { $arguments += @('--state-dir', [string]$settings.StateDirectory) }
+            }
             # WSL parses its option names literally; quote only values with whitespace.
             $argumentLine = ($arguments | ForEach-Object {
                 if ($_ -match '\s') { '"' + $_ + '"' } else { $_ }
