@@ -70,6 +70,7 @@ function observationLabel(data) {
 }
 export function renderWorkspace() {
   const profile = state.catalog.servers.find(server => server.id === state.selectedServer), game = profile?.game;
+  $('#server-context-name').textContent = profile?.label || 'Serverprofil wird geladen …';
   $('#server-detail').dataset.game = Object.hasOwn(artwork, game) ? game : 'generic';
   if (selectedProfile !== state.selectedServer) {
     selectedProfile = state.selectedServer;

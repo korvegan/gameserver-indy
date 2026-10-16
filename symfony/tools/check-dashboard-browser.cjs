@@ -75,10 +75,10 @@ const {setTimeout: delay} = require('node:timers/promises');
     await page.unrouteAll({behavior:'wait'});
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Symfony Indy');
     for (const id of ['start','stop','restart']) assert.equal(await page.locator('#'+id).isEnabled(),true);
-    const sidebar = await page.locator('#server-select').boundingBox();
+    const sidebar = await page.locator('#server-context').boundingBox();
     for (const name of ['Sturmklingen','Spiele / Mods','Übersicht']) {
-      await nav(name).click(); assert.equal(await page.locator('#server-select').isVisible(),true);
-      const box = await page.locator('#server-select').boundingBox(); assert.equal(box.y,sidebar.y);
+      await nav(name).click(); assert.equal(await page.locator('#server-context').isVisible(),true);
+      const box = await page.locator('#server-context').boundingBox(); assert.equal(box.y,sidebar.y);
     }
     // Commands remain available while a stale status response is held.
     let releaseStatus, statusSeen;
@@ -118,17 +118,17 @@ const {setTimeout: delay} = require('node:timers/promises');
     assert.equal((await terminal(failed.id)).state,'failed');
     assert.equal(await page.getByLabel('Servername',{exact:true}).inputValue(),'Unverlorener Entwurf');
     assert.equal(await page.locator('#unsaved').isVisible(),true); await fs.unlink(path.join(root,'unknown-status'));
-    page.once('dialog',dialog => dialog.dismiss()); await page.locator('#server-select').selectOption('aska');
+    page.once('dialog',dialog => dialog.dismiss()); await page.locator('[data-select-server="aska"]').click();
     assert.equal(await page.locator('#server-select').inputValue(),'enshrouded');
-    page.once('dialog',dialog => dialog.accept()); await page.locator('#server-select').selectOption('aska');
+    page.once('dialog',dialog => dialog.accept()); await page.locator('[data-select-server="aska"]').click();
     await page.waitForFunction(() => document.querySelector('#game-label').textContent.startsWith('ASKA'));
-    await page.locator('#server-select').selectOption('enshrouded'); await nav('Übersicht').click();
+    await page.locator('[data-select-server="enshrouded"]').click(); await nav('Übersicht').click();
     // An invalid configuration keeps the catalog and the other profile usable.
     const configPath = path.join(root,'library/steamapps/common/EnshroudedServer/enshrouded_server.json'), original = await fs.readFile(configPath);
     await fs.writeFile(configPath,'broken'); await page.locator('#refresh').click();
     await page.waitForFunction(() => document.querySelector('#configuration-check').textContent.includes('nicht lesbar'));
-    await page.locator('#server-select').selectOption('aska'); await page.waitForFunction(() => document.querySelector('#game-label').textContent.startsWith('ASKA'));
-    await fs.writeFile(configPath,original); await page.locator('#server-select').selectOption('enshrouded');
+    await page.locator('[data-select-server="aska"]').click(); await page.waitForFunction(() => document.querySelector('#game-label').textContent.startsWith('ASKA'));
+    await fs.writeFile(configPath,original); await page.locator('[data-select-server="enshrouded"]').click();
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Erster Entwurf');
     // Backups use the real queue/archive services and an own, stopped fixture world.
     await nav('Weltsicherungen').click(); await page.locator('#backup-create').click();

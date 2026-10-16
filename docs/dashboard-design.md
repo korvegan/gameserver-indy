@@ -16,3 +16,10 @@ Die folgenden Originalgrafiken wurden am 16.10.2026 für die vom Nutzer ausgewä
 | `aska-hero.jpg`, `aska-logo.png` | [Steam-Seite](https://store.steampowered.com/app/1898300/ASKA/), [Motiv](https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1898300/library_hero.jpg), [Schriftzug](https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1898300/logo.png) | Sand Sailor Studio / Thunderful Publishing |
 
 Die vier Dateien werden unverändert verwendet; Ausschnitt und Abdunklung erfolgen in CSS.
+# Profilkontext nach #89
+
+Die Spielkacheln sind die einzige sichtbare Profilwahl. Der frühere Dropdown ist
+nur als verborgenes internes Auswahlfeld erhalten; die bestehende Profilbindung
+bleibt dadurch unverändert. In der Seitenleiste zeigt ein kompakter Kontextknopf
+das aktuelle Profil und führt aus globalen Ansichten zur Spielauswahl zurück.
+Er bleibt beim Ansichtswechsel stehen, damit die Hauptnavigation nicht springt.

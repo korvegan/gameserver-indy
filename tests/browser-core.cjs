@@ -31,6 +31,13 @@ const fs=require('node:fs/promises');
     assert.equal(await page.getByLabel('Servername',{exact:true}).inputValue(),'Familienentwurf');
     page.once('dialog',d=>d.dismiss());await page.locator('[data-select-server="aska"]').click();
     assert.equal(await page.locator('#server-select').inputValue(),'enshrouded');
+    assert.equal(await page.locator('#server-select').isVisible(),false);
+    for(const view of ['games','community','access']) {
+      await page.locator(`.sidebar [data-view="${view}"]`).click();
+      assert.equal(await page.locator('#server-context').isVisible(),true);
+      await page.locator('#server-context').click();
+      assert.equal(await page.locator('#world-list').isVisible(),true);
+    }
     await fs.mkdir('artifacts',{recursive:true});
     for(const width of [1440,390]){
       await page.setViewportSize({width,height:1000});
