@@ -2,6 +2,9 @@ param(
     [string]$WslDistribution,
     [string]$WslUser,
     [string]$ProjectDirectory,
+    [ValidateSet('python', 'symfony')][string]$RuntimeEngine,
+    [string]$RuntimeExecutable,
+    [string]$StateDirectory,
     [ValidateRange(1, 65535)][int]$Port = 8765,
     [string]$DesktopDirectory = [Environment]::GetFolderPath('Desktop'),
     [string]$ApplicationDirectory = (Join-Path $env:LOCALAPPDATA 'GameServerIndy')
@@ -9,8 +12,10 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $source = Join-Path $PSScriptRoot 'start-manager.ps1'
-$parameters = @{ Describe = $true; Port = $Port }
-foreach ($name in @('WslDistribution', 'WslUser', 'ProjectDirectory')) {
+$parameters = @{ Describe = $true }
+$previousConfig = Join-Path $ApplicationDirectory 'launcher.local.json'
+if (Test-Path -LiteralPath $previousConfig) { $parameters.ConfigPath = $previousConfig }
+foreach ($name in @('WslDistribution', 'WslUser', 'ProjectDirectory', 'Port', 'RuntimeEngine', 'RuntimeExecutable', 'StateDirectory')) {
     if ($PSBoundParameters.ContainsKey($name)) { $parameters[$name] = Get-Variable -Name $name -ValueOnly }
 }
 $settings = & $source @parameters
