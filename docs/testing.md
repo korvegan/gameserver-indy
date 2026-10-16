@@ -8,7 +8,7 @@ Es existieren keine belastbaren Häufigkeitsmessungen; keine erfundenen Prozentw
 angeben. Seltene Fehlerketten, Crash-Simulationen, exotische Dateisystem-/Unicodefälle
 und wenig folgenreiche Layoutvarianten sind nur manuell zu prüfen.
 
-Die PHPUnit-Gruppe `regular` enthält zwölf ausgewählte Prüfungen: Oberfläche/API,
+Die PHPUnit-Gruppe `regular` enthält ausgewählte Prüfungen für Oberfläche/API,
 Auftragsannahme und Profiltrennung, Familienrechte, Konfigurationsspeicherung,
 Sicherung/Rückweg und Aufbewahrung, ASKA-Weltzuordnung, Chronikbeitrag, Beitrittsinformationen
 sowie den normalen nativen Prozessablauf. Das ist eine Auswahl nach praktischem

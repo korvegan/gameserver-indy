@@ -12,3 +12,17 @@ export function logGroups(text) {
   }
   return groups;
 }
+
+// Labels describe explicit words in the log, never a guessed severity for unknown lines.
+export function lineLevel(line) {
+  if (/\b(?:[\w.]*Exception|ERROR|Error|FATAL|Fatal)(?:[:\s\]]|$)/.test(line)) return 'error';
+  if (/\b(?:WARN|WARNING|Warning)(?:[:\s\]]|$)/.test(line)) return 'warning';
+  return 'unknown';
+}
+export function filteredGroups(text, query = '', level = 'all') {
+  const search = query.toLocaleLowerCase();
+  return logGroups(text).flatMap(group => {
+    const lines = group.lines.filter(line => line.toLocaleLowerCase().includes(search) && (level === 'all' || lineLevel(line) === level));
+    return lines.length ? logGroups(lines.join('\n')) : [];
+  });
+}

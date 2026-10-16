@@ -27,6 +27,7 @@ const assert = require('node:assert/strict');
         assert.equal(await page.locator('#logs .log-window').isVisible(),false);
         assert.equal(await page.locator('#refresh-logs').isVisible(),false);
         assert.equal((await page.request.get(origin+'/api/logs?server=aska')).status(),403);
+        assert.equal((await page.request.get(origin+'/api/logs/export?server=aska')).status(),403);
         assert.equal((await page.request.get(origin+'/api/status?server=enshrouded')).status(),403);
         assert.equal(await page.locator('#start').isEnabled(),role === 'family');
         assert.equal(await page.locator('#stop').isEnabled(),false);

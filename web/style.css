@@ -624,6 +624,11 @@ input[type=checkbox] {
 #log-span { display:block; padding:8px 18px; font-size:10px; color:var(--muted); }
 .shader-group summary { cursor:pointer; color:var(--accent); }
 .shader-group pre { min-height:0; max-height:30vh; font-size:11px; padding:8px; }
+.log-tools { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:12px 18px; border-bottom:1px solid var(--border); }
+.log-tools label { font-size:11px; min-width:0; flex:1 1 140px; }
+.log-tools input,.log-tools select { margin-bottom:0; padding:7px; }
+.log-tools .button { font-size:11px; padding:8px; }
+#pause-logs[aria-pressed=true] { color:var(--accent); border-color:var(--accent); }
 pre {
   padding:22px;
   margin:0;
