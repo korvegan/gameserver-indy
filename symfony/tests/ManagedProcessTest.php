@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Tests;
 
 use App\Access\Principal;
+use App\Access\AccessStore;
 use App\Game\EnshroudedConfiguration;
 use App\Instance\InstanceRegistry;
 use App\Job\ExecuteServerJob;
@@ -115,14 +116,60 @@ final class ManagedProcessTest extends SliceTestCase
     {
         $gateway = $this->createMock(ProcessGateway::class); $observation = null;
         $gateway->expects(self::once())->method('call')->willReturnCallback(function () use (&$observation): array {
+            $path = $this->directory.'/observations/fixture.json';
+            $before = PrivateFiles::object(PrivateFiles::read($path));
             $observation->record('fixture', $this->stopped()); // A newer completed Stop wins over this old pending observation.
+            $after = PrivateFiles::object(PrivateFiles::read($path));
+            self::assertSame($before->status->running, $after->status->running);
+            self::assertNotSame($before->generation, $after->generation);
             return [...$this->stopped(), 'running' => true, 'pid' => 123];
         });
         $this->bootManaged($gateway); $observation = static::getContainer()->get(ProcessObservation::class);
+        $observation->record('fixture', $this->stopped()); // Existing identical state must not hide a newer write.
         $observation->refresh('fixture'); self::assertFalse($observation->view('fixture')['running']);
         $path = $this->directory.'/observations/fixture.json'; $cache = PrivateFiles::object(PrivateFiles::read($path));
         $cache->observed_at = time() - 60; PrivateFiles::write($path, PrivateFiles::json($cache));
         self::assertFalse($observation->view('fixture')['known']); self::assertNull($observation->view('fixture')['running']);
+    }
+    public function testConfigurationDoesNotWriteAfterRuntimeClosesDuringNativeStatus(): void
+    {
+        $gateway = $this->createMock(ProcessGateway::class); $lifecycle = null;
+        $gateway->expects(self::once())->method('call')->willReturnCallback(function () use (&$lifecycle): array {
+            $lifecycle->close();
+            return $this->stopped();
+        });
+        $this->bootManaged($gateway); $container = static::getContainer();
+        $lifecycle = $container->get(RuntimeLifecycle::class); $lifecycle->open();
+        $path = $this->directory.'/own-install/enshrouded_server.json'; $bytes = PrivateFiles::read($path);
+        $config = PrivateFiles::object($bytes); $config->name = 'Must never be written';
+        $job = $container->get(JobService::class)->submit('fixture', 'config', str_repeat('a', 32), null,
+            (object) ['config' => $config, 'revision' => hash('sha256', $bytes)]);
+        $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id']));
+        self::assertSame('interrupted', $container->get(JobRepository::class)->get($job['id'])['state']);
+        self::assertSame($bytes, PrivateFiles::read($path));
+        self::assertSame([], glob($this->directory.'/data/servers/fixture/backups/*'));
+    }
+    public function testConfigurationRechecksPersonalAccessAfterNativeStatus(): void
+    {
+        $gateway = $this->createMock(ProcessGateway::class); $access = null;
+        $owner = new Principal('local-owner', 'owner');
+        $gateway->expects(self::once())->method('call')->willReturnCallback(function () use (&$access, $owner): array {
+            $access->configure($owner, ['enabled' => false]);
+            return $this->stopped();
+        });
+        $this->bootManaged($gateway); $container = static::getContainer();
+        $container->get(RuntimeLifecycle::class)->open(); $access = $container->get(AccessStore::class);
+        $access->configure($owner, ['enabled' => true, 'hostname' => 'fixture.example.ts.net']);
+        $access->saveUser($owner, ['login' => 'synthetic@example.test', 'name' => 'Synthetic remote owner', 'role' => 'owner'], ['fixture']);
+        $actor = $access->principal('synthetic@example.test');
+        $path = $this->directory.'/own-install/enshrouded_server.json'; $bytes = PrivateFiles::read($path);
+        $config = PrivateFiles::object($bytes); $config->name = 'Must never be written';
+        $job = $container->get(JobService::class)->submit('fixture', 'config', str_repeat('a', 32), $actor,
+            (object) ['config' => $config, 'revision' => hash('sha256', $bytes)]);
+        $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id']));
+        self::assertSame('interrupted', $container->get(JobRepository::class)->get($job['id'])['state']);
+        self::assertSame($bytes, PrivateFiles::read($path));
+        self::assertSame([], glob($this->directory.'/data/servers/fixture/backups/*'));
     }
     public function testHttpReadsOnlySharedStatusAndConfigurationAcceptanceDoesNotWaitForWindows(): void
     {

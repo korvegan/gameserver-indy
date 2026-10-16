@@ -28,8 +28,9 @@ final class InstanceMutation
         try {
             if ($current === null && !$execution->acquire()) { throw new \DomainException('Dieses Serverprofil arbeitet bereits.'); }
             try {
-                $this->policy->require($actor, $permission, $id); $this->lifecycle->epoch();
-                if ($current !== null) { $this->lifecycle->requireClaim($current); }
+                $this->policy->require($actor, $permission, $id);
+                $fence = $current ?? ['runtime_epoch' => $this->lifecycle->epoch()];
+                $this->lifecycle->requireClaim($fence);
                 if ($this->jobs->pendingCount($id) !== ($current === null ? 0 : 1)) { throw new \DomainException('Für dieses Profil stehen noch Aufträge aus.'); }
                 $pending = $this->runtime->directory.'/data/world-backups/'.$id.'/restore-pending.json';
                 if (file_exists($pending) || is_link($pending)) { throw new \DomainException('Eine Weltwiederherstellung benötigt zuerst die ausdrückliche Rückkehr zum gesicherten Stand.'); }
@@ -37,6 +38,9 @@ final class InstanceMutation
                 catch (\InvalidArgumentException) { throw new \DomainException('Für dieses Profil ist der native Prozessadapter noch nicht aktiviert.'); }
                 if (($status['running'] ?? null) !== false || ($status['starting'] ?? null) !== false
                     || ($status['launcher_running'] ?? null) !== false) { throw new \DomainException('Server und Starter müssen eindeutig gestoppt sein.'); }
+                // The native query may outlive shutdown or a personal grant revision.
+                $this->lifecycle->requireClaim($fence);
+                $this->policy->require($actor, $permission, $id);
                 return $change($status);
             } finally { if ($current === null) { $execution->release(); } }
         } finally { if ($current === null) { $acceptance->release(); } }

@@ -39,6 +39,8 @@ final class ProcessObservation
             $path = $folder.'/'.$serverId.'.json';
             if ($compare && (is_file($path) ? hash_file('sha256', $path) : null) !== $previous) { return; }
             PrivateFiles::write($path, PrivateFiles::json((object) [
+                // Equal status and timestamps still represent a newer completed observation/action.
+                'generation' => bin2hex(random_bytes(16)),
                 'fingerprint' => $fingerprint, 'observed_at' => time(), 'status' => (object) $status]));
         } finally { $lock->release(); }
     }
