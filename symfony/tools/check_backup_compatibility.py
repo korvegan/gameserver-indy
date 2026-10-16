@@ -65,4 +65,4 @@ with tempfile.TemporaryDirectory(prefix='indy-backup-parity-') as directory:
     manager.backups.restore(outcome['id'], preview['token'], preview['confirmation'])
     assert (world / 'world0.ksd').read_bytes() == b'legacy world\x00\xff'
     assert manager.config_path.read_bytes() == original_config
-print('Python → Symfony → Python: ZIP/manifest/hash/binding/exact config/empty folder/restore verified on disposable data.')
+    print('Python -> Symfony -> Python: ZIP/manifest/hash/binding/exact config/empty folder/restore verified on disposable data.')
