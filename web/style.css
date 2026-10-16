@@ -71,6 +71,9 @@ a {
   margin:24px 14px 14px;
 }
 .server-picker { margin-top:28px; }
+.server-context { display:block; width:100%; text-align:left; padding:10px 12px; border:1px solid var(--border); border-radius:5px; background:var(--panel); color:var(--text); }
+.server-context strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+.server-context small { display:block; color:var(--muted); margin-top:4px; font-size:10px; }
 .join-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:16px; }
 .join-card { min-width:0; padding:16px; border:1px solid var(--border); border-radius:6px; background:#101813; }
 .join-card h4 { font-size:12px; color:var(--accent); margin:0 0 10px; }

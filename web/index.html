@@ -13,7 +13,7 @@
 <body>
   <aside class="sidebar">
     <a class="brand" href="/" aria-label="GameServer Indy Startseite"><img src="/favicon.svg" alt="" width="38" height="38"><span>GAMESERVER<small>INDY / SERVERVERWALTUNG</small></span></a>
-    <label class="server-picker">Serverprofil<select id="server-select" disabled><option>Wird geladen …</option></select></label>
+    <div class="server-picker"><button id="server-context" class="server-context" data-view="overview"><strong id="server-context-name">Serverprofil wird geladen …</strong><small>Zur Spielauswahl →</small></button><select id="server-select" aria-label="Aktuelles Serverprofil" hidden disabled><option>Wird geladen …</option></select></div>
     <p class="nav-label">VERWALTUNG</p>
     <nav aria-label="Hauptnavigation">
       <button class="nav active" data-view="overview" aria-current="page"><span aria-hidden="true">◈</span> Serverzentrale</button>
