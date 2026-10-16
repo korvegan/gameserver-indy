@@ -19,6 +19,7 @@ use Symfony\Component\Filesystem\Filesystem;
 
 final class NativeManagedFlowTest extends SliceTestCase
 {
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testRegisteredNativeProfilesCanonicalIdentityExternalStarterAndMeasuredSharedStatus(): void
     {
         if (getenv('SLICE_WINDOWS_TEST') !== '1') { self::markTestSkipped('Native eigene Profilstellvertreter ausdrücklich aktivieren.'); }

@@ -42,6 +42,7 @@ final class ChronicleTest extends SliceTestCase
         try { $action(); self::fail('Invalid or conflicting contribution was accepted'); }
         catch (\InvalidArgumentException|\DomainException|AccessDeniedException) { self::assertTrue(true); }
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testManualMomentsShareAwardsAreIdempotentAndNeverQueueDeliveries(): void
     {
         $body = $this->body(); $first = $this->writer->save($this->owner, $body);

@@ -94,6 +94,7 @@ final class IntegrationTest extends SliceTestCase
         $updates->check('fixture'); self::assertSame(2, $calls);
         $this->manifest('"TargetBuildID" "200" "BytesToDownload" "20" "BytesDownloaded" "1"'); self::assertSame('updating', $updates->view('fixture')['state']);
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testAddressReadsNeverCallProviderAndDomainIsNotReachability(): void
     {
         $network = $this->createMock(HostNetworkProvider::class); $network->expects(self::once())->method('collect')->willReturn([

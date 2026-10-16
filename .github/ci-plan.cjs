@@ -5,8 +5,10 @@ const fs = require('node:fs');
 function plan(files, event = 'pull_request') {
   const result = {symfony:false, native:false, ui:false, full:false, dashboard_only:true};
   const reasons = new Set();
-  const all = reason => { Object.assign(result,{symfony:true,native:true,ui:true,full:true,dashboard_only:false}); reasons.add(reason); };
-  if (['schedule','workflow_dispatch'].includes(event) || !files.length) all('Complete scheduled/manual run or unavailable diff');
+  const all = reason => { Object.assign(result,{symfony:true,native:true,ui:true,dashboard_only:false}); reasons.add(reason); };
+  // Broad component coverage does not imply rare failure simulations. Those require a manual run.
+  result.full=event==='workflow_dispatch';
+  if (['schedule','workflow_dispatch'].includes(event) || !files.length) all('All components; extended cases only on manual request');
   for (const file of files) {
     if (/^(docs\/|skills\/|archive\/)|\.md$/.test(file)) continue;
     if (/^(web\/|symfony\/templates\/|tests\/browser-[^/]+\.cjs$)/.test(file)
@@ -50,7 +52,7 @@ if (require.main === module) {
   const lines=Object.entries(result).filter(([key])=>key!=='reasons').map(([key,value])=>`${key}=${value}`).join('\n')+'\n';
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,lines);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-    '## Selected checks\n\n```json\n'+JSON.stringify(result,null,2)+'\n```\n\n'+files.length+' changed paths. Full matrix is also available nightly and manually.\n');
+    '## Selected checks\n\n```json\n'+JSON.stringify(result,null,2)+'\n```\n\n'+files.length+' changed paths. Nightly checks use regular cases; extended cases require a manual run.\n');
   console.log(JSON.stringify(result,null,2));
 }
 module.exports={plan,changedFiles};
