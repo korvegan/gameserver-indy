@@ -40,6 +40,7 @@ final class ChronicleTime
     public static function parse(string $value): \DateTimeImmutable
     {
         if (!mb_check_encoding($value, 'UTF-8')) { self::invalid(); }
+        $value = str_replace('Z', '+00:00', $value); // Original readers replace every Z before parsing.
         $separator = self::separator($value); $date = substr($value, 0, $separator); $zone = new \DateTimeZone('UTC');
         if (preg_match('/^([0-9]{4})(-?)([0-9]{2})\2([0-9]{2})$/D', $date, $parts)) {
             $year = (int) $parts[1]; $month = (int) $parts[3]; $day = (int) $parts[4];

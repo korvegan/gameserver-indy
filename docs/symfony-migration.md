@@ -200,6 +200,8 @@ Das unabhängige Review fand drei zusätzliche Bestandsfälle: leere Namensobjek
 
 Chronikidentitäten bleiben an **Unicode 16.0.0** aus dem bisherigen Python gebunden. Dafür ist `ext-intl` mit Unicode mindestens 16 erforderlich; spätere Codepoints bleiben bei neuerem ICU literal und bilden Normalisierungsgrenzen. Eine aus Python Unicode 16 erzeugte kompakte Prüffixture vergleicht sämtliche gültigen Unicode-Skalarwerte sowie kombinierte Akzente mit der PHP-Laufzeit. WSL-CLI nutzt geprüftes Ubuntu-Intl/ICU 78.2 (Unicode 17), Windows-PHP und FrankenPHP ICU 77.1 (Unicode 16); beide müssen denselben dauerhaften ID-Vertrag erfüllen. Das ist keine Vorgabe, die ältere Runtime-ICU durch eine fremde Bibliothek auszutauschen.
 
+Der Ubuntu-CI-Runner liefert standardmäßig eine ältere ICU als diese Laufzeiten. Seine PHP-CLI erhält deshalb gemäß [Setup-PHP-Dokumentation](https://github.com/shivammathur/setup-php#php-extensions) ausdrücklich `intl-77.1`. Die unveränderten Windows-/Web-Runtimes und der vollständige Unicodevergleich bleiben eigene Nachweise; die bloße Aktivierung einer beliebigen `intl`-Erweiterung genügt nicht.
+
 ## Weltsicherungen und Rückweg #50
 
 `src/Backup/` übernimmt das vorhandene Schema-1-Archivformat mit privaten ZIP-/JSON-Dateien je Profil. Archive, Metadaten, Pins und `settings.json` bleiben unter `data/world-backups/<id>/`; eine bestehende `restore-pending.json` bleibt eine Startsperre. Es gibt weder allgemeine ZIP-Uploads noch Archivdownloads. `BackupPlan` verwendet dieselben geprüften Weltbindungen wie die Konfigurations-/Startgrenze: Enshrouded sichert den gesamten Ordner, ASKA ausschließlich `data/server/savegame_<id>` sowie die tatsächliche externe Konfiguration und gegebenenfalls die Spielvorlage.
