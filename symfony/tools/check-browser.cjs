@@ -6,6 +6,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
+const http = require('node:http');
 const {setTimeout: delay} = require('node:timers/promises');
 
 (async () => {
@@ -13,14 +14,14 @@ const {setTimeout: delay} = require('node:timers/promises');
   const state = await fs.mkdtemp(path.join(os.tmpdir(), 'indy-symfony-browser-'));
   const children = [];
   let output = '';
-  let browser;
-  async function start(role, port, driver) {
+  let browser, familyProxy;
+  async function start(role, port, driver, familyPort) {
     await new Promise((resolve, reject) => {
       const probe = net.createServer(); probe.once('error', reject);
       probe.listen(port, '127.0.0.1', () => probe.close(resolve));
     });
     const child = spawn(process.env.PYTHON || 'python3', ['tools/run_slice.py', '--port', String(port), '--role', role,
-      '--driver', driver, '--state-dir', path.join(state, role)], {cwd: root, stdio: ['ignore', 'pipe', 'pipe']});
+      '--driver', driver, '--state-dir', path.join(state, role), ...(familyPort ? ['--family-port', String(familyPort)] : [])], {cwd: root, stdio: ['ignore', 'pipe', 'pipe']});
     children.push(child);
     child.stdout.on('data', data => { output += data; }); child.stderr.on('data', data => { output += data; });
     child.on('error', error => { output += error.message; });
@@ -38,7 +39,7 @@ const {setTimeout: delay} = require('node:timers/promises');
   }
   try {
     const driver = process.env.SLICE_BROWSER_DRIVER || 'simulated';
-    let owner = await start('owner', 18866, driver);
+    let owner = await start('owner', 18866, driver, 18868);
     await start('viewer', 18867, 'simulated');
     browser = await chromium.launch({headless: true});
     const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
@@ -70,7 +71,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     await page.locator(`[data-job-id="${secondJob.id}"][data-state="succeeded"]`).waitFor();
     await page.waitForFunction(() => document.querySelector('#server-state').textContent === 'Gestoppt');
     // A fresh process uses the same private key and persisted ledger.
-    await stop(owner); owner = await start('owner', 18866, driver);
+    await stop(owner); owner = await start('owner', 18866, driver, 18868);
     const accepted = await page.request.post(origin + '/api/jobs', {headers: {'Origin': origin, 'X-Manager-Token': oldToken},
       data: {server_id: 'demo-a', operation: 'stop', request_id: 'f'.repeat(32)}});
     assert.equal(accepted.status(), 202, 'Open browser token survives a real application/worker restart');
@@ -141,15 +142,104 @@ const {setTimeout: delay} = require('node:timers/promises');
     releaseAcceptance(); await page.unrouteAll({behavior: 'wait'});
     await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('angenommen'));
     assert.equal(await page.locator(`[data-job-id="${acceptedJob.id}"]`).getAttribute('data-state'), 'succeeded');
+    // This mock represents Serve's identity injection only. Actual external HTTPS is a separate acceptance.
+    const privateHost = 'family.test.ts.net', gateway = 'http://127.0.0.1:18869';
+    let identity = 'family@example.test';
+    familyProxy = http.createServer((request, response) => {
+      const headers = {...request.headers, host: privateHost, 'tailscale-user-login': identity};
+      if (headers.origin === gateway) headers.origin = 'https://' + privateHost;
+      const upstream = http.request({hostname: '127.0.0.1', port: 18868, path: request.url, method: request.method, headers}, result => {
+        response.writeHead(result.statusCode, result.headers); result.pipe(response);
+      });
+      upstream.on('error', () => { if (!response.destroyed) { if (!response.headersSent) response.writeHead(503); response.end(); } });
+      response.on('close', () => upstream.destroy()); request.pipe(upstream);
+    });
+    await new Promise((resolve, reject) => {
+      familyProxy.once('error', reject); familyProxy.listen(18869, '127.0.0.1', resolve);
+    });
+    const localSession = await (await page.request.get(origin + '/api/session')).json();
+    const localPost = (route, data) => page.request.post(origin + route, {headers: {'Origin': origin,
+      'X-Manager-Token': localSession.token}, data});
+    assert.equal((await localPost('/api/access/settings', {enabled: true, hostname: privateHost, port: 18868})).status(), 200);
+    const grant = await localPost('/api/access/users', {login: identity, name: 'Testfamilie', role: 'family', server_ids: ['demo-a'], enabled: true});
+    assert.equal(grant.status(), 200); const userId = (await grant.json()).id;
+    assert.equal((await localPost('/api/access/users', {login: 'owner@example.test', name: 'Entfernter Testbesitzer', role: 'owner', server_ids: null, enabled: true})).status(), 200);
+    // The actual FrankenPHP private site must refuse spoofing across listeners.
+    assert.equal((await fetch('http://127.0.0.1:18868/api/session', {headers: {Host: '127.0.0.1:18866',
+      'Tailscale-User-Login': identity, 'Indy-Listener-Port': '18866', 'X-Forwarded-Port': '18866'}})).status, 403);
+    const privatePage = await browser.newPage({viewport: {width: 390, height: 844}});
+    privatePage.on('pageerror', error => errors.push(error.message));
+    await privatePage.goto(gateway);
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    assert.deepEqual(await privatePage.locator('#server-select option').evaluateAll(options => options.map(option => option.value)), ['demo-a']);
+    assert.equal(await privatePage.locator('#start').isEnabled(), true);
+    assert.equal(await privatePage.locator('#stop').isEnabled(), false);
+    assert.equal(await privatePage.locator('#restart').isEnabled(), false);
+    assert.equal((await privatePage.request.get(gateway + '/api/access')).status(), 403);
+    assert.equal((await privatePage.request.get(gateway + '/api/status?server=demo-b')).status(), 403);
+    const privateAccepted = privatePage.waitForResponse(response => response.url().endsWith('/api/jobs') && response.request().method() === 'POST');
+    await privatePage.locator('#start').click();
+    const privateResponse = await privateAccepted; assert.equal(privateResponse.status(), 202);
+    const privateJob = (await privateResponse.json()).job;
+    await privatePage.locator(`[data-job-id="${privateJob.id}"][data-state="succeeded"]`).waitFor();
+    const otherJobResponse = await localPost('/api/jobs', {server_id: 'demo-b', operation: 'stop', request_id: '5'.repeat(32)});
+    assert.equal(otherJobResponse.status(), 202); const otherJob = (await otherJobResponse.json()).job; await terminal(otherJob.id);
+    assert.equal((await privatePage.request.get(gateway + '/api/jobs?id=' + otherJob.id)).status(), 403);
+    assert.equal(await privatePage.locator(`[data-job-id="${otherJob.id}"]`).count(), 0);
+    const revoke = await localPost('/api/access/users', {id: userId, revision: 1, login: identity, name: 'Testfamilie',
+      role: 'family', server_ids: ['demo-a'], enabled: false});
+    assert.equal(revoke.status(), 200);
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Freigabe geändert');
+    assert.equal(await privatePage.locator('#start').isEnabled(), false);
+    assert.equal((await privatePage.request.get(gateway + '/api/session')).status(), 403);
+    identity = 'owner@example.test';
+    await privatePage.goto(gateway);
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    for (const id of ['start', 'stop', 'restart']) assert.equal(await privatePage.locator('#' + id).isEnabled(), true);
+    assert.equal(await privatePage.locator('#server-select option').count(), 2);
+    const privateToken = (await (await privatePage.request.get(gateway + '/api/session')).json()).token;
+    await stop(owner); owner = await start('owner', 18866, driver, 18868);
+    const survived = await privatePage.request.post(gateway + '/api/jobs', {headers: {'Origin': gateway, 'X-Manager-Token': privateToken},
+      data: {server_id: 'demo-a', operation: 'stop', request_id: '6'.repeat(32)}});
+    assert.equal(survived.status(), 202, 'Private token/grant survives application restart');
+    await terminal((await survived.json()).job.id);
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    await privatePage.screenshot({path: path.join(root, '../artifacts/symfony-access.png'), fullPage: true});
+    // A grant can disappear between two bounded streams, so no revocation event can arrive.
+    await privatePage.route('**/api/job-events*', route => route.fulfill({status: 403, contentType: 'application/json', body: '{}'}));
+    await privatePage.route('**/api/session', route => route.fulfill({status: 403, contentType: 'application/json', body: '{}'}));
+    await privatePage.reload();
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Freigabe geändert');
+    assert.equal(await privatePage.locator('#start').isEnabled(), false);
+    await privatePage.unrouteAll({behavior: 'wait'});
+    await privatePage.reload();
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    // A grant may also disappear after HTML but before the very first snapshot/stream.
+    let rejectedSnapshots = 0;
+    await privatePage.route('**/api/jobs', route => { rejectedSnapshots++; return route.fulfill({status: 403, contentType: 'application/json', body: '{}'}); });
+    await privatePage.route('**/api/session', route => route.fulfill({status: 403, contentType: 'application/json', body: '{}'}));
+    await privatePage.reload();
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Freigabe geändert');
+    for (const id of ['start', 'stop', 'restart']) assert.equal(await privatePage.locator('#' + id).isEnabled(), false);
+    assert.equal(rejectedSnapshots, 1, 'A rejected initial snapshot does not start a retry loop');
+    await privatePage.unrouteAll({behavior: 'wait'});
+    await privatePage.reload();
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    assert.equal((await localPost('/api/access/settings', {enabled: false, hostname: privateHost, port: 18868})).status(), 200);
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Freigabe geändert');
+    for (const id of ['start', 'stop', 'restart']) assert.equal(await privatePage.locator('#' + id).isEnabled(), false);
+    assert.equal((await page.request.get(origin + '/api/session')).status(), 200);
+    await privatePage.close();
     await page.goto('http://127.0.0.1:18867');
     for (const id of ['start', 'stop', 'restart']) assert.equal(await page.locator('#' + id).isEnabled(), false);
     assert.deepEqual(errors, []);
-    console.log(`Symfony browser QA passed (${driver}): HTTP202, FIFO, real SSE, commands during blocked status, stable token across process restart, no POST replay, snapshot/acceptance/event races, reader role, desktop/mobile.`);
+    console.log(`Symfony browser QA passed (${driver}): HTTP202, FIFO, real SSE, commands during blocked status, stable local/private tokens across process restart, no POST replay, snapshot/acceptance/event races, scoped family, owner grants, live revocation, protected listener, desktop/mobile.`);
   } finally {
     if (browser) {
       for (const context of browser.contexts()) for (const page of context.pages()) await page.unrouteAll({behavior: 'ignoreErrors'});
       await browser.close();
     }
+    if (familyProxy) { familyProxy.closeAllConnections(); await new Promise(resolve => familyProxy.close(resolve)); }
     for (const child of children.reverse()) await stop(child);
     await fs.rm(state, {recursive: true, force: true});
   }

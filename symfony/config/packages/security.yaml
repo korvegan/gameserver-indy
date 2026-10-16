@@ -1,0 +1,5 @@
+security:
+  firewalls:
+    manager:
+      stateless: true
+      custom_authenticators: [App\Access\ListenerAuthenticator]

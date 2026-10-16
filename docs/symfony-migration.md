@@ -125,6 +125,26 @@ Dies ist ein lokaler Durchstich, keine neue Familienanmeldung. `SLICE_ROLE=viewe
 
 PHP-/Windows-Dienststart ohne Desktop-Anmeldung, ASKA-DPAPI, echte Welt-Speicherabschlüsse und produktive Profil-/Datenmigration sind hier nicht bestätigt. Auch ein neuer nativer Windows-FrankenPHP-Host wurde mit diesem WSL-Durchstich nicht abgenommen. Datenaufbewahrung, Produktionsbeendigung und Supervisor/Release-Lebenszyklen werden vor dem Cutover in #49/#54 vervollständigt. Ein Durchstich ersetzt diese späteren Abnahmen nicht.
 
+## Persönlicher Zugriff #47
+
+`src/Access/` ergänzt Symfony Security mit einem eigenen zustandslosen Authenticator und einem Permission-Voter. `Principal` trägt Rolle, erlaubte Profile und Freigaberevision; Browserheader vergeben keine Rollen. `AccessStore` verwendet das bestehende separate Schema 1 für Freigaben und Audit. Die beiden eingerichteten Familien-Besitzerrollen bleiben Besitzerrollen; die persönliche WhatsApp-Kontogrenze aus #60 richtet sich zusätzlich nach dem lokalen, uneingeschränkten Besitzer und nicht allein nach der Rolle.
+
+Der lokale und der private Listener sind getrennt. Im realen FrankenPHP-Test wurde beobachtet, dass `SERVER_PORT` aus dem öffentlichen Hostnamen stammt (ohne Port z. B. 80), nicht zuverlässig aus dem tatsächlichen Backend-Listener. Jeder `php_server`-Block setzt deshalb **`INDY_LISTENER_PORT` als geschützte CGI-Variable** fest aus seiner eigenen Konfiguration. Ein HTTP-Header gleichen Namens erzeugt nur `HTTP_INDY_LISTENER_PORT` und ersetzt diese Variable nicht. Direkter Peer, erwarteter Listener, exakter Host, persönliche Serve-Identität, HTTPS-Origin und CSRF-Scope werden gemeinsam geprüft. `Forwarded`- und Rollenheader bleiben unmaßgeblich. Ein leerer/unbekannter Listenerkontext wird abgewiesen.
+
+`session-key` übernimmt den bisherigen 43-stelligen privaten Schlüssel und denselben zweistufigen HMAC-Vertrag für privaten Listener und Freigaberevision. Feste synthetische Testvektoren aus dem Python-Vertrag prüfen die Kompatibilität. Der isolierte Vorläuferschlüssel `csrf-key` wird nicht mehr verwendet. Ein beschädigter Schlüssel wird nicht automatisch ersetzt. Der Appcache kann mit `INDY_CACHE_DIR` getrennt gehalten werden; der Teststarter verwendet je Datenordner einen eigenen benachbarten Cache mit zusätzlicher Betriebssystemtrennung. Damit verwendet eine neue Fixture keine alten kompilierten Konstruktoren eines vorherigen Entwicklungsstands.
+
+Angenommene Aufträge speichern eine begrenzte Akteurszuordnung mit ID, Rolle, Profilgrenzen und Revision, ohne Login oder Sitzungsschlüssel. Der Worker prüft die Freigabe erneut vor der Spielaktion. Benutzerentzug, Rollen-/Profiländerung und ein deaktivierter Familienzugang unterbrechen wartende private Aufträge ohne Ausführung. Ein bestehender Live-Stream prüft Identität/Freigabe weiter und schließt beim Entzug. Verschwindet die Freigabe zwischen zwei begrenzten Streams, erkennt die Oberfläche den bestätigten Entzug durch eine lesende Sitzungsabfrage; ein bloßer Netzwerkfehler sperrt die Befehle nicht. POSTs werden dabei weiterhin nicht automatisch wiederholt.
+
+Die privaten API-Routen `/api/access`, `/api/access/users` und `/api/access/settings` verwenden dieselben Besitzerrechte wie der Bestand. Benutzerfreigaben werden mit Compare-and-swap-Revisionen gespeichert. Die Produktionsoberfläche folgt #52; dieser Schritt ergänzt die eigene Twig-Testseite um reale serverseitige Freigaben, Rollen und Profilgrenzen. `run_slice.py --port 18866 --family-port 18868` startet dafür zwei eigene Loopbacklistener, niemals die produktiven Ports oder echtes Tailscale Serve.
+
+```bash
+php bin/console indy:access:snapshot /privat/alte-data-kopie /privat/neues-zugangspaket
+```
+
+Der Konsolenbefehl liest den Bestand ausschließlich lesend und erzeugt ein neues privates Paket mit konsistentem SQLite-Snapshot, unveränderten Freigabe-IDs/Revisionen/Audit, Einstellungen, Signaturschlüssel und Hashmanifest. Vorhandene Ziele sowie unbekannte Versionen/Strukturen werden abgewiesen. Das Paket aktiviert keinen Zugang und überschreibt keine laufende Verwaltung. Chronik und Welten werden nicht einbezogen. Die kontrollierte Aktivierung und ein Rückweg mit späteren Änderungen gehören zu #54.
+
+HTTP-Tests decken gefälschte Header, Profil-/Rollengrenzen, HMAC-Kompatibilität, veraltete Revisionen, wartende Aufträge und das private Kopierpaket ab. Der Browserlauf verwendet ausschließlich synthetische Freigaben und einen lokalen Serve-Stub vor dem echten FrankenPHP-Backend. Er prüft auch Live-Entzug zwischen Verbindungen und den tatsächlichen App-/Workerneustart mit privatem Token. Dieser Stub ersetzt keine externe HTTPS-/Familienabnahme. Die Prozessprüfung verwendet weiterhin ausschließlich eigene Windows-Stellvertreter; Produktionsprofile, echte Familienfreigaben und Spielwelten werden durch diese Tests nicht umgestellt.
+
 ## Prüfungen
 
 ```bash

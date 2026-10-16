@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Access\AccessStore;
+use App\Access\Principal;
+use App\Access\SessionKeys;
 use App\Job\JobRepository;
 use App\Runtime\SliceRuntime;
 use App\Runtime\WindowsStandinControl;
@@ -17,7 +20,7 @@ use Symfony\Component\Messenger\Transport\SetupableTransportInterface;
 final class InitializeCommand extends Command
 {
     public function __construct(private readonly SliceRuntime $runtime, private readonly JobRepository $jobs,
-        private readonly WindowsStandinControl $windows,
+        private readonly WindowsStandinControl $windows, private readonly AccessStore $access, private readonly SessionKeys $keys,
         #[Autowire(service: 'messenger.transport.async')] private readonly SetupableTransportInterface $transport)
     {
         parent::__construct();
@@ -26,6 +29,8 @@ final class InitializeCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->runtime->initialize();
+        $this->access->initialize();
+        $this->keys->token(new Principal('local-owner', 'owner'), 'local-owner');
         $this->jobs->initialize();
         $this->transport->setup();
         if ($this->runtime->driver === 'windows') {

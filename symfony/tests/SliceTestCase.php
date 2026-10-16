@@ -24,6 +24,7 @@ abstract class SliceTestCase extends WebTestCase
     protected function ledger(): JobRepository
     {
         $repository = static::getContainer()->get(JobRepository::class);
+        static::getContainer()->get(\App\Access\AccessStore::class)->initialize();
         $repository->initialize();
         static::getContainer()->get('messenger.transport.async')->setup();
         return $repository;
