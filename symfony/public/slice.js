@@ -68,7 +68,7 @@ async function connectEvents() {
     // Snapshot and cursor share one DB snapshot; resume only newer events, without a gap.
     const {jobs: initial, cursor} = await api('/api/jobs');
     for (const job of initial) mergeJob(job);
-    renderJobs();
+    renderJobs(); refreshStatus();
     const events = new EventSource('/api/job-events?after=' + cursor);
     events.addEventListener('open', () => { $('#live-state').textContent = 'Live verbunden'; });
     events.addEventListener('error', () => { $('#live-state').textContent = 'Live-Verbindung wird erneuert …'; });

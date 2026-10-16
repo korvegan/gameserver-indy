@@ -115,11 +115,14 @@ const {setTimeout: delay} = require('node:timers/promises');
         await route.fulfill({response});
       });
       await race.goto(origin); await arrived;
+      const initialState = newerSnapshot ? 'Gestoppt' : 'Prozess läuft';
+      await race.waitForFunction(expected => document.querySelector('#server-state').textContent.includes(expected), initialState);
       const response = race.waitForResponse(response => response.url().endsWith('/api/jobs') && response.request().method() === 'POST');
-      await race.locator('#start').click();
+      await race.locator(newerSnapshot ? '#start' : '#stop').click();
       const {job} = await (await response).json();
       await terminal(job.id); releaseSnapshot();
       await race.locator(`[data-job-id="${job.id}"][data-state="succeeded"]`).waitFor();
+      await race.waitForFunction(expected => document.querySelector('#server-state').textContent.includes(expected), newerSnapshot ? 'Prozess läuft' : 'Gestoppt');
       await race.unrouteAll({behavior: 'wait'}); await race.close();
     }
     // A late queued acceptance must not replace an already streamed terminal revision.
