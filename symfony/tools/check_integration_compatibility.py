@@ -68,9 +68,9 @@ def main():
         settings = root / 'settings.json'
         settings.write_text(json.dumps({'schema_version': 2, 'servers': profiles}))
         fixture = {'marker': root.name, 'settings': str(settings), 'cases': cases}
-        (root / 'fixture.json').write_text(json.dumps(fixture, ensure_ascii=False))
+        (root / 'fixture.json').write_text(json.dumps(fixture, ensure_ascii=False), encoding='utf-8')
         result = subprocess.run([os.environ.get('SLICE_PHP', 'php'), str(ROOT / 'symfony/tools/integration_compatibility.php'), str(root)],
-                                text=True, capture_output=True, check=True)
+                                text=True, encoding='utf-8', capture_output=True, check=True)
         actual = json.loads(result.stdout)
         if len(actual) != len(cases):
             raise AssertionError('Integration case count differs')
