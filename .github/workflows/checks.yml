@@ -67,6 +67,16 @@ jobs:
         run: php vendor/bin/phpunit --filter Native
         env:
           SLICE_WINDOWS_TEST: '1'
+      - name: Windows launcher and shortcut installer
+        if: runner.os == 'Windows'
+        working-directory: .
+        shell: powershell
+        run: ./tests/test-desktop-launcher.ps1
+      - name: Private family setup with isolated mocks
+        if: runner.os == 'Windows'
+        working-directory: .
+        shell: powershell
+        run: ./tests/test-family-setup.ps1
   symfony-browser:
     needs: plan
     if: needs.plan.outputs.ui == 'true'
