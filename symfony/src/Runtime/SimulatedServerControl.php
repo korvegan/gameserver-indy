@@ -26,9 +26,15 @@ final class SimulatedServerControl implements ServerControl
         $running = $operation !== 'stop';
         $path = $this->runtime->directory.'/simulated/'.$serverId.'.json';
         $temporary = $path.'.'.bin2hex(random_bytes(4));
-        file_put_contents($temporary, json_encode(['running' => $running, 'ready' => $running,
-            'pid' => $running ? ($operation === 'start' && $state['running'] ? $state['pid'] : random_int(10000, 50000)) : null], JSON_THROW_ON_ERROR));
-        chmod($temporary, 0600);
-        rename($temporary, $path);
+        $content = json_encode(['running' => $running, 'ready' => $running,
+            'pid' => $running ? ($operation === 'start' && $state['running'] ? $state['pid'] : random_int(10000, 50000)) : null], JSON_THROW_ON_ERROR);
+        try {
+            if (@file_put_contents($temporary, $content) !== strlen($content) || !@chmod($temporary, 0600)
+                || !@rename($temporary, $path)) {
+                throw new \RuntimeException('Teststatus konnte nicht gespeichert werden.');
+            }
+        } finally {
+            if (is_file($temporary)) { unlink($temporary); }
+        }
     }
 }

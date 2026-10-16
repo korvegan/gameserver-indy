@@ -9,4 +9,10 @@ use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 final class Kernel extends BaseKernel
 {
     use MicroKernelTrait;
+
+    public function getCacheDir(): string
+    {
+        // WSL and native PHP may review the same checkout; compiled paths cannot be shared.
+        return parent::getCacheDir().'/'.PHP_OS_FAMILY;
+    }
 }

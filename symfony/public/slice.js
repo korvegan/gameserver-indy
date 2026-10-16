@@ -6,6 +6,9 @@ const owner = document.body.dataset.role === 'owner';
 const phases = {queued: 'Wartet', running: 'Läuft', succeeded: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen'};
 const operations = {start: 'Starten', stop: 'Stoppen', restart: 'Neu starten'};
 function notice(message) { $('#notice').textContent = message; }
+function mergeJob(job) {
+  if (!jobs.has(job.id) || Number(job.revision) > Number(jobs.get(job.id).revision)) jobs.set(job.id, job);
+}
 function controls() { for (const button of document.querySelectorAll('[data-operation]')) button.disabled = !owner || submitting; }
 async function api(path, body) {
   const response = await fetch(path, {cache: 'no-store', ...(body ? {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Manager-Token': token}, body: JSON.stringify(body)} : {})});
@@ -48,8 +51,7 @@ for (const button of document.querySelectorAll('[data-operation]')) button.addEv
   try {
     const requestId = [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, '0')).join('');
     const {job} = await api('/api/jobs', {server_id: target, operation, request_id: requestId});
-    // An SSE event may already contain a newer state than this acceptance response.
-    if (!jobs.has(job.id)) jobs.set(job.id, job);
+    mergeJob(job);
     renderJobs(); notice(`Auftrag ${job.id.slice(0, 8)} angenommen.`);
   } catch (error) { notice(error.message); }
   finally { submitting = false; controls(); }
@@ -65,13 +67,13 @@ async function connectEvents() {
   try {
     // Snapshot and cursor share one DB snapshot; resume only newer events, without a gap.
     const {jobs: initial, cursor} = await api('/api/jobs');
-    for (const job of initial) if (!jobs.has(job.id)) jobs.set(job.id, job);
+    for (const job of initial) mergeJob(job);
     renderJobs();
     const events = new EventSource('/api/job-events?after=' + cursor);
     events.addEventListener('open', () => { $('#live-state').textContent = 'Live verbunden'; });
     events.addEventListener('error', () => { $('#live-state').textContent = 'Live-Verbindung wird erneuert …'; });
     events.addEventListener('job', event => {
-      const job = JSON.parse(event.data); jobs.set(job.id, job); renderJobs();
+      const job = JSON.parse(event.data); mergeJob(job); renderJobs();
       if (['succeeded', 'failed', 'interrupted'].includes(job.state)) refreshStatus(job.server_id);
     });
   } catch (error) { notice(error.message); setTimeout(connectEvents, 2000); }

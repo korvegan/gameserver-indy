@@ -19,6 +19,18 @@ final class ExecuteServerJobHandler
 
     public function __invoke(ExecuteServerJob $message): void
     {
+        try {
+            $this->handle($message);
+        } catch (\Doctrine\DBAL\Exception $error) {
+            // Retain delivery even with a persistent write failure. A durable running claim
+            // can only be reconciled on retry, never execute the side effect again.
+            throw new RecoverableMessageHandlingException('Auftragsspeicher nicht verfügbar; Zustellung wartet auf Abgleich.',
+                previous: $error, retryDelay: 1000);
+        }
+    }
+
+    private function handle(ExecuteServerJob $message): void
+    {
         $trigger = $this->jobs->get($message->jobId);
         $serverId = $trigger['server_id'];
         $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('execute:'.$serverId);
@@ -41,7 +53,7 @@ final class ExecuteServerJobHandler
                         $error instanceof OutcomeUnknown ? $error->getMessage() : 'Auftrag fehlgeschlagen. Testkonfiguration prüfen.');
                     return;
                 }
-                // A failed write leaves running in the ledger; redelivery will only recover it.
+                // A failed write leaves running; redelivery or the HTTP/SSE reconciler only interrupts it.
                 $this->jobs->transition($job['id'], 'succeeded', match ($job['operation']) {
                     'start' => 'Startauftrag abgeschlossen.', 'stop' => 'Stoppauftrag abgeschlossen.',
                     'restart' => 'Neustartauftrag abgeschlossen.',

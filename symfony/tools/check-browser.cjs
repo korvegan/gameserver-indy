@@ -91,10 +91,57 @@ const {setTimeout: delay} = require('node:timers/promises');
     assert.equal((await (await page.request.get(origin + '/api/jobs')).json()).jobs.length, countBefore);
     await page.unroute('**/api/jobs');
     await page.screenshot({path: path.join(root, '../artifacts/symfony-mobile.png'), fullPage: true});
+    async function terminal(jobId) {
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const {job} = await (await page.request.get(origin + '/api/jobs?id=' + jobId)).json();
+        if (job.state === 'succeeded') return job;
+        assert.ok(['queued', 'running'].includes(job.state), JSON.stringify(job));
+        await delay(100);
+      }
+      throw new Error('Job did not finish');
+    }
+    // The first snapshot can be captured before or after an accepted command finishes.
+    for (const newerSnapshot of [true, false]) {
+      const race = await browser.newPage();
+      let snapshotArrived, releaseSnapshot;
+      const arrived = new Promise(resolve => { snapshotArrived = resolve; });
+      const gate = new Promise(resolve => { releaseSnapshot = resolve; });
+      await race.route('**/api/jobs', async route => {
+        if (route.request().method() !== 'GET') return route.continue();
+        let response;
+        if (!newerSnapshot) response = await route.fetch();
+        snapshotArrived(); await gate;
+        if (newerSnapshot) response = await route.fetch();
+        await route.fulfill({response});
+      });
+      await race.goto(origin); await arrived;
+      const response = race.waitForResponse(response => response.url().endsWith('/api/jobs') && response.request().method() === 'POST');
+      await race.locator('#start').click();
+      const {job} = await (await response).json();
+      await terminal(job.id); releaseSnapshot();
+      await race.locator(`[data-job-id="${job.id}"][data-state="succeeded"]`).waitFor();
+      await race.unrouteAll({behavior: 'wait'}); await race.close();
+    }
+    // A late queued acceptance must not replace an already streamed terminal revision.
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    let acceptanceArrived, releaseAcceptance, acceptedJob;
+    const acceptanceSeen = new Promise(resolve => { acceptanceArrived = resolve; });
+    const acceptanceGate = new Promise(resolve => { releaseAcceptance = resolve; });
+    await page.route('**/api/jobs', async route => {
+      if (route.request().method() !== 'POST') return route.continue();
+      const response = await route.fetch(); acceptedJob = (await response.json()).job;
+      acceptanceArrived(); await acceptanceGate; await route.fulfill({response});
+    });
+    await page.locator('#stop').click(); await acceptanceSeen;
+    await page.locator(`[data-job-id="${acceptedJob.id}"][data-state="succeeded"]`).waitFor();
+    releaseAcceptance(); await page.unrouteAll({behavior: 'wait'});
+    await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('angenommen'));
+    assert.equal(await page.locator(`[data-job-id="${acceptedJob.id}"]`).getAttribute('data-state'), 'succeeded');
     await page.goto('http://127.0.0.1:18867');
     for (const id of ['start', 'stop', 'restart']) assert.equal(await page.locator('#' + id).isEnabled(), false);
     assert.deepEqual(errors, []);
-    console.log(`Symfony browser QA passed (${driver}): HTTP202, FIFO, real SSE, commands during blocked status, stable token across process restart, no POST replay, reader role, desktop/mobile.`);
+    console.log(`Symfony browser QA passed (${driver}): HTTP202, FIFO, real SSE, commands during blocked status, stable token across process restart, no POST replay, snapshot/acceptance/event races, reader role, desktop/mobile.`);
   } finally {
     if (browser) {
       for (const context of browser.contexts()) for (const page of context.pages()) await page.unrouteAll({behavior: 'ignoreErrors'});

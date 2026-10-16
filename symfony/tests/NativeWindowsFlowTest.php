@@ -34,12 +34,20 @@ final class NativeWindowsFlowTest extends SliceTestCase
             static::getContainer()->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($first['id']));
             self::assertSame($started['pid'], $control->status('demo-a')['pid'], 'Duplicate delivery cannot start another process');
             $client->request('POST', '/api/jobs', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://127.0.0.1:18865', 'HTTP_X_MANAGER_TOKEN' => $token],
+                content: json_encode(['server_id' => 'demo-a', 'operation' => 'restart', 'request_id' => str_repeat('c', 32)]));
+            self::assertResponseStatusCodeSame(202);
+            $this->consume();
+            $restarted = $control->status('demo-a');
+            self::assertTrue($restarted['ready']);
+            self::assertNotSame($started['pid'], $restarted['pid']);
+            self::assertSame((string) $started['pid'], file_get_contents($this->directory.'/native/demo-a/graceful-stop.txt'));
+            $client->request('POST', '/api/jobs', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://127.0.0.1:18865', 'HTTP_X_MANAGER_TOKEN' => $token],
                 content: json_encode(['server_id' => 'demo-a', 'operation' => 'stop', 'request_id' => str_repeat('b', 32)]));
             self::assertResponseStatusCodeSame(202);
             $stopped = json_decode($client->getResponse()->getContent(), true)['job'];
             $this->consume();
             self::assertFalse($control->status('demo-a')['running']);
-            self::assertSame((string) $started['pid'], file_get_contents($this->directory.'/native/demo-a/graceful-stop.txt'));
+            self::assertSame((string) $restarted['pid'], file_get_contents($this->directory.'/native/demo-a/graceful-stop.txt'));
             $client->request('GET', '/api/jobs?id='.$stopped['id']);
             self::assertSame('succeeded', json_decode($client->getResponse()->getContent(), true)['job']['state']);
         } finally {

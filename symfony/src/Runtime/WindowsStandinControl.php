@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Runtime;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 
 /** Fixed disposable executable and profile paths; never accepts a browser path. */
@@ -10,7 +11,8 @@ final class WindowsStandinControl implements ServerControl
 {
     public const EXECUTABLE = 'indy-symfony-standin.exe';
 
-    public function __construct(private readonly SliceRuntime $runtime, private readonly string $projectDirectory) {}
+    public function __construct(private readonly SliceRuntime $runtime, private readonly string $projectDirectory,
+        private readonly LoggerInterface $logger) {}
 
     public function prepare(): void
     {
@@ -54,16 +56,23 @@ final class WindowsStandinControl implements ServerControl
             || trim(file_get_contents($checksum)) !== hash_file('sha256', $executable)) {
             throw new \RuntimeException('Windows-Testprogramm fehlt oder wurde verändert.');
         }
+        $nonce = bin2hex(random_bytes(16));
+        $reply = $directory.'/reply-'.$nonce.'.json';
         $process = new Process([$this->powershell(), '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
-            '-File', $this->windowsPath(dirname($this->projectDirectory).'/scripts/windows-server.ps1'),
-            '-Action', $action, '-ServerDirectory', $this->windowsPath($directory),
-            '-ExecutableName', self::EXECUTABLE]);
+            '-File', $this->windowsPath($this->projectDirectory.'/tools/invoke-standin.ps1'),
+            '-Action', $action, '-StateDirectory', $this->windowsPath($this->runtime->directory),
+            '-ServerId', $serverId, '-ReplyNonce', $nonce]);
         try {
             $process->setTimeout(65)->mustRun();
-            return json_decode(trim($process->getOutput()), true, flags: JSON_THROW_ON_ERROR);
+            if (!is_file($reply) || !chmod($reply, 0600)) { throw new \RuntimeException('Testantwort fehlt oder ist nicht schützbar.'); }
+            return json_decode(file_get_contents($reply), true, flags: JSON_THROW_ON_ERROR);
         } catch (\Throwable $error) {
+            $this->logger->error('Isolierter Windows-Testaufruf {action} fehlgeschlagen: {error}',
+                ['action' => $action, 'error' => $error->getMessage()]);
             // Do not expose script arguments, paths or native diagnostics to the browser.
             throw new OutcomeUnknown('Windows-Aufruf fehlgeschlagen oder Ausgang unklar. Testprozess prüfen; kein automatischer Wiederholungsversuch.', previous: $error);
+        } finally {
+            if (is_file($reply)) { unlink($reply); }
         }
     }
 

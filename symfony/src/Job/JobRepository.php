@@ -19,7 +19,11 @@ final class JobRepository
         $this->db->executeStatement('CREATE TABLE IF NOT EXISTS slice_jobs (
             sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE,
             request_id TEXT NOT NULL UNIQUE, server_id TEXT NOT NULL, operation TEXT NOT NULL,
-            state TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)');
+            state TEXT NOT NULL, message TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL)');
+        if (!in_array('revision', array_column($this->db->fetchAllAssociative('PRAGMA table_info(slice_jobs)'), 'name'), true)) {
+            $this->db->executeStatement('ALTER TABLE slice_jobs ADD COLUMN revision INTEGER NOT NULL DEFAULT 1');
+        }
         $this->db->executeStatement('CREATE TABLE IF NOT EXISTS slice_events (
             sequence INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
         chmod($this->runtime->directory.'/slice.sqlite', 0600);
@@ -88,8 +92,8 @@ final class JobRepository
     public function transition(string $id, string $state, string $message): void
     {
         $this->transaction(function () use ($id, $state, $message): void {
-            $this->db->update('slice_jobs', ['state' => $state, 'message' => $message,
-                'updated_at' => gmdate('Y-m-d\TH:i:s\Z')], ['id' => $id]);
+            $this->db->executeStatement('UPDATE slice_jobs SET state=?,message=?,updated_at=?,revision=revision+1 WHERE id=?',
+                [$state, $message, gmdate('Y-m-d\TH:i:s\Z'), $id]);
             $this->event($id);
         });
     }

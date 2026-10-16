@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http;
 
 use App\Job\JobRepository;
+use App\Job\JobReconciler;
 use App\Job\JobService;
 use App\Runtime\ServerControl;
 use App\Runtime\SliceRuntime;
@@ -18,7 +19,8 @@ use Symfony\Component\Routing\Attribute\Route;
 final class SliceController extends AbstractController
 {
     public function __construct(private readonly SliceRuntime $runtime, private readonly JobRepository $jobs,
-        private readonly JobService $service, private readonly ServerControl $control) {}
+        private readonly JobService $service, private readonly ServerControl $control,
+        private readonly JobReconciler $reconciler) {}
 
     #[Route('/', methods: ['GET'])]
     public function home(): Response
@@ -44,6 +46,7 @@ final class SliceController extends AbstractController
     #[Route('/api/jobs', methods: ['GET'])]
     public function jobs(Request $request): JsonResponse
     {
+        $this->reconciler->reconcile();
         $id = $request->query->get('id');
         return $this->json($id === null ? $this->jobs->snapshot() : ['job' => $this->jobs->get($id)]);
     }
@@ -74,7 +77,12 @@ final class SliceController extends AbstractController
         return new EventStreamResponse(function () use ($after): iterable {
             $deadline = microtime(true) + 10;
             $heartbeat = 0.0;
+            $reconcileAt = 0.0;
             while (!connection_aborted() && microtime(true) < $deadline) {
+                if (microtime(true) >= $reconcileAt) {
+                    $this->reconciler->reconcile();
+                    $reconcileAt = microtime(true) + 1;
+                }
                 foreach ($this->jobs->events($after) as $event) {
                     $after = (int) $event['sequence'];
                     yield new ServerEvent($event['payload'], type: 'job', id: (string) $after);

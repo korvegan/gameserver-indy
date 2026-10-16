@@ -152,7 +152,7 @@ final class JobFlowTest extends SliceTestCase
         };
         $handler = new ExecuteServerJobHandler($jobs, static::getContainer()->get(SliceRuntime::class), $control);
         try { $handler(new ExecuteServerJob($first['id'])); self::fail('Expected storage error'); }
-        catch (\Doctrine\DBAL\Exception) { self::assertSame('running', $jobs->get($first['id'])['state']); }
+        catch (RecoverableMessageHandlingException) { self::assertSame('running', $jobs->get($first['id'])['state']); }
         $db->executeStatement('DROP TRIGGER fail_success');
         $handler(new ExecuteServerJob($first['id']));
         self::assertSame(1, $calls);
