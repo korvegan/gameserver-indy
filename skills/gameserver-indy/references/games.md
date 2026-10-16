@@ -14,7 +14,7 @@ Steam `D:\SteamLibrary\steamapps\common\ASKA Dedicated Server`. Aktive Konfigura
 
 Starter prüft feste Save-ID/Weltordner, übergibt `-propertiesPath`, setzt SteamAppId/SteamGameId 1898300. Bestätigte Bestandswelt: **`Aska/data/server/savegame_<id>`**. Daneben existiert wirklich ältere `data/savegame_<id>`; nicht verwechseln.
 
-Richtige Welt und Beitritt am 15.10.2026 bestätigt. Viele gleiche Unity-Shaderwarnungen traten auch beim erfolgreichen Start auf; sie belegen keinen Startfehler. Logs können Zugangsdaten enthalten, nur bereinigt anzeigen. Stellvertreterstopp beweist nicht den echten ASKA-Speichervorgang.
+Richtige Welt und Beitritt am 15.10.2026 bestätigt. Viele gleiche Unity-Shaderwarnungen traten auch beim erfolgreichen Start auf; sie belegen keinen Startfehler. Seit #12 werden nur identische aufeinanderfolgende bekannte Shaderwarnungen in der Anzeige gruppiert; Einzelzeilen bleiben erreichbar, Dateien unverändert. Logs können Zugangsdaten enthalten, nur bereinigt anzeigen. Stellvertreterstopp beweist nicht den echten ASKA-Speichervorgang.
 
 ## Sicherungen und Updates
 

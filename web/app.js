@@ -5,7 +5,7 @@ import {bindForms, clearConfig, populateConfig} from './forms.js';
 import {bindNavigation, navigate} from './navigation.js';
 import {acceptJob, mergeJobs, renderJobs, watchJob} from './jobs.js';
 import {controls, renderCatalog, renderEvents, renderStatus} from './views/server.js';
-import {loadLogs} from './views/logs.js';
+import {loadLogs, renderLogs} from './views/logs.js';
 import {loadGames} from './views/catalog.js';
 import {bindCommunity, isCommunityHash, loadCommunity} from './views/community.js';
 import {renderUpdate} from './views/updates.js';
@@ -227,6 +227,7 @@ $('#check-updates').addEventListener('click', async () => {
 $('#server-select').addEventListener('change', () => selectServer($('#server-select').value));
 $('#refresh').addEventListener('click', refresh);
 $('#refresh-logs').addEventListener('click', loadLogs);
+$('#log-raw').addEventListener('change', renderLogs);
 $('#log-source').addEventListener('change', () => { state.logSource = $('#log-source').value; loadLogs(); });
 $('#setup').addEventListener('click', () => mutate('/api/setup'));
 $('#start').addEventListener('click', () => runOperation('start'));
