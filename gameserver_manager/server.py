@@ -17,6 +17,7 @@ from .paths import ROOT
 from .registry import ServerRegistry
 from .security import AccessDenied, local_owner
 from .sessions import signing_token
+from .whatsapp import local_whatsapp_owner
 
 STATIC = ROOT / "web"
 
@@ -113,6 +114,9 @@ class Handler(BaseHTTPRequestHandler):
             '/api/restart', '/api/setup', '/api/logs', '/api/events', '/api/discord/settings', '/api/discord/send',
             '/api/community', '/api/community/options', '/api/community/event', '/api/community/story',
             '/api/community/media', '/api/community/export', '/api/connections/refresh', '/api/connections/settings', '/api/updates/check', '/api/backups') else 'request.unknown'
+        if path in ('/api/whatsapp', '/api/whatsapp/qr', '/api/whatsapp/groups', '/api/whatsapp/connect',
+                    '/api/whatsapp/disconnect', '/api/whatsapp/settings', '/api/whatsapp/send'):
+            self.audit_operation = path
 
     def do_GET(self):
         if not self.trusted_host():
@@ -129,6 +133,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/community/media':
                 content = self.server.app.chronicle.media(principal, one(query, 'event'), one(query, 'revision'))
                 return self.send(200, content, 'image/jpeg')
+            if path == '/api/whatsapp/qr':
+                local_whatsapp_owner(principal)
+                return self.send(200, self.server.app.whatsapp.client.qr(), 'image/png')
             if path == '/api/community/export':
                 content = self.server.app.chronicle.export(principal, **{key: one(query, key) for key in query})
                 return self.send(200, content, 'application/zip', download='sturmklingen-chronicle.zip')
@@ -141,7 +148,7 @@ class Handler(BaseHTTPRequestHandler):
                 "/favicon.svg": ("favicon.svg", "image/svg+xml"),
             }
             for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js",
-                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js", "views/story.js", "views/story-art.js", "views/access.js", "views/backups.js"):
+                         "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js", "views/story.js", "views/story-art.js", "views/access.js", "views/backups.js", "views/whatsapp.js"):
                 files["/" + name] = (name, "text/javascript; charset=utf-8")
             if path in files:
                 filename, content_type = files[path]
@@ -216,6 +223,7 @@ def serve(manager, port=8765):
             server.app.access.runtime = {'active': False, 'error': 'Familienzugang konnte nicht gestartet werden. Einstellungen und Port prüfen.'}
         server.app.start_update_checks()
         server.app.connections.start()
+        server.app.whatsapp.start()
         print(f"GameServer Indy: http://127.0.0.1:{server.server_port}", flush=True)
         print("Verwaltung mit Strg+C beenden. Ein laufender Spielserver bleibt dabei aktiv.", flush=True)
         try:

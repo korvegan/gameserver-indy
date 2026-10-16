@@ -1,5 +1,6 @@
 """HTTP data contracts; transport and CSRF handling live in server.py."""
 from .configuration import ManagerError
+from .whatsapp import local_whatsapp_owner
 
 
 class NotFound(ManagerError):
@@ -19,6 +20,9 @@ class Api:
 
     def get(self, path, query, principal):
         selected = one(query, "server")
+        if path in ('/api/whatsapp', '/api/whatsapp/groups'):
+            local_whatsapp_owner(principal)
+            return self.app.whatsapp.view() if path == '/api/whatsapp' else {'groups': self.app.whatsapp.client.groups()}
         if path == '/api/access':
             return self.app.access.view(principal)
         if path == "/api/servers":
@@ -57,6 +61,25 @@ class Api:
         raise NotFound("Nicht gefunden.")
 
     def post(self, path, body, principal):
+        if path.startswith('/api/whatsapp/'):
+            local_whatsapp_owner(principal)
+            service = self.app.whatsapp
+            if path == '/api/whatsapp/settings':
+                return 200, service.configure(body)
+            if path == '/api/whatsapp/send':
+                instance = self.app.instance(principal, body.get('server_id'), 'discord.write', explicit=True)
+                if set(body) != {'server_id', 'revision'} or type(body['revision']) is not int:
+                    raise ManagerError('Bitte das Serverprofil ausdrücklich auswählen.')
+                _job, future = self.app.jobs.submit('@whatsapp', 'send', principal.id,
+                    self.app.authorized_callback(principal, lambda: service.send_current(instance, revision=body['revision'])))
+                return 200, future.result()
+            if body:
+                raise ManagerError('Unerwartete WhatsApp-Parameter.')
+            if path == '/api/whatsapp/connect':
+                return 200, service.connect()
+            if path == '/api/whatsapp/disconnect':
+                return 200, service.disconnect()
+            raise NotFound('Nicht gefunden.')
         if path == '/api/access/settings':
             return 200, self.app.access.configure(principal, body)
         if path == '/api/access/users':

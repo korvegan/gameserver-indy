@@ -9,6 +9,7 @@ export const state = {
   discordRevision: 0, messageRevision: 0,
   communityDirty: false,
   connectionDirty: false,
+  whatsappDirty: false,
   accessDirty: false,
   available: false, catalogAvailable: false, submitting: false, refreshing: false, configLoading: false,
   logSource: 'server', pending: new Map(), latestJobs: [],

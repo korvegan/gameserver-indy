@@ -39,6 +39,7 @@ flowchart LR
 | `operations.py`, `processes.py` | Lebenszyklus und native Prozesszuordnung. PowerShell-Skripte bleiben erhalten. |
 | `instance_logs.py`, `logs.py`, `history.py` | Quellenwahl, Geheimnisbereinigung und begrenzte technische Verlaufssicht. |
 | `discord.py` | Gemeinsame Webhook-Einstellungen und bestehender HTTP-Transport. ASKA behält seinen externen Starter. |
+| `whatsapp.py`, `whatsapp_client.py`, `readiness.py` | Persönliche lokale WhatsApp-Verknüpfung, ausdrücklich gewähltes Gruppenziel, kurze Meldungen und dauerhafte Versandclaims auf belegter aktueller Startbereitschaft; [Details](whatsapp.md). |
 | `jobs.py`, `storage.py` | Begrenzte Ausführung, Sperren, dauerhaftes Ergebnis, versionierte Datenbank und konsistente Sicherung. |
 | `community.py`, `prototype.py` | Ereignis-/Szenen-/Versandvertrag und ausschließlich temporärer ausführbarer Durchstich. |
 

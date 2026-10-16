@@ -30,6 +30,7 @@ export function controls() {
   $('#check-updates').disabled = state.submitting || !state.selectedServer || !can('updates.check') || state.pending.has(`updates:${state.selectedServer}`);
   $('#new-moment').disabled = !state.catalogAvailable || !can('community.write');
   for (const node of document.querySelectorAll('[data-permission]')) node.hidden = !can(node.dataset.permission);
+  for (const node of document.querySelectorAll('[data-local-owner]')) node.hidden = state.principal?.id !== 'local-owner' || !can('discord.write');
   for (const button of document.querySelectorAll('#discord button')) button.disabled = state.submitting || !can('discord.write');
   connectionControls();
   $('#access-note').hidden = state.principal?.role === 'owner';

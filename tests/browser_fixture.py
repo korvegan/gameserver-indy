@@ -1,5 +1,6 @@
 """Isolated browser QA server. Never controls a real server or sends Discord messages."""
 from pathlib import Path
+import base64
 import sys
 import tempfile
 import time
@@ -29,6 +30,29 @@ class BrowserSteam:
         if branch != 'public' or app_id not in (2278520, 3246670):
             raise ManagerError('Kein Steam-Testbranch eingerichtet.')
         return '200' if app_id == 2278520 else '300'
+
+
+class BrowserWhatsApp:
+    configured = True
+    def __init__(self):
+        self.state = 'STOPPED'
+        self.checks = 0
+    def session(self):
+        if self.state == 'SCAN_QR_CODE':
+            self.checks += 1
+            if self.checks >= 3:
+                self.state = 'WORKING'
+        return {'status': self.state, 'exists': True}
+    def connect(self):
+        self.state, self.checks = 'SCAN_QR_CODE', 0
+    def qr(self):
+        return base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPioAAAAASUVORK5CYII=')
+    def groups(self):
+        return [{'id': '123456789@g.us', 'label': 'Browser-Gruppe'}, {'id': '987654321@g.us', 'label': 'Zweite Gruppe'}]
+    def send(self, group_id, text):
+        pass  # Fixture delivery only, never a real WhatsApp request.
+    def logout(self):
+        self.state = 'STOPPED'
 
 
 def steam_manifest(directory, app_id, build):
@@ -68,6 +92,7 @@ with tempfile.TemporaryDirectory(prefix="gameserver-browser-") as temporary:
     (logs / "Player.log").write_text("password = browser-secret-from-log\nThe session is now open!\n")
     with patch("gameserver_manager.discord.send_discord"), patch("gameserver_manager.operations.send_discord"), patch("gameserver_manager.instances.WindowsServerBridge", side_effect=lambda *args: BrowserBridge(str(user_profile))), patch.object(GAME_TYPES["aska"], "default_directory", str(aska)):
         with LocalServer(ServerRegistry(root, GameServerManager(root, BrowserBridge())), 8766, identity=identity) as server:
+            server.app.whatsapp.client = BrowserWhatsApp()
             server.app.updates.provider = BrowserSteam()
             server.app.connections.provider = lambda: {'lan': ['192.168.1.20'], 'public': '8.8.8.8'}
             server.app.connections._collect()
