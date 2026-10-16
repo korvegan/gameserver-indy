@@ -35,6 +35,9 @@ export function initWorkspace(selectServer, go) {
   const technical = element('details', undefined, 'network-details');
   technical.dataset.permission = 'config.read';
   technical.append(element('summary', 'Installation und technische Angaben'), $('#install-path').closest('section'));
+  const help = element('details', undefined, 'network-details');
+  help.append(element('summary', 'Wie funktionieren Serverbefehle?'), element('p', 'Start, Stopp und Neustart werden nacheinander ausgeführt. Beim Ausführen wird der aktuelle Serverzustand geprüft. Ein laufender Prozess bestätigt noch keinen erfolgreichen Beitritt.'));
+  $('#overview').append(help);
   $('#discord .page-heading').after($('#discord-status').closest('section'));
   $('#overview .overview-grid').replaceWith(technical);
   const metricsPanel = element('div', undefined, 'overview-summaries');
@@ -147,7 +150,7 @@ export async function refreshFleet() {
 }
 export function renderWorkspaceJobs() {
   const jobs = state.latestJobs.filter(job => ['queued', 'running'].includes(job.state));
-  $('#workspace-job-state').textContent = jobs.length ? `${jobs.length} Auftrag${jobs.length === 1 ? '' : 'e'} angenommen · nacheinander ausführen`
-    : 'Keine offenen Aufträge für dieses Serverprofil.';
+  $('#workspace-job-state').textContent = jobs.length ? `${jobs.length} Auftrag${jobs.length === 1 ? '' : 'e'} · ${jobs.some(job => job.state === 'running') ? 'wird ausgeführt' : 'angenommen'}`
+    : 'Keine offenen Aufträge';
   $('#workspace-job-count').textContent = jobs.length ? `(${jobs.length})` : '';
 }
