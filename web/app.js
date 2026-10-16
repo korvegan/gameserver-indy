@@ -13,7 +13,6 @@ import {bindConnections, renderConnection} from './views/connection.js';
 import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
 import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
-import {connectJobStream} from './job-stream.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map(), requestContexts = new Map();
@@ -240,10 +239,13 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ![
     $('#identity-label').textContent = {owner: session.access_mode === 'private' ? 'Besitzer · privat' : 'Besitzer · lokal', family: 'Familienbediener', viewer: 'Lesezugriff'}[session.principal.role] || 'Zugriff eingeschränkt';
     if (session.access_mode === 'private') $('#location-label').textContent = 'Privater Familienzugang';
     await refreshCatalog(); await refresh();
-    if (state.apiVersion >= 2) connectJobStream({
-      snapshot: jobs => { mergeJobs(jobs); renderJobs(); for (const job of jobs) watchJob(job, controls, finishJob); },
-      job: job => acceptJob(job, controls, finishJob), controls,
-    });
+    if (state.apiVersion >= 2) {
+      const {connectJobStream} = await import('./job-stream.js');
+      connectJobStream({
+        snapshot: jobs => { mergeJobs(jobs); renderJobs(); for (const job of jobs) watchJob(job, controls, finishJob); },
+        job: job => acceptJob(job, controls, finishJob), controls,
+      });
+    }
     if (isCommunityHash()) await go('community');
   } catch (error) { notice(error.message, true); }
   controls();
