@@ -22,9 +22,10 @@ export function controls() {
   }
   $('#control-hint').textContent = !state.catalogAvailable ? 'Serverprofile werden geladen …'
     : recovery ? 'Eine Weltwiederherstellung ist offen. Start und Neustart benötigen zuerst den Rückweg unter Weltsicherungen.'
-      : can('server.stop') ? 'Start, Stopp und Neustart werden als Aufträge nacheinander ausgeführt. Statusabfragen laufen unabhängig weiter.'
+      : can('server.stop') ? ''
         : can('server.start') ? 'Du darfst freigegebene Server starten. Stoppen und Neustart sind mit deiner Rolle nicht freigegeben.'
           : 'Deine Rolle erlaubt das Ansehen; Serverbefehle sind nicht freigegeben.';
+  $('#control-hint').hidden = !$('#control-hint').textContent;
   $('#config-fields').disabled = locked || recovery || state.configLoading || !can('config.write') || !state.config || status?.running || status?.starting;
   $('#refresh').disabled = state.submitting;
   $('#refresh-logs').disabled = state.submitting;
@@ -39,7 +40,7 @@ export function controls() {
   renderWorkspace(); renderWorkspaceJobs();
   if (pending && state.available) {
     $('#server-state').textContent = '◌ Auftrag läuft';
-    $('#process-note').textContent = 'Fortschritt und Ergebnis unter Aufträge.';
+    $('#process-note').textContent = 'Auftrag läuft';
   } else if (recovery) {
     $('#server-state').textContent = 'Wiederherstellung offen'; $('#server-state').className = 'pill error';
     $('#process-note').textContent = can('backups.manage') ? 'Unter Weltsicherungen den vorherigen Stand zurückholen.' : 'Der Besitzer muss die Weltwiederherstellung abschließen.';
@@ -84,7 +85,7 @@ export function renderStatus(data) {
   renderConnection(data.connection);
   $('#server-name').textContent = summary.title;
   $('#game-label').textContent = `${status.game_label.toUpperCase()} · DEDICATED SERVER`;
-  $('#profile-caption').textContent = status.profile_label + (status.external_launcher ? ' · Start und Discord über deinen vorhandenen Starter.' : '');
+  $('#profile-caption').textContent = status.profile_label;
   for (const [index, id] of ['slot-count', 'preset-label', 'query-port'].entries()) {
     const metric = summary.metrics[index];
     $(`#metric-label-${index}`).textContent = metric?.label.toUpperCase() || '—';
@@ -94,8 +95,8 @@ export function renderStatus(data) {
   const pending = state.pending.get(state.selectedServer);
   $('#server-state').textContent = pending ? '◌ Auftrag läuft' : status.known === false ? 'Prozessstatus unbekannt' : status.starting ? '◌ Starter arbeitet' : status.running ? '● Prozess läuft' : '○ Gestoppt';
   $('#server-state').className = 'pill' + (status.running ? ' running' : '');
-  $('#process-note').textContent = pending ? 'Fortschritt und Ergebnis unter Aufträge.' : status.starting ? 'Fortschritt im Starterprotokoll prüfen.'
-    : status.running ? can('logs.read') ? 'Verbindungsbereitschaft im Serverlog prüfen.' : 'Prozess läuft. Spielbereitschaft ist noch nicht bestätigt.' : 'Bereit, wenn du es bist.';
+  $('#process-note').textContent = pending ? 'Auftrag läuft' : status.starting ? 'Starterprotokoll beachten'
+    : status.running ? 'Spielbereitschaft nicht bestätigt' : '';
   $('#setup-panel').hidden = status.configured || !can('server.setup');
   $('#installation-check').textContent = status.installed ? 'Server gefunden' : 'Serverprogramm fehlt';
   $('#configuration-check').textContent = data.config_error ? 'Konfiguration nicht lesbar' : status.configured ? 'Konfiguration vorhanden' : 'Erstes Setup ausstehend';
