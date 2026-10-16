@@ -13,3 +13,22 @@ Korvegan hat am 15.10.2026 freigegeben, beauftragte oder ausdrücklich zur Umset
 - Nach dem Merge den Zustand auf GitHub verifizieren, den lokalen Checkout auf `main` aktualisieren, sofern keine fremden Änderungen entgegenstehen, und auch den CI-Lauf auf `main` kontrollieren. Betriebsschritte ausführen, soweit sie zum beauftragten Thema gehören. Ergebnis, relevante Prüfungen und verbleibende Grenzen knapp berichten.
 
 Die Freigabe bezieht sich auf das beauftragte Thema. Andere Backlog-Themen, reale Welten, Nachrichten an Spieler sowie Änderungen an Hostbetrieb oder externen Konten benötigen einen passenden Auftrag. Bestehende Aufträge und Freigaben berücksichtigen, statt pauschal erneut nachzufragen.
+
+## Umfang und passende Prüfung
+
+Vor dem ersten Eingriff wenige überprüfbare Abnahmekriterien und die betroffenen Komponenten festhalten. Bestehende Module bevorzugen; zusätzliche Arbeiten nur aufnehmen, wenn ein konkreter Befund den Auftrag sonst verfehlt.
+
+| Änderung | Lokale Prüfung |
+| --- | --- |
+| Texte, Dokumentation, Arbeitsregeln | Diff, betroffene Verweise bzw. vorhandene Validatoren |
+| Oberfläche | Syntax und betroffene Bedienabläufe auf Desktop/Mobil; weitere Breiten nur als Layoutcheck |
+| Fachlogik oder API | Tests der geänderten Funktion und unmittelbaren Abhängigkeiten |
+| Prozesse, Sicherungen, Migration | passende isolierte Integrationsprüfung, bei Windows-Verhalten nativ |
+
+Für diese private Familien-App werden regelmäßig nur wesentliche, praktisch relevante Abläufe geprüft. Fälle mit geschätzter Wahrscheinlichkeit unter 5 % oder niedrigem/geringerem Risiko gehören nicht in reguläre Läufe. Ohne belastbare Messdaten keine exakten Wahrscheinlichkeiten behaupten. Seltene Fehlerketten, exotische Plattformvarianten und geringe Darstellungsrisiken nur bei konkretem Bedarf manuell prüfen. Neue Tests müssen einen relevanten Ablauf oder beobachteten Fehler absichern; keine vollständige SaaS-Absicherung anstreben.
+
+Die CI-Auswahl steht in [docs/testing.md](docs/testing.md). Nach einer Korrektur zuerst den betroffenen Ablauf prüfen; eine erneute Vollprüfung braucht eine neue Änderung oder einen offenen Befund. Der unabhängige PR-Review läuft parallel zu den CI-Prüfungen, soweit deren Arbeit voneinander unabhängig ist. Nach inhaltlichen Korrekturen auf den endgültigen Commit beziehen.
+
+Eine Aufgabe ist abgeschlossen, wenn die vereinbarte Funktion, der relevante Review, die passenden Prüfungen und nötige Installation samt kurzer Abnahme erledigt sind. Danach keine Suche nach weiteren hypothetischen Randfällen. Bei größeren Aufgaben Entwicklungs-, externe Warte- und Installationszeit gelegentlich getrennt berichten; ungefähre Phasen nicht als exakt gemessene Arbeitszeit ausgeben. Vor neuen Abstraktionen gegenprüfen, ob eine vorhandene Funktion, ein direkter Befehl oder eine kurze Regel genügt. Keine Erweiterungsplattform für einen einzelnen Anwendungsfall bauen.
+
+Die Reasoning-Einstellung bleibt bis zu einer neuen ausdrücklichen Entscheidung des Nutzers unverändert.
