@@ -61,6 +61,8 @@ Das separate PR-Review #55 reproduzierte mit einem echten Messenger-Worker einen
 
 Die erste native PHP-Windows-CI meldete trotz regulärem Ctrl+C-Stopp einen unklaren Auftrag. Mit separat installiertem PHP 8.5.11 unter `%LOCALAPPDATA%\GameServerIndy\tools\php85` wurde lokal reproduziert, dass der Konsolenwechsel die von Symfony Process umgeleitete Standardausgabe leert; WSL-PHP zeigte das nicht. Der reine Standin-Wrapper erfasst nun die PowerShell-Pipeline vor der Ausgabe in eine eigene Antwortdatei. Das bestehende produktive Skript bleibt unverändert. Native PHP- und WSL-Prüfungen deshalb beide beibehalten. Der veröffentlichte PHP-ZIP-Hash wurde geprüft; kein PATH-/Autostart-Eintrag angelegt. Die lange PHPUnit-Datei `MockObjectForIntersectionOfInterfacesCreatedSubscriber.php` scheiterte unter dem langen WSL-UNC-Pfad; die native Abnahme deshalb auf einer eigenen kurzen NTFS-Kopie ausführen. Symfony-Cacheverzeichnisse sind nach Betriebssystem getrennt, damit kompilierte Windows-/Linux-Pfade nicht vermischt werden.
 
+Bei der CI-Abnahme fiel in der bisherigen Chronik wiederholt ein Timeout beim ersten Editoröffnen auf. Ein verzögertes `/api/session` reproduzierte das gleiche Verhalten deterministisch: Die Gemeinschaftsszene war bereits sichtbar, „Moment festhalten“ anklickbar, der Handler verwarf den Klick jedoch wegen noch unbekannter Rechte. Dieser Button startet nun deaktiviert und wird erst mit bestätigter Schreibberechtigung und geladenem Katalog freigegeben. Die Browserprüfung verzögert beide Startantworten gezielt; keine Zeitwartewerte zur Fehlerumgehung erhöhen.
+
 ## Wiederholbare Prüfungen
 
 ```bash
