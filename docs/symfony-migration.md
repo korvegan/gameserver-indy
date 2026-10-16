@@ -145,6 +145,27 @@ Der Konsolenbefehl liest den Bestand ausschließlich lesend und erzeugt ein neue
 
 HTTP-Tests decken gefälschte Header, Profil-/Rollengrenzen, HMAC-Kompatibilität, veraltete Revisionen, wartende Aufträge und das private Kopierpaket ab. Der Browserlauf verwendet ausschließlich synthetische Freigaben und einen lokalen Serve-Stub vor dem echten FrankenPHP-Backend. Er prüft auch Live-Entzug zwischen Verbindungen und den tatsächlichen App-/Workerneustart mit privatem Token. Dieser Stub ersetzt keine externe HTTPS-/Familienabnahme. Die Prozessprüfung verwendet weiterhin ausschließlich eigene Windows-Stellvertreter; Produktionsprofile, echte Familienfreigaben und Spielwelten werden durch diese Tests nicht umgestellt.
 
+## Spielprofile und Konfiguration #48
+
+`src/Game/` enthält je einen eigenen Enshrouded-/ASKA-Konfigurationsadapter. Symfony sammelt Implementierungen von `ConfigurationAdapter` über einen [Service-Tag](https://symfony.com/doc/7.4/service_container/tags.html); `GameCatalog` verbindet sie mit den bisherigen JSON-Spielprofilen unter `profiles/`. Für ein weiteres Spiel einen Adapter mit eigener ID und das zugehörige geprüfte Formularschema ergänzen, anschließend Vergleichsfixtures und Prozess-/Weltfähigkeiten getrennt hinzufügen. Ein zusätzlicher reiner `catalog_games`-Eintrag erzeugt keinen Dedicated-Server- oder Modadapter. Kampagne, Instanz und künftige Modquelle bleiben getrennte Identitäten.
+
+`InstanceRegistry` lädt eigene `manager.local.json`-Metadaten je Anfrage. Sie übernimmt das alte Einzelprofil ebenso wie Schema 2, prüft getrennte IDs/Installationsordner, externe Konfigurations-/Launcherpfade und `connection.public_host`. Metadatenänderungen lesen innerhalb einer kurzen Sperre den aktuellen vollständigen Stand; unbekannte Einstellungen und fremde Diensteinstellungen bleiben erhalten. Der öffentliche Katalog gibt gemeinsamen Discord-/WhatsApp-Geheimnissen keinen API-Platz. Begrenzte Familienrollen sehen nur ihre Profil-ID, Spiel-ID und Bezeichnung, Besitzer ihre erlaubten Profilmetadaten. Der Spielkatalog weist reale Prozess-/Backup-/Updatefähigkeiten bis zur jeweiligen Umsetzung ausdrücklich als unbekannt aus.
+
+Enshrouded-JSON behält unbekannte Objekte, Listen, Wahrheitswerte, native Ganzzahlen und Gleitkommatypen; die 1.0-Grenzen liegen weiterhin unter `gameSettings`. Ganzzahlen außerhalb des nativen PHP-Bereichs werden ausdrücklich abgewiesen, bevor sie still gerundet oder geschrieben werden könnten. ASKA behält BOM, Kommentare, unbekannte Schlüssel und vorhandene Zeilenenden. Leere Passwort-/Tokenfelder übernehmen die bisherigen Werte; ungültige Typen werden abgewiesen. Eine externe ASKA-Startdatei bindet weiterhin die vorhandene Save-ID. Der Weltpfad verwendet `Aska/data/server/savegame_<id>` und nicht die daneben mögliche alte Köderwelt.
+
+`InstanceConfiguration` verlangt ausdrückliche Ziele und passende Rechte. Schreibvorgänge teilen Annahme-/Ausführungssperren mit den Aufträgen, prüfen ausstehende Jobs, einen eindeutig gestoppten Server/Starter und `restore-pending.json`. Ein SHA256-Dateistand schützt Entwürfe vor inzwischen geänderten Dateien. Vor jeder Änderung entsteht eine private, bytegleiche Sicherung; Welt-/Konfigurationsüberschneidungen werden abgewiesen. Konfigurationssicherungen ersetzen keine Weltsicherung.
+
+Die API ergänzt `GET/POST /api/servers`, `GET/POST /api/config`, `POST /api/setup` und `POST /api/connections/settings`. Der Konfigurations-POST enthält `server_id`, `config` als Objekt und `revision` aus der Lesesicht. Die vollständige Oberfläche folgt #52. Die unveränderte Durchstichsseite steuert weiterhin ausschließlich ihre zwei Testprofile. **Bis #49 einen realen Prozesszustand liefert, verweigert der Konfigurationsdienst Schreibaktionen für importierte Spielprofile.** Ein Metadatenimport aktiviert keine Prozesssteuerung oder Startautomatik.
+
+```bash
+# Nur in einem eigens initialisierten Symfony-Datenordner:
+php bin/console indy:profiles:import /privat/kopie/manager.local.json
+```
+
+Der Befehl prüft die ausdrücklich angegebene Profilkopie und übernimmt deren exakte Bytes und Metadaten. Bestehende Ziele und unbekannte Versionen werden abgewiesen; weder Spielkonfigurationen noch Welten werden verändert. Eine Kopie der Profilmetadaten ist noch kein vollständiges Migrationspaket: Die externe ASKA-Datei, andere Spielkonfigurationen und die getrennten Datenbanken werden beim kontrollierten Datenabgleich in #54 konsistent verglichen. Bisher wurden ausschließlich eigene synthetische Quellen importiert.
+
+`compare_configurations.py` führt dieselben 34 synthetischen Fälle gegen das bestehende Python-Backend und die neuen PHP-Adapter aus. Es vergleicht Validierung, öffentliche Werte, ASKA-Dateibytes und Enshrouded-JSON-Inhalte. PHP-Tests prüfen zusätzlich Dateistände, exakte Sicherungen, Profil-/Rollengrenzen, externe ASKA-Metadaten, gesperrte Worker/Starter, Wiederherstellungsmarker und überlappende Speicherorte. Die Vergleiche laufen in Linux- und Windows-CI; sie ersetzen keinen echten ASKA-Weltstopp oder die spätere Produktionsumschaltung.
+
 ## Prüfungen
 
 ```bash
@@ -154,6 +175,7 @@ composer audit
 php bin/console lint:container
 php bin/console lint:twig templates
 php vendor/bin/phpunit
+python tools/compare_configurations.py
 SLICE_WINDOWS_TEST=1 php vendor/bin/phpunit --filter NativeWindowsFlowTest
 cd ..
 npm ci --no-audit --no-fund
