@@ -18,6 +18,17 @@ with tempfile.TemporaryDirectory(prefix='indy-backup-parity-') as directory:
     root = Path(directory)
     install = root / 'Own install'
     install.mkdir()
+    if os.name == 'nt':
+        import ctypes
+        from ctypes import wintypes
+        short_name = ctypes.windll.kernel32.GetShortPathNameW
+        short_name.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+        short_name.restype = wintypes.DWORD
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = short_name(str(install), buffer, len(buffer))
+        if not 0 < length < len(buffer):
+            raise OSError('Own fixture short path could not be read')
+        install = Path(buffer.value)  # Rollback compatibility must retain a configured native alias too.
     (install / 'enshrouded_server.exe').write_bytes(b'non-executable placeholder')
     manager = GameServerManager(root / 'legacy', FakeBridge(), profile={
         'id': 'fixture', 'game': 'enshrouded', 'label': 'Parity', 'server_directory': str(install)})

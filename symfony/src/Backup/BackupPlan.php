@@ -17,7 +17,7 @@ final class BackupPlan
         private readonly NativePaths $paths, private readonly SliceRuntime $runtime) {}
     public function resolve(string $id, array $status, ?\stdClass $configuration = null): array
     {
-        $profile = $this->registry->get($id); $configPath = $this->registry->configPath($profile);
+        $profile = $this->registry->get($id); $configPath = $this->registry->configPath($profile); $storedConfig = $this->files->bindingPath($configPath);
         if ($this->paths->contains($profile->server_directory, $this->runtime->directory.'/data/world-backups/'.$id)) {
             throw new \DomainException('Weltsicherungen müssen außerhalb der Spielinstallation liegen.');
         }
@@ -30,9 +30,10 @@ final class BackupPlan
         $world = $this->files->plain($source['world']); $files = ['config/server' => $configPath];
         if (isset($source['files'][1])) { $files['config/preset'] = $this->files->plain($source['files'][1]); }
         $this->worldGuard->exclusive($profile, $configuration, $status);
-        $storedPath = fn (string $path) => PHP_OS_FAMILY === 'Windows' ? str_replace('/', '\\', $path) : $path;
+        $storedFiles = ['config/server' => $storedConfig];
+        if (isset($source['files'][1])) { $storedFiles['config/preset'] = $this->files->bindingPath($source['files'][1]); }
         return ['world' => $world, 'files' => $files, 'binding' => (object) ['server_id' => $id, 'game' => $profile->game,
-            'save_id' => $source['save_id'], 'world' => $storedPath($world), 'files' => (object) array_map($storedPath, $files)]];
+            'save_id' => $source['save_id'], 'world' => $this->files->bindingPath($source['world']), 'files' => (object) $storedFiles]];
     }
     public function token(array $plan): string
     {

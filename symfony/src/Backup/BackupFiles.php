@@ -36,16 +36,24 @@ final class BackupFiles
             $info = @lstat($part);
             if (is_link($part) || ($info !== false && ($info['mode'] & 0170000) === 0120000)) { throw new \DomainException('Verknüpfungen und Junctions sind für Weltsicherungen nicht erlaubt.'); }
         }
-        // Existing leaves/parents retain their actual case for the compatible binding.
-        $tail = []; $part = $path;
-        while (($resolved = realpath($part)) === false) {
-            $parent = dirname($part);
-            if ($parent === $part) { throw new \DomainException('Lokaler Dateipfad nicht auflösbar.'); }
-            array_unshift($tail, basename($part)); $part = $parent;
+        // Like the existing Python abspath, retain configured 8.3 names for rollback.
+        // NativePaths handles canonical identities separately for overlap protection.
+        return $this->bindingPath($path);
+    }
+    /** Match Python abspath for stored bindings, preserving a configured 8.3 alias. */
+    public function bindingPath(string $path): string
+    {
+        $path = str_replace('\\', '/', $this->paths->local($path)); $prefix = '/'; $minimum = 0;
+        if (preg_match('/^([a-z]:)\/(.*)$/isD', $path, $match)) { $prefix = $match[1].'/'; $path = $match[2]; }
+        elseif (str_starts_with($path, '//')) { $prefix = '//'; $minimum = 2; }
+        $parts = [];
+        foreach (explode('/', $path) as $part) {
+            if ($part === '' || $part === '.') { continue; }
+            if ($part === '..') { if (count($parts) > $minimum) { array_pop($parts); } }
+            else { $parts[] = $part; }
         }
-        $base = str_replace('\\', '/', $resolved);
-        if ($base === '/' || preg_match('/^[a-z]:\/$/iD', $base)) { return $base.implode('/', $tail); }
-        return rtrim($base, '/').($tail === [] ? '' : '/'.implode('/', $tail));
+        $result = $prefix.implode('/', $parts);
+        return PHP_OS_FAMILY === 'Windows' ? str_replace('/', '\\', $result) : $result;
     }
     /** Reparse attributes and hardlink counts are checked natively on Windows volumes too. */
     public function native(array $paths, ?string $tree = null): void

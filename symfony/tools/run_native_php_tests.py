@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,7 +42,17 @@ with tempfile.TemporaryDirectory(prefix='ib-', dir=native_temp) as directory:
         destination = target / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-    shutil.copytree(ROOT / 'symfony/vendor', target / 'symfony/vendor')
+    if os.name == 'nt':
+        shutil.copytree(ROOT / 'symfony/vendor', target / 'symfony/vendor')
+    else:
+        # One bulk crossing into NTFS avoids thousands of slow WSL metadata roundtrips.
+        with tempfile.NamedTemporaryFile(prefix='indy-php-vendor-', suffix='.tar') as temporary:
+            with tarfile.open(fileobj=temporary, mode='w') as bundle:
+                bundle.add(ROOT / 'symfony/vendor', arcname='vendor')
+            temporary.flush()
+            windows_archive = subprocess.check_output(['wslpath', '-w', temporary.name], text=True).strip()
+            windows_target = subprocess.check_output(['wslpath', '-w', str(target / 'symfony')], text=True).strip()
+            subprocess.run(['tar.exe', '-xf', windows_archive, '-C', windows_target], check=True)
     print('Running native PHP fixtures.', flush=True)
     environment = {**os.environ, 'SLICE_WINDOWS_TEST': '1'}
     if os.name != 'nt':
