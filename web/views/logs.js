@@ -5,6 +5,12 @@ import {filteredGroups} from '../log-lines.js';
 
 let request = 0, latest = '', context = '', paused = false;
 const selection = () => `${state.selectionEpoch}:${state.selectedServer}:${state.logSource}`;
+export function clearLogs() {
+  ++request; latest = ''; context = '';
+  $('#log-content').textContent = 'Logs werden geladen …'; $('#log-span').textContent = '';
+  $('#log-file').textContent = 'Protokoll wird geladen …'; $('#log-updated').textContent = '';
+  $('#export-logs').removeAttribute('href');
+}
 export function renderLogs(reset = false) {
   const target = $('#log-content'), top = target.scrollTop;
   const bottom = target.scrollHeight - target.clientHeight - top < 16;

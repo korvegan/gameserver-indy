@@ -12,6 +12,8 @@ const fs=require('node:fs/promises');
     await page.waitForSelector('#world-list [data-select-server="aska"]');
     const select=async game=>{
       await page.locator(`[data-select-server="${game}"]`).click();
+      const download = await page.locator('#export-logs').getAttribute('href');
+      assert.ok(!download || new URL(download,origin).searchParams.get('server')===game);
       await page.waitForFunction(async game=>{const {state}=await import('/state.js');return state.selectedServer===game&&state.available&&!state.refreshing;},game);
       await page.locator('#game-banner-art').evaluate(image=>image.decode());
       assert.equal(await page.locator('#game-banner-art').getAttribute('src'),`/artwork/${game}-hero.jpg`);
@@ -64,6 +66,7 @@ const fs=require('node:fs/promises');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.screenshot({path:'artifacts/symfony-logs-390.png',fullPage:true});
     await page.unrouteAll({behavior:'wait'});
+    page.once('dialog', d=>d.accept()); await select('aska'); await select('enshrouded');
     for(const width of [1440,390]){
       await page.setViewportSize({width,height:1000});
       await page.getByRole('tab',{name:'Übersicht',exact:true}).click();

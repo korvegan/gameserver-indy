@@ -5,7 +5,7 @@ import {bindForms, clearConfig, populateConfig} from './forms.js';
 import {bindNavigation, navigate} from './navigation.js';
 import {acceptJob, mergeJobs, renderJobs, watchJob} from './jobs.js';
 import {controls, renderCatalog, renderEvents, renderStatus} from './views/server.js';
-import {loadLogs, renderLogs, toggleLogsPause, resetLogFilters} from './views/logs.js';
+import {loadLogs, renderLogs, toggleLogsPause, resetLogFilters, clearLogs} from './views/logs.js';
 import {loadGames} from './views/catalog.js';
 import {bindCommunity, isCommunityHash, loadCommunity} from './views/community.js';
 import {renderUpdate} from './views/updates.js';
@@ -107,7 +107,7 @@ async function selectServer(target, openOverview = false) {
   $('#server-name').textContent = state.catalog.servers.find(profile => profile.id === target)?.label || 'Serverprofil';
   $('#server-state').textContent = 'Status wird geprüft'; $('#status-updated').textContent = '';
   for (const id of ['slot-count', 'preset-label', 'query-port', 'process-id']) $(`#${id}`).textContent = '—';
-  $('#log-source').value = 'server'; $('#log-updated').textContent = ''; $('#log-content').textContent = 'Logs werden geladen …';
+  $('#log-source').value = 'server'; clearLogs();
   renderEvents([]); renderJobs(); controls();
   renderUpdate();
   renderConnection();
