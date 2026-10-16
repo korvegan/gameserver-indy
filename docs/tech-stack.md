@@ -10,13 +10,13 @@ Inventur vom **16.10.2026** auf main nach PR #64. Versionsstände wurden gegen C
 | Datenbankzugriff | Doctrine DBAL **4.5.0**, DoctrineBundle **3.3.2**, SQLite über PDO | Aktuell; kein separater Datenbankserver und bislang kein Doctrine ORM. |
 | Templates | Twig **3.30.0** mit Symfony-Twig-Bundle | Aktuell. |
 | Oberfläche | Produktiv native JavaScript-Module; separate Symfony-Twig-/SSE-Testoberfläche | Vue, TypeScript und weitere Symfony-UX-Komponenten sind noch keine installierten App-Abhängigkeiten. Ihren tatsächlichen Bedarf entscheidet #52. |
-| PHP-Tests | PHPUnit **12.5.39 → 13.4.3** einschließlich zugehöriger Testbibliotheken | Aktuelle stabile Hauptversion übernehmen. PHP >=8.4 ist bereits Projektvoraussetzung; keine höhere Laufzeit-Mindestversion nötig. |
+| PHP-Tests | PHPUnit **12.5.39 → 13.4.3** einschließlich zugehöriger Testbibliotheken | Aktuelle stabile Hauptversion übernehmen. Die Anwendung benötigt weiter PHP >=8.4; Entwicklung/Tests mit dieser PHPUnit-Version benötigen ausdrücklich PHP >=8.4.1. |
 | Browser-Tests | Playwright und Playwright Core **1.64.1** | Bereits aktuell; Lockfile und dazugehörige Browserdateien beibehalten. |
 | Python-Referenzanwendung | Standardbibliothek, keine externen pip-Laufzeitpakete | Bleibt bis #54 verfügbar; diese Inventur wechselt keinen laufenden Python-Prozess aus. |
 
 [Symfony 7.4](https://symfony.com/releases/7.4) erhält Fehlerkorrekturen bis November 2028 und Sicherheitskorrekturen bis November 2029. [Symfony 8.1.9](https://symfony.com/releases/8.1) ist zwar die neuere stabile Hauptlinie, endet aber bereits im Januar 2027. Für die vereinbarte Familienverwaltung bleibt deshalb die gepflegte LTS die Grundlage. Maßgeblich für den aktuellen Patch ist auch der [offizielle JSON-Endpunkt](https://symfony.com/releases/7.4.json), der beim Audit 7.4.21 lieferte; Suchtreffer zeigten teilweise noch 7.4.20.
 
-[PHPUnit 13](https://phpunit.de/supported-versions.html) unterstützt PHP ab 8.4 und erhält Fehlerkorrekturen bis Februar 2028. Der Wechsel auf [13.4.3](https://github.com/sebastianbergmann/phpunit/releases/tag/13.4.3) wird mit den bestehenden Tests einschließlich der nativen Windows-CI geprüft. Die Runtime-Pakete bleiben beim selben Stand; die Änderungen im Composer-Lockfile betreffen die Testwerkzeuge.
+[PHPUnit 13](https://phpunit.de/supported-versions.html) erhält Fehlerkorrekturen bis Februar 2028. Das konkrete Paket [13.4.3 verlangt PHP >=8.4.1](https://github.com/sebastianbergmann/phpunit/blob/13.4.3/composer.json), präziser als die allgemeine Hauptversionstabelle. Die Entwicklung hier und die CI verwenden PHP 8.5 und erfüllen dies. Der Wechsel wird mit den bestehenden Tests einschließlich der nativen Windows-CI geprüft. Die Runtime-Pakete und deren Mindestversion bleiben beim selben Stand; die Änderungen im Composer-Lockfile betreffen die Testwerkzeuge.
 
 ## Laufzeiten und lokale Werkzeuge
 
