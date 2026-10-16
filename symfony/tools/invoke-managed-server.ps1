@@ -9,7 +9,10 @@ $stateDirectory = Split-Path -Parent (Split-Path -Parent $directory)
 $managedMarker = Join-Path $stateDirectory '.indy-managed-state'
 if (Test-Path -LiteralPath $managedMarker -PathType Leaf) {
     if ((Get-Item -LiteralPath $managedMarker).Length -gt 4096) { throw 'Invalid manager data marker.' }
-    $state = [IO.File]::ReadAllText($managedMarker) | ConvertFrom-Json
+    # PowerShell 5.1 unwraps a singleton JSON array in the pipeline; check its root before parsing.
+    $markerText = [IO.File]::ReadAllText($managedMarker)
+    if (-not $markerText.TrimStart().StartsWith('{')) { throw 'Invalid manager data marker.' }
+    $state = $markerText | ConvertFrom-Json
     if ($state -isnot [pscustomobject] -or $state.format -cne 'gameserver-indy-state' -or $state.version -isnot [int] -or $state.version -ne 1 -or
         $state.access_layout -cne 'shared-data') { throw 'Invalid manager data marker.' }
 } else {
