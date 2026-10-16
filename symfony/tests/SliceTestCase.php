@@ -34,7 +34,8 @@ abstract class SliceTestCase extends WebTestCase
         $container = static::getContainer();
         return new \App\Job\ExecuteServerJobHandler($container->get(JobRepository::class), $container->get(SliceRuntime::class), $control,
             $container->get(\App\Access\AccessPolicy::class), $container->get(\App\Runtime\RuntimeLifecycle::class),
-            $container->get(\App\Job\WorkerClaim::class), $container->get(\App\Instance\InstanceConfiguration::class));
+            $container->get(\App\Job\WorkerClaim::class), $container->get(\App\Instance\InstanceConfiguration::class),
+            $container->get(\App\Backup\WorldBackups::class));
     }
 
     protected function tearDown(): void
