@@ -10,8 +10,8 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 final class AccessStore
 {
     public function __construct(private readonly SliceRuntime $runtime) {}
-    public function databasePath(): string { return $this->runtime->directory.'/access.sqlite3'; }
-    public function settingsPath(): string { return $this->runtime->directory.'/access-settings.json'; }
+    public function databasePath(): string { return $this->runtime->accessDirectory().'/access.sqlite3'; }
+    public function settingsPath(): string { return $this->runtime->accessDirectory().'/access-settings.json'; }
     public function initialize(): void
     {
         $db = $this->connect(); $version = (int) $db->query('PRAGMA user_version')->fetchColumn();

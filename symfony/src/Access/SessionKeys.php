@@ -11,7 +11,7 @@ final class SessionKeys
     public function __construct(private readonly SliceRuntime $runtime) {}
     public function token(Principal $principal, string $scope): string
     {
-        $this->runtime->assertInitialized(); $path = $this->runtime->directory.'/session-key';
+        $this->runtime->assertInitialized(); $path = $this->runtime->accessDirectory().'/session-key';
         if (!file_exists($path)) {
             $handle = @fopen($path, 'x');
             if ($handle !== false) {

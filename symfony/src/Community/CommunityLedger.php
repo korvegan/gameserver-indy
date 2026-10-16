@@ -62,6 +62,10 @@ final class CommunityLedger
             return ['event_id' => $event->id, 'revision' => $event->revision, 'scene_id' => 'scene-'.$event->id];
         });
     }
+    public function reconcile(): void
+    {
+        $this->database->write(fn (\PDO $db) => $db->exec("UPDATE deliveries SET state='uncertain' WHERE state='sending'"));
+    }
     public static function row(\PDO $db, string $sql, array $parameters = []): array|false
     {
         $statement = $db->prepare($sql); $statement->execute($parameters); return $statement->fetch();

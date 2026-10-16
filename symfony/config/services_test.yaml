@@ -1,4 +1,13 @@
 services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    bind:
+      $projectDirectory: '%kernel.project_dir%'
+  App\Runtime\RuntimeSupervisor:
+    public: true
+  App\Runtime\RuntimeSettings:
+    public: true
   App\Runtime\ProcessGateway:
     alias: App\Runtime\WindowsProcessGateway
     public: true

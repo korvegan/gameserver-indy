@@ -11,9 +11,13 @@ const {setTimeout: delay} = require('node:timers/promises');
 (async () => {
   const project = path.resolve(__dirname,'../..'), root = await fs.mkdtemp(path.join(os.tmpdir(),'indy-symfony-dashboard-'));
   const origin = 'http://127.0.0.1:18876', privateOrigin = 'http://127.0.0.1:18878';
-  const fixture = spawn(process.env.PYTHON || 'python3',['symfony/tools/run_dashboard_fixture.py','--root',root],{cwd:project,stdio:['ignore','pipe','pipe']});
-  let output = '', browser, proxy; fixture.stdout.on('data',data => { output += data; }); fixture.stderr.on('data',data => { output += data; });
-  fixture.on('error',error => { output += error.message; });
+  let output = '', browser, proxy;
+  const launch = reuse => {
+    const child=spawn(process.env.PYTHON || 'python3',['symfony/tools/run_dashboard_fixture.py','--root',root,...(reuse ? ['--reuse'] : [])],{cwd:project,stdio:['ignore','pipe','pipe']});
+    child.stdout.on('data',data => { output=(output+data).slice(-20000); }); child.stderr.on('data',data => { output=(output+data).slice(-20000); });
+    child.on('error',error => { output += error.message; }); return child;
+  };
+  let fixture=launch(false);
   try {
     for (let attempt = 0; ; attempt++) {
       if (fixture.exitCode !== null || attempt >= 200) throw new Error('Fixture startup: '+output.slice(-6000));
@@ -164,7 +168,39 @@ const {setTimeout: delay} = require('node:timers/promises');
       const child = spawn(process.execPath,[script],{cwd:project,stdio:'inherit',env:{...process.env,INDY_BROWSER_ORIGIN:origin,INDY_BROWSER_FAMILY_ORIGIN:privateOrigin}});
       const [code] = await once(child,'exit'); assert.equal(code,0,script);
     }
+    const epochBefore=await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8');
+    const childFile=path.join(root,'state/runtime/children.json'), initialChildren=JSON.parse(await fs.readFile(childFile,'utf8'));
+    process.kill(initialChildren.children['control-1'],'SIGTERM');
+    for (let attempt=0; ; attempt++) {
+      const current=JSON.parse(await fs.readFile(childFile,'utf8'));
+      if (current.children['control-1']!==initialChildren.children['control-1']) break;
+      if (attempt>100) throw new Error('A clean Messenger exit did not recycle its own worker.');
+      await delay(100);
+    }
+    assert.equal(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8'),epochBefore);
+    const duplicate=launch(true); const [duplicateCode]=await once(duplicate,'exit'); assert.notEqual(duplicateCode,0);
+    assert.equal(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8'),epochBefore,'Second supervisor must not change the active epoch.');
+    const started=await post('/api/jobs',{server_id:'enshrouded',operation:'start',request_id:require('node:crypto').randomBytes(16).toString('hex')});
+    assert.equal(started.status(),202); assert.equal((await terminal((await started.json()).job.id)).state,'succeeded');
+    await browser.close(); browser=undefined;
+    const stopped=once(fixture,'exit'); fixture.kill('SIGTERM'); await stopped;
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8')).active,false);
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'process-enshrouded.json'),'utf8')).running,true,'Stopping the manager leaves the fixture game process state running.');
+    fixture=launch(true);
+    for (let attempt=0; ; attempt++) {
+      if (fixture.exitCode!==null || attempt>200) throw new Error('Supervisor restart failed: '+output.slice(-5000));
+      try { const current=await fetch(origin+'/api/session'); if (current.ok) { assert.equal((await current.json()).token,session.token,'Private browser key survives manager restart.'); break; } } catch {}
+      await delay(100);
+    }
+    const newEpoch=JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8')).epoch;
+    assert.notEqual(newEpoch,JSON.parse(epochBefore).epoch);
+    const children=JSON.parse(await fs.readFile(path.join(root,'state/runtime/children.json'),'utf8'));
+    const crashed=once(fixture,'exit'); process.kill(children.children.observer,'SIGKILL');
+    const [failedSupervisor]=await crashed; assert.notEqual(failedSupervisor,0);
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'state/runtime-lifecycle.json'),'utf8')).active,false,'An owned child failure fences and closes the manager.');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'process-enshrouded.json'),'utf8')).running,true);
     console.log('Symfony dashboard QA passed: Twig, full navigation, SSE recovery, FIFO controls, async config/drafts, broken profiles, backups/restore, updates, synthetic WhatsApp, private owner/mobile and unchanged chronicle/tapestry regressions.');
+    console.log('Supervisor QA passed: real workers/observer/scheduler, singleton before lifecycle, graceful stop, persistent key/restart, owned child failure and surviving fixture game state.');
   } catch (error) { console.error(output.slice(-6000)); throw error; }
   finally {
     await browser?.close(); if (proxy) { proxy.closeAllConnections(); await new Promise(resolve => proxy.close(resolve)); }

@@ -1,0 +1,18 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+// Stable launcher entrypoint: application code and mutable state have separate roots.
+$state=$argv[1] ?? '';
+if ($state==='' || !str_starts_with($state,'/') || strpbrk($state,"\r\n\0")!==false || !is_dir($state) || is_link($state)) {
+    fwrite(STDERR,"Absoluten privaten Datenordner angeben.\n"); exit(1);
+}
+$state=realpath($state);
+if (!is_file($state.'/.indy-managed-state')) { fwrite(STDERR,"Datenübernahme zuerst vorbereiten.\n"); exit(1); }
+foreach (['APP_ENV'=>'prod','SLICE_STATE_DIR'=>$state,'SLICE_DRIVER'=>'managed','SLICE_ROLE'=>'owner',
+    'INDY_CACHE_DIR'=>$state.'/runtime/bootstrap-cache-'.substr(hash('sha256',dirname(__DIR__)),0,16)] as $key=>$value) {
+    putenv($key.'='.$value); $_ENV[$key]=$_SERVER[$key]=$value;
+}
+require dirname(__DIR__).'/vendor/autoload.php';
+$kernel=new App\Kernel('prod',false);
+$application=new Symfony\Bundle\FrameworkBundle\Console\Application($kernel);
+$application->run(new Symfony\Component\Console\Input\ArrayInput(['command'=>'app:serve']));

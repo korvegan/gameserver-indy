@@ -19,6 +19,11 @@ final class SliceRuntime
 
     public function initialize(): void
     {
+        if (is_file($this->directory.'/.indy-managed-state')) {
+            $this->assertInitialized();
+            foreach (['locks','native'] as $folder) { \App\Storage\PrivateFiles::directory($this->directory.'/'.$folder); }
+            return;
+        }
         if (is_link($this->directory)) {
             throw new \RuntimeException('Der Testdatenordner darf kein Link sein.');
         }
@@ -42,10 +47,22 @@ final class SliceRuntime
 
     public function assertInitialized(): void
     {
+        if (is_file($this->directory.'/.indy-managed-state')) {
+            $state = \App\Storage\PrivateFiles::object(\App\Storage\PrivateFiles::read($this->directory.'/.indy-managed-state',4096));
+            if ($this->driver !== 'managed' || ($state->format ?? null) !== 'gameserver-indy-state' || ($state->version ?? null) !== 1
+                || ($state->access_layout ?? null) !== 'shared-data') { throw new \RuntimeException('Unbekannte produktive Datenablage.'); }
+            return;
+        }
         $marker = $this->directory.'/.indy-symfony-slice';
         if (!is_file($marker) || file_get_contents($marker) !== 'isolated-slice-v1') {
             throw new \RuntimeException('Isolierten Durchstich zuerst mit slice:init initialisieren.');
         }
+    }
+
+    public function accessDirectory(): string
+    {
+        $this->assertInitialized();
+        return $this->directory.(is_file($this->directory.'/.indy-managed-state') ? '/data' : '');
     }
 
     public function server(string $id): string
