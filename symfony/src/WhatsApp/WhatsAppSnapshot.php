@@ -34,9 +34,11 @@ final class WhatsAppSnapshot
             PrivateFiles::write($target.'/manifest.json',PrivateFiles::json($manifest));
             return ['revision'=>$configuration->revision,'claims'=>$count,'sha256'=>$manifest->database_sha256];
         } catch (\Throwable $error) {
-            $db = null; // Windows must release SQLite handles before removing an invalid copy.
+            // Exception arguments can retain PDO even after its local variable is unset.
+            // Release that trace before cleanup so Windows can remove the rejected copy.
+            unset($error); $db = null;
             foreach (['manifest.json','settings.json','deliveries.sqlite3','deliveries.sqlite3-wal','deliveries.sqlite3-shm'] as $name) { if (is_file($target.'/'.$name)) { unlink($target.'/'.$name); } }
-            @rmdir($target); throw $error;
+            @rmdir($target); throw new \DomainException('WhatsApp-Kopie nicht übernommen. Quelle und Struktur prüfen.');
         }
     }
 }
