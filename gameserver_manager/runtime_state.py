@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import stat
+import re
+import sqlite3
 
 from .configuration import ManagerError
 from .paths import ROOT
@@ -35,6 +37,90 @@ def state_directory(value=None):
     if os.name != 'posix':
         raise ManagerError('Die gemeinsame Produktionsablage unter WSL/Linux verwenden.')
     return directory.resolve()
+
+
+def validate_prepared_state(directory):
+    """Read-only preflight under the acquired lease. A missing database must never mean new install."""
+    from .access import settings as access_settings
+    from .catalog import GameCatalog
+    from .registry import ServerRegistry
+    from .whatsapp_client import GROUP_ID
+
+    def document(relative, maximum=1048576):
+        path=directory/relative
+        if path.is_symlink() or not path.is_file() or path.stat().st_size>maximum:
+            raise ManagerError('Die vorbereitete Datenablage ist unvollständig oder unbekannt.')
+        value=json.loads(path.read_text(encoding='utf-8'))
+        if not isinstance(value,dict):
+            raise ManagerError('Die vorbereitete Datenablage ist unvollständig oder unbekannt.')
+        return value
+
+    try:
+        configuration=document('manager.local.json')
+        if type(configuration.get('schema_version')) is not int or configuration['schema_version'] != 2 or not isinstance(configuration.get('servers'),list) or not configuration['servers']:
+            raise ManagerError('Vorbereitete Profile fehlen; keine Standardprofile ableiten.')
+        GameCatalog(configuration.get('catalog_games',[]))
+        ids=set(); directories=set()
+        for profile in configuration['servers']:
+            ServerRegistry.validate_profile(profile)
+            identity=ServerRegistry.directory_identity(profile['server_directory'])
+            if profile['id'] in ids or identity in directories:
+                raise ManagerError('Vorbereitete Profile sind nicht eindeutig.')
+            ids.add(profile['id']); directories.add(identity)
+        access_settings(document('data/access-settings.json',16384))
+        if not re.fullmatch(r'[A-Za-z0-9_-]{43}',(directory/'data/session-key').read_text(encoding='ascii')):
+            raise ManagerError('Vorbereiteter Sitzungsschlüssel ist ungültig.')
+        _database(directory/'data/access.sqlite3',1,{
+            'users':['id','login','name','role','servers','enabled','revision','created_at','updated_at'],
+            'audit':['id','at','actor','operation','resource','outcome']})
+        _database(directory/'data/platform.sqlite3',2,{
+            'jobs':['id','server_id','operation','actor_id','state','message','created_at','updated_at','result'],
+            'community_events':['id','revision','game_id','instance_id','payload','recorded_at'],
+            'scenes':['id','event_id','position','template'],
+            'deliveries':['event_id','revision','target','state','remote_id'],
+            'community_media':['id','content','width','height']})
+        whatsapp=directory/'data/whatsapp'
+        if whatsapp.is_symlink() or not whatsapp.is_dir():
+            raise ManagerError('Vorbereitete WhatsApp-Versanddaten fehlen.')
+        settings=document('data/whatsapp/settings.json',65536)
+        if (not isinstance(settings.get('group_id'),str) or settings['group_id'] and not GROUP_ID.fullmatch(settings['group_id'])
+                or not isinstance(settings.get('group_label'),str) or type(settings.get('enabled')) is not bool
+                or type(settings.get('revision')) is not int or settings['revision']<0
+                or not isinstance(settings.get('server_ids'),list) or any(not isinstance(sid,str) for sid in settings['server_ids'])
+                or len(settings['server_ids'])!=len(set(settings['server_ids']))):
+            raise ManagerError('Vorbereitete WhatsApp-Einstellungen sind ungültig.')
+        _database(whatsapp/'deliveries.sqlite3',0,{'deliveries':['server_id','process_key','group_id','state','updated_at']},whatsapp=True)
+        credentials=whatsapp/'credentials.json'
+        if credentials.exists() or settings['enabled'] or settings['group_id']:
+            key=document('data/whatsapp/credentials.json',4096).get('api_key')
+            if not isinstance(key,str) or not re.fullmatch(r'[a-f0-9]{64}',key):
+                raise ManagerError('Vorbereiteter WhatsApp-Zugang ist unvollständig.')
+    except (OSError,ValueError,TypeError,KeyError,sqlite3.Error) as error:
+        raise ManagerError('Vorbereitete Daten sind unvollständig oder unbekannt; kein Dienst wurde gestartet.') from error
+
+
+def _database(path,version,tables,*,whatsapp=False):
+    if path.is_symlink() or not path.is_file():
+        raise ManagerError('Eine vorbereitete Verwaltungsdatenbank fehlt.')
+    db=sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=5)
+    try:
+        db.execute('PRAGMA query_only=ON')
+        actual={row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+        if (db.execute('PRAGMA user_version').fetchone()[0]!=version or actual!=set(tables)
+                or db.execute('PRAGMA quick_check').fetchall()!=[('ok',)]
+                or db.execute('PRAGMA foreign_key_check').fetchone() is not None
+                or db.execute("SELECT 1 FROM sqlite_master WHERE type IN ('view','trigger') LIMIT 1").fetchone() is not None):
+            raise ManagerError('Version oder Struktur der vorbereiteten Datenbank ist unbekannt.')
+        for table,columns in tables.items():
+            if [row[1] for row in db.execute('PRAGMA table_info('+table+')')]!=columns:
+                raise ManagerError('Vorbereitete Datenbankstruktur ist unvollständig.')
+        if whatsapp:
+            columns=db.execute('PRAGMA table_info(deliveries)').fetchall()
+            if ([row[5] for row in columns]!=[1,2,3,0,0] or any(row[2]!='TEXT' or row[3]!=1 for row in columns)
+                    or db.execute("SELECT 1 FROM deliveries WHERE state NOT IN ('sent','sending','uncertain') LIMIT 1").fetchone() is not None):
+                raise ManagerError('Vorbereitete WhatsApp-Versandclaims sind unbekannt.')
+    finally:
+        db.close()
 
 
 @contextmanager

@@ -30,6 +30,8 @@ Der Python-Einstieg akzeptiert für den vorbereiteten Rückweg nun `python3 -m g
 
 Ein ausschließlich aus vertrauenswürdigen importierten Profilmetadaten stammender `diagnostic_directory` bleibt auch im Python-Rückweg erhalten. Dadurch lesen Bereitschaft und Protokollanzeige weiterhin den aktiven ASKA-Runnerpfad. Die HTTP-Profilanlage kann dieses interne Feld nicht festlegen. Dieser Schritt führt keine Kopie oder tatsächliche Umschaltung aus; Releaseinstallation, konsistente Datenübernahme, Launcher und vollständiger Rückwegtest folgen.
 
+Nach Erwerb der Sperre und vor Dienstaufbau prüft der explizite Rückweg die Profile ohne Standardableitung, bestehenden Schlüssel, Zugangseinstellungen und vollständigen bekannten Zugriffs-/Plattform-/WhatsApp-Datenbankschemata ausschließlich lesend. Fehlende leere Datenbanken, unbekannte Versionen und Versandzustände werden abgelehnt. Eine erhaltene WhatsApp-Gruppenwahl verlangt auch erhaltene private Zugangsdaten. Die Prüfung verändert insbesondere keinen `sending`-Claim und legt keine Ersatzdatenbank an. Der bisherige Standardstart ohne ausdrückliche gemeinsame Ablage behält seinen eigenen Einrichtungspfad.
+
 ## Nachweise und offene Abnahme
 
 Die vollständige Dashboard-Browserfixture verwendet jetzt den echten PHP-Supervisor. Alle HTTP- und CLI-Einstiege erhalten dieselben reinen Testadapter. Zusätzlich zu den Fach-/Chronik-/Wandteppichprüfungen werden doppelter Start vor Laufkennungsänderung, Ersatz eines regulär beendeten Workers, geordnetes Beenden, gleichbleibender Sitzungsschlüssel beim Neustart und ein erzwungener Ausfall des eigenen Beobachters geprüft. Der simulierte Spielprozesszustand bleibt jeweils laufend. Ein echter ASKA-Speicherabschluss oder ein Windows-Neustart wird daraus nicht abgeleitet.

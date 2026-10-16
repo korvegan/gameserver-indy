@@ -7,7 +7,7 @@ from .core import ManagerError
 from .server import serve
 from .registry import ServerRegistry
 from .games import GAME_TYPES
-from .runtime_state import state_directory, controller_lease
+from .runtime_state import state_directory, controller_lease, validate_prepared_state
 
 
 def main():
@@ -32,6 +32,8 @@ def main():
             return
         root = state_directory(args.state_dir)
         with controller_lease(root):
+            if args.state_dir is not None:
+                validate_prepared_state(root)
             registry = ServerRegistry(root=root)
             if args.command == "serve":
                 serve(registry, args.port)
