@@ -4,6 +4,7 @@ __pycache__/
 .env
 manager.local.json
 launcher.local.json
+.indy-controller.lock
 data/
 artifacts/
 node_modules/

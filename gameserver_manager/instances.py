@@ -31,7 +31,7 @@ class GameServerManager:
                                    "server_directory": self.settings.get("server_directory", DEFAULT_DIRECTORY)}
         self.game = GAME_TYPES[self.profile["game"]]
         self.data = self.root / "data" if self.profile["id"] == "enshrouded" else self.root / "data" / "servers" / self.profile["id"]
-        self.diagnostic_directory = self.data / "logs"
+        self.diagnostic_directory = local_path(self.profile['diagnostic_directory']) if self.profile.get('diagnostic_directory') else self.data / "logs"
         self._windows_user_profile = None
         self.directory = local_path(self.profile["server_directory"])
         self.bridge = bridge or WindowsServerBridge(self.profile["server_directory"], self.game.id,
