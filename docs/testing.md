@@ -10,8 +10,8 @@ erforderlichen Status dauerhaft offen lassen.
 | Dokumentation / Projektskill | Auswahllogik und gemeinsamer Abschlussstatus |
 | Webmodule, Bilder, Twig, Dashboard-Assetroute | Syntax, Dashboard/API-Test und Symfony-Browser |
 | Symfony-Fachlogik | Linux-PHPUnit, Vertragsvergleiche und Symfony-Browser |
-| Native Brücke, Prozesse, Spielkonfiguration, Sicherungen, Releases | zusätzlich Windows-Symfony und Python-Plattformmatrix |
-| Python-Rückweg | Python-Plattformmatrix und dessen Browserprüfung |
+| Native Brücke, Prozesse, Spielkonfiguration, Sicherungen, Releases | zusätzlich Windows-Symfony |
+| Archivierte Python-Anwendung | keine aktiven Prüfungen |
 | Gemeinsame Infrastruktur / unbekannt | sämtliche Prüfungen |
 
 Die überschaubaren Regeln stehen in `.github/ci-plan.cjs`; ihre Regressionen laufen
@@ -26,7 +26,11 @@ PRs und `main` prüfen jeweils ihren eigenen getesteten Tree mit derselben Auswa
 Der Squash-Merge wird damit geprüft, ohne für einen reinen UI-Merge wieder die
 volle Plattformmatrix anzufordern. Ein vollständiger Lauf erfolgt täglich um
 03:23 UTC und kann über **Actions → Checks → Run workflow** gestartet werden.
-Python bleibt bis zu einer ausdrücklich beschlossenen Ablösung unterstützt.
+Auf ausdrücklichen Nutzerwunsch vom 17.10.2026 ist Symfony die einzige unterstützte
+Anwendungslaufzeit. Python-Backendmatrix und Sprachvergleiche entfallen auch im
+Volllauf; die archivierte Anwendung wird nicht weiterentwickelt oder getestet.
+Python-Hilfsprogramme zum Start isolierter PHP-Testfixtures sind davon getrennte
+Entwicklungswerkzeuge, kein zusätzlich unterstütztes Backend.
 
 ## Zeitvergleich
 

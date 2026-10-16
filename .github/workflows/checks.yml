@@ -20,7 +20,6 @@ jobs:
       symfony_os: ${{ steps.select.outputs.symfony_os }}
       dashboard_only: ${{ steps.select.outputs.dashboard_only }}
       native: ${{ steps.select.outputs.native }}
-      python: ${{ steps.select.outputs.python }}
       ui: ${{ steps.select.outputs.ui }}
       full: ${{ steps.select.outputs.full }}
     steps:
@@ -63,21 +62,6 @@ jobs:
       - run: php bin/console lint:container
       - run: php bin/console lint:twig templates
       - run: php vendor/bin/phpunit ${{ needs.plan.outputs.dashboard_only == 'true' && '--filter DashboardTest' || '' }}
-      - name: Configuration parity with Python baseline
-        if: needs.plan.outputs.dashboard_only != 'true'
-        run: python tools/compare_configurations.py
-      - name: Chronicle and evidence compatibility with Python baseline
-        if: needs.plan.outputs.dashboard_only != 'true'
-        run: python tools/check_chronicle_compatibility.py
-      - name: Steam and join information compatibility with Python baseline
-        if: needs.plan.outputs.dashboard_only != 'true'
-        run: python tools/check_integration_compatibility.py
-      - name: WhatsApp readiness, sanitized logs and delivery claim compatibility
-        if: needs.plan.outputs.dashboard_only != 'true'
-        run: python tools/check_whatsapp_compatibility.py
-      - name: Backup and restore compatibility with Python baseline
-        if: needs.plan.outputs.dashboard_only != 'true'
-        run: python tools/check_backup_compatibility.py
       - name: Native disposable Windows process
         if: runner.os == 'Windows'
         run: php vendor/bin/phpunit --filter Native
@@ -126,65 +110,10 @@ jobs:
           name: symfony-browser-screenshots
           path: artifacts/symfony-*.png
           if-no-files-found: ignore
-  test:
-    needs: plan
-    if: needs.plan.outputs.python == 'true' || needs.plan.outputs.native == 'true'
-    name: Backend (${{ matrix.os }})${{ matrix.python == '3.15' && ' - Python 3.15' || '' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python: ['3.11', '3.15']
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
-        with:
-          python-version: '${{ matrix.python }}'
-      - run: python -m unittest discover -s tests -v
-      - name: Windows process integration
-        if: runner.os == 'Windows' && needs.plan.outputs.native == 'true'
-        run: python -m unittest discover -s tests -p 'test_windows*.py' -v
-        env:
-          GAMESERVER_WINDOWS_TEST: '1'
-      - name: Windows launcher and shortcut installer
-        if: runner.os == 'Windows' && needs.plan.outputs.native == 'true'
-        shell: powershell
-        run: ./tests/test-desktop-launcher.ps1
-      - name: Private family setup with isolated mocks
-        if: runner.os == 'Windows' && needs.plan.outputs.native == 'true'
-        shell: powershell
-        run: ./tests/test-family-setup.ps1
-  browser:
-    needs: plan
-    if: needs.plan.outputs.python == 'true'
-    name: Browser (Chromium)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-python@v7.0.0
-        with:
-          python-version: '3.11'
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version-file: '.node-version'
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: npm run check:js
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser
-      - uses: actions/upload-artifact@v7.0.2
-        if: always()
-        with:
-          name: browser-screenshots
-          path: artifacts/
-          if-no-files-found: ignore
   result:
     name: Relevant checks
     if: always()
-    needs: [plan, symfony, symfony-browser, test, browser]
+    needs: [plan, symfony, symfony-browser]
     runs-on: ubuntu-latest
     steps:
       - name: Require successful selection and all selected jobs
@@ -193,7 +122,7 @@ jobs:
         run: |
           node <<'NODE'
           const jobs=JSON.parse(process.env.RESULTS), p=jobs.plan.outputs;
-          const selected={symfony:p.symfony==='true','symfony-browser':p.ui==='true',test:p.python==='true'||p.native==='true',browser:p.python==='true'};
+          const selected={symfony:p.symfony==='true','symfony-browser':p.ui==='true'};
           if(jobs.plan.result!=='success' || Object.values(jobs).some(j=>!['success','skipped'].includes(j.result))
             || Object.entries(selected).some(([name,required])=>required && jobs[name].result!=='success')) process.exit(1);
           NODE

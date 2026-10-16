@@ -3,12 +3,12 @@ const {execFileSync} = require('node:child_process');
 const fs = require('node:fs');
 
 function plan(files, event = 'pull_request') {
-  const result = {symfony:false, native:false, python:false, ui:false, full:false, dashboard_only:true};
+  const result = {symfony:false, native:false, ui:false, full:false, dashboard_only:true};
   const reasons = new Set();
-  const all = reason => { Object.assign(result,{symfony:true,native:true,python:true,ui:true,full:true,dashboard_only:false}); reasons.add(reason); };
+  const all = reason => { Object.assign(result,{symfony:true,native:true,ui:true,full:true,dashboard_only:false}); reasons.add(reason); };
   if (['schedule','workflow_dispatch'].includes(event) || !files.length) all('Complete scheduled/manual run or unavailable diff');
   for (const file of files) {
-    if (/^(docs\/|skills\/)|\.md$/.test(file)) continue;
+    if (/^(docs\/|skills\/|archive\/)|\.md$/.test(file)) continue;
     if (/^(web\/|symfony\/templates\/|tests\/browser-[^/]+\.cjs$)/.test(file)
       || /^symfony\/(src\/Http\/DashboardController.php|tests\/DashboardTest.php)$/.test(file)) {
       result.symfony=true; result.ui=true; reasons.add('Dashboard and assets'); continue;
@@ -20,11 +20,12 @@ function plan(files, event = 'pull_request') {
         || /^symfony\/tests\/(Native|State|Release|WorldBackups|ManagedProcess)/.test(file)) {
         result.native=true; reasons.add('Native processes, storage or releases');
       }
-    } else if (/^(gameserver_manager\/|tests\/test_[^/]+\.py$|profiles\/)/.test(file)) {
-      result.python=true; reasons.add('Python compatibility or shared game profiles');
-      if (/windows|backups|profiles\//.test(file)) { result.native=true; result.symfony=true; }
+    } else if (/^profiles\//.test(file)) {
+      result.symfony=true; result.native=true; result.ui=true; reasons.add('Shared game profiles');
+    } else if (/^(gameserver_manager\/|tests\/test_[^/]+\.py$)/.test(file)) {
+      reasons.add('Retired Python application: no active tests');
     } else if (/^scripts\/.*\.ps1$/.test(file)) {
-      result.native=true; result.python=true; result.symfony=true; reasons.add('Windows launcher or bridge');
+      result.native=true; result.symfony=true; reasons.add('Windows launcher or bridge');
     } else { all('Shared infrastructure or unclassified path: '+file); }
   }
   result.symfony_os = JSON.stringify(result.native ? ['ubuntu-latest','windows-latest'] : ['ubuntu-latest']);
