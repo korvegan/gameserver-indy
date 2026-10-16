@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Game;
 
 use App\Storage\PrivateFiles;
+use App\Storage\UnicodeText;
 
 final class EnshroudedConfiguration implements ConfigurationAdapter
 {
@@ -17,7 +18,7 @@ final class EnshroudedConfiguration implements ConfigurationAdapter
     {
         $values = get_object_vars($configuration);
         foreach (['name', 'saveDirectory', 'logDirectory', 'ip', 'gameSettingsPreset'] as $key) {
-            if (!is_string($values[$key] ?? null) || trim($values[$key]) === '') { throw new \InvalidArgumentException($key.': Ein nicht leerer Text ist erforderlich.'); }
+            if (!is_string($values[$key] ?? null) || UnicodeText::trim($values[$key]) === '') { throw new \InvalidArgumentException($key.': Ein nicht leerer Text ist erforderlich.'); }
         }
         foreach (['slotCount' => [1, 16], 'queryPort' => [1, 65535]] as $key => [$low, $high]) {
             $this->integer($values[$key] ?? null, $low, $high, $key);
@@ -34,7 +35,7 @@ final class EnshroudedConfiguration implements ConfigurationAdapter
         if (!is_array($values['userGroups'] ?? null) || !$values['userGroups']) { throw new \InvalidArgumentException('Mindestens eine Benutzergruppe ist erforderlich.'); }
         $names = [];
         foreach ($values['userGroups'] as $group) {
-            if (!$group instanceof \stdClass || !is_string($group->name ?? null) || trim($group->name) === '' || !is_string($group->password ?? null)) { throw new \InvalidArgumentException('Jede Benutzergruppe benötigt Namen und Passwortfeld.'); }
+            if (!$group instanceof \stdClass || !is_string($group->name ?? null) || UnicodeText::trim($group->name) === '' || !is_string($group->password ?? null)) { throw new \InvalidArgumentException('Jede Benutzergruppe benötigt Namen und Passwortfeld.'); }
             $name = mb_convert_case($group->name, MB_CASE_FOLD, 'UTF-8');
             if (in_array($name, $names, true)) { throw new \InvalidArgumentException('Benutzergruppen benötigen eindeutige Namen.'); }
             $names[] = $name;

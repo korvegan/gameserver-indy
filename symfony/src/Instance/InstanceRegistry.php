@@ -78,6 +78,11 @@ final class InstanceRegistry
         $labels = SliceRuntime::SERVERS;
         foreach ($this->settings()->servers as $profile) { $labels[$profile->id] = $profile->label; } return $labels;
     }
+    public function executionLabels(): array
+    {
+        if ($this->runtime->driver !== 'managed') { return SliceRuntime::SERVERS; }
+        $labels = []; foreach ($this->settings()->servers as $profile) { $labels[$profile->id] = $profile->label; } return $labels;
+    }
     public function configPath(\stdClass $profile): string
     {
         return $this->paths->local(($profile->config_path ?? '') !== '' ? $profile->config_path

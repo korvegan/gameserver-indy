@@ -7,7 +7,12 @@
 http://127.0.0.1:{$SLICE_PORT:18865} {
 	bind 127.0.0.1
 	root * public
-	request_body {
+	@configuration path /api/config
+	request_body @configuration {
+		max_size 1048576
+	}
+	@small not path /api/config
+	request_body @small {
 		max_size 8KB
 	}
 	php_server {

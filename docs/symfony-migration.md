@@ -155,7 +155,7 @@ Enshrouded-JSON behält unbekannte Objekte, Listen, Wahrheitswerte, native Ganzz
 
 `InstanceConfiguration` verlangt ausdrückliche Ziele und passende Rechte. Schreibvorgänge teilen Annahme-/Ausführungssperren mit den Aufträgen, prüfen ausstehende Jobs, einen eindeutig gestoppten Server/Starter und `restore-pending.json`. Ein SHA256-Dateistand schützt Entwürfe vor inzwischen geänderten Dateien. Vor jeder Änderung entsteht eine private, bytegleiche Sicherung; Welt-/Konfigurationsüberschneidungen werden abgewiesen. Konfigurationssicherungen ersetzen keine Weltsicherung.
 
-Die API ergänzt `GET/POST /api/servers`, `GET/POST /api/config`, `POST /api/setup` und `POST /api/connections/settings`. Der Konfigurations-POST enthält `server_id`, `config` als Objekt und `revision` aus der Lesesicht. Die vollständige Oberfläche folgt #52. Die unveränderte Durchstichsseite steuert weiterhin ausschließlich ihre zwei Testprofile. **Bis #49 einen realen Prozesszustand liefert, verweigert der Konfigurationsdienst Schreibaktionen für importierte Spielprofile.** Ein Metadatenimport aktiviert keine Prozesssteuerung oder Startautomatik.
+Die API ergänzt `GET/POST /api/servers`, `GET/POST /api/config`, `POST /api/setup` und `POST /api/connections/settings`. Der Konfigurations-POST enthält `server_id`, `config` als Objekt und `revision` aus der Lesesicht; der native Auftragsmodus aus #49 benötigt zusätzlich `request_id` und antwortet mit HTTP 202. Die vollständige Oberfläche folgt #52. Der Standard-Durchstich steuert ausschließlich seine zwei Testprofile. Im getrennten nativen Profilmodus aus #49 prüfen Schreibaktionen den echten Prozesszustand. Ein Metadatenimport allein aktiviert keine Prozesssteuerung oder Startautomatik.
 
 ```bash
 # Nur in einem eigens initialisierten Symfony-Datenordner:
@@ -164,7 +164,23 @@ php bin/console indy:profiles:import /privat/kopie/manager.local.json
 
 Der Befehl prüft die ausdrücklich angegebene Profilkopie und übernimmt deren exakte Bytes und Metadaten. Bestehende Ziele und unbekannte Versionen werden abgewiesen; weder Spielkonfigurationen noch Welten werden verändert. Eine Kopie der Profilmetadaten ist noch kein vollständiges Migrationspaket: Die externe ASKA-Datei, andere Spielkonfigurationen und die getrennten Datenbanken werden beim kontrollierten Datenabgleich in #54 konsistent verglichen. Bisher wurden ausschließlich eigene synthetische Quellen importiert.
 
-`compare_configurations.py` führt dieselben 34 synthetischen Fälle gegen das bestehende Python-Backend und die neuen PHP-Adapter aus. Es vergleicht Validierung, öffentliche Werte, ASKA-Dateibytes und Enshrouded-JSON-Inhalte. PHP-Tests prüfen zusätzlich Dateistände, exakte Sicherungen, Profil-/Rollengrenzen, externe ASKA-Metadaten, gesperrte Worker/Starter, Wiederherstellungsmarker und überlappende Speicherorte. Die Vergleiche laufen in Linux- und Windows-CI; sie ersetzen keinen echten ASKA-Weltstopp oder die spätere Produktionsumschaltung.
+`compare_configurations.py` führt dieselben 40 synthetischen Fälle gegen das bestehende Python-Backend und die neuen PHP-Adapter aus. Es vergleicht Validierung einschließlich Unicode-Leerzeichen, öffentliche Werte, ASKA-Dateibytes und Enshrouded-JSON-Inhalte. PHP-Tests prüfen zusätzlich Dateistände, exakte Sicherungen, Profil-/Rollengrenzen, externe ASKA-Metadaten, gesperrte Worker/Starter, Wiederherstellungsmarker und überlappende Speicherorte. Die Vergleiche laufen in Linux- und Windows-CI; sie ersetzen keinen echten ASKA-Weltstopp oder die spätere Produktionsumschaltung.
+
+## Native Aufträge und Prozessbeobachtung #49
+
+`WindowsProcessGateway` übernimmt die vorhandene PowerShell-Grenze für registrierte Instanzen. Das Spielprofil liefert den Programmnamen, das Instanzprofil die Installation und gegebenenfalls externe ASKA-Konfiguration und Startdatei. HTTP-Anfragen dürfen keine Prozesspfade überschreiben. `NativePowerShell` erkennt bereits native Laufwerks-/UNC-Pfade, statt sie erneut mit `wslpath` umzuwandeln. Ein eigener, privater Anfrage-/Antwortumschlag verhindert, dass der Konsolenwechsel beim regulären Stopp unter nativem PHP die Antwort verschluckt. Fehler projizieren keine ungefilterten Prozessargumente oder Skriptausgaben in API/Logs.
+
+Die Prozesszuordnung behält den vollständigen kanonischen Programmpfad einschließlich `GetLongPathName`. Vor einem Stoppsignal werden zudem Startzeit und aktueller Programmpfad des konkreten Prozesses nochmals verglichen. Es gibt weiterhin keinen erzwungenen Spielprozessstopp. Ein externer Starter wird nur anhand seiner gespeicherten PID/Startzeit übernommen. Prozess läuft, Starter arbeitet und Sitzung ist bereit bleiben getrennte Belege; der neue Prozessadapter behauptet ohne Spielbeleg keine Bereitschaft.
+
+`ProcessObservation` teilt eine begrenzte, nach 30 Sekunden veraltete Lesesicht. Die Profilansicht liest diesen Cache ohne native Aufrufe; Konfigurations-/Lebenszyklusaktionen prüfen den Zustand frisch im Worker. Ein älterer, noch laufender Beobachtungsabruf darf ein inzwischen bestätigtes Aktionsergebnis nicht überschreiben. `indy:observe` fragt die Profile zentral lesend ab. Die lokale Probe mit eigenen nativen Stellvertretern ergab rund 590 ms Median für eine frische PowerShell-Abfrage und etwa 0,13 ms je geteilter Lesesicht (drei native bzw. 100 Cache-Abfragen). Das stützt die Weiterverwendung der vorhandenen Steuerung mit gemeinsamem Beobachter; es ist keine Spiel-FPS- oder Lastmessung. Ein zusätzlicher nativer Agent ist damit aktuell nicht begründet.
+
+Die drei Serverbefehle bleiben je Instanz FIFO mit insgesamt 16 und je Ziel acht ausstehenden Aufträgen. Konfigurations-/Setupaufträge sind exklusiv und werden im nativen Modus ebenfalls mit HTTP 202 angenommen. Ihre privaten Nutzdaten bleiben außerhalb von Job-API und Ereignisstream. Der Worker verwendet denselben Ausführungsclaim für die Dateitransaktion; eine bereits gehaltene Instanzsperre wird nicht erneut beantragt. Lange native Zustandsprüfungen halten dabei weder die globale Annahmesperre noch die kurze Sperre zum Vergleich der Weltpfade.
+
+`RuntimeLifecycle` kennzeichnet einen geöffneten Verwaltungslauf mit einer beständigen Laufkennung. Neue Annahmen und jeder Worker prüfen sie erneut. Schließen und Wiederöffnen unterbrechen wartende Altbefehle aller Ziele, ohne sie erneut auszuführen. Ein alter aktiver Worker muss zuerst seine Ausführungssperre freigeben. Der native Helfer prüft die Laufkennung zusätzlich unmittelbar vor Prozessstart oder Stoppsignal; ein Neustart darf nach Verwaltungsende nicht noch den anschließenden Start ausführen. Der Teststarter hält dazu eine eigene Supervisor-Sperre außerhalb des Datenordners bereits vor der Initialisierung. `indy:runtime open/close` sind interne Konsolenoperationen unter dieser Sperre. Der endgültige Produktions-Supervisor und sein Start-/Release-/Rollback-Vertrag werden in #54 eingebunden.
+
+Ein normaler Streamabschluss oder vorübergehender HTTP-503-Fehler bekommt einen begrenzten Neuaufbau aus konsistentem Snapshot und Cursor. Browsertests reproduzieren ausdrücklich den permanent geschlossenen `EventSource` nach HTTP 503, damit die Live-Ansicht beim Verwaltungsneustart wiederkommt. Freigabeentzug schließt diesen Wiederaufbau; ein bloßer Netzfehler sperrt weiterhin keine Befehle und wiederholt keinen POST.
+
+`NativeManagedFlowTest` kompiliert eigene, durch Hashes belegte Programme auf NTFS mit denselben Programmnamen wie die Spiele. Er prüft zwei getrennte Installationen, reguläres Ctrl+C, einen externen ASKA-Starter mit externer Konfigurationsdatei, PID/Startidentität, getrennte Bereitschaft, geteilten Status und die tatsächliche native Sperre eines beendeten Laufs. Kein echtes Spielprogramm oder Nachrichtendienst wird dafür ausgeführt. Die bisherige Python-Verwaltung bleibt produktiv; Abnahme echter Weltspeicherung, Familiensitzungen, privater Datenkopien und Kaltstart gehört weiter zu #54.
 
 ## Prüfungen
 
@@ -176,7 +192,7 @@ php bin/console lint:container
 php bin/console lint:twig templates
 php vendor/bin/phpunit
 python tools/compare_configurations.py
-SLICE_WINDOWS_TEST=1 php vendor/bin/phpunit --filter NativeWindowsFlowTest
+SLICE_WINDOWS_TEST=1 php vendor/bin/phpunit --filter Native
 cd ..
 npm ci --no-audit --no-fund
 npm run test:symfony-browser

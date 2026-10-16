@@ -5,9 +5,12 @@ namespace App\Job;
 
 use App\Access\AccessPolicy;
 use App\Access\Principal;
+use App\Instance\InstanceConfiguration;
 use App\Runtime\OutcomeUnknown;
+use App\Runtime\RuntimeLifecycle;
 use App\Runtime\ServerControl;
 use App\Runtime\SliceRuntime;
+use App\Storage\PrivateFiles;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,7 +21,9 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 final class ExecuteServerJobHandler
 {
     public function __construct(private readonly JobRepository $jobs, private readonly SliceRuntime $runtime,
-        private readonly ServerControl $control, private readonly AccessPolicy $policy) {}
+        private readonly ServerControl $control, private readonly AccessPolicy $policy,
+        private readonly RuntimeLifecycle $lifecycle, private readonly WorkerClaim $claim,
+        private readonly InstanceConfiguration $configuration) {}
 
     public function __invoke(ExecuteServerJob $message): void
     {
@@ -50,19 +55,29 @@ final class ExecuteServerJobHandler
             while ($job = $this->jobs->next($serverId)) {
                 $this->jobs->transition($job['id'], 'running', 'Wird ausgeführt.');
                 try {
-                    $this->policy->require(Principal::fromClaim($job['actor']), 'server.'.$job['operation'], $serverId);
-                    $this->control->execute($serverId, $job['operation']);
+                    $this->lifecycle->requireClaim($job);
+                    $actor = Principal::fromClaim($job['actor']);
+                    $this->policy->require($actor, JobService::permission($job['operation']), $serverId);
+                    $result = $this->claim->run($job, function () use ($job, $actor, $serverId): ?array {
+                        if ($job['operation'] === 'config') {
+                            $payload = PrivateFiles::object($job['payload']);
+                            return $this->configuration->save($actor, $serverId, $payload->config, $payload->revision);
+                        }
+                        if ($job['operation'] === 'setup') { return $this->configuration->setup($actor, $serverId); }
+                        $this->control->execute($serverId, $job['operation']); return null;
+                    });
                 } catch (\Throwable $error) {
                     $interrupted = $error instanceof OutcomeUnknown || $error instanceof AccessDeniedException;
                     $this->jobs->failWithFollowers($job['id'], $interrupted ? 'interrupted' : 'failed',
-                        $interrupted ? $error->getMessage() : 'Auftrag fehlgeschlagen. Testkonfiguration prüfen.');
+                        $interrupted || $error instanceof \DomainException || $error instanceof \InvalidArgumentException
+                            ? $error->getMessage() : 'Auftrag fehlgeschlagen. Profilkonfiguration und Protokoll prüfen.');
                     return;
                 }
                 // A failed write leaves running; redelivery or the HTTP/SSE reconciler only interrupts it.
-                $this->jobs->transition($job['id'], 'succeeded', match ($job['operation']) {
+                $this->jobs->transition($job['id'], 'succeeded', $result['message'] ?? match ($job['operation']) {
                     'start' => 'Startauftrag abgeschlossen.', 'stop' => 'Stoppauftrag abgeschlossen.',
-                    'restart' => 'Neustartauftrag abgeschlossen.',
-                });
+                    'restart' => 'Neustartauftrag abgeschlossen.', default => 'Auftrag abgeschlossen.',
+                }, $result);
             }
         } finally {
             $lock->release();

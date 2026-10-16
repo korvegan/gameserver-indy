@@ -6,7 +6,9 @@
     [ValidatePattern('^[-A-Za-z0-9_]*$')][string]$ConfigArgument = '',
     [string]$ConfigPath = '',
     [string]$LauncherScript = '',
-    [string]$DiagnosticDirectory = ''
+    [string]$DiagnosticDirectory = '',
+    [string]$RuntimeFencePath = '',
+    [string]$RuntimeEpoch = ''
 )
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
@@ -29,6 +31,16 @@ function Get-CanonicalPath([string]$path) {
     $length = [GameServerPath]::GetLongPathName($full, $buffer, $buffer.Capacity)
     if ($length -gt 0 -and $length -lt $buffer.Capacity) { return $buffer.ToString() }
     return $full
+}
+
+function Assert-RuntimeFence {
+    # The Python manager has no fence; Symfony supplies both values for every action.
+    if (-not $RuntimeFencePath -and -not $RuntimeEpoch) { return }
+    if (-not $RuntimeFencePath -or $RuntimeEpoch -notmatch '^[a-f0-9]{32}$') { throw 'Runtime fence is incomplete.' }
+    $fence = [IO.File]::ReadAllText($RuntimeFencePath) | ConvertFrom-Json
+    if ($fence.active -isnot [bool] -or -not $fence.active -or $fence.epoch -cne $RuntimeEpoch) {
+        throw 'Runtime was stopped or replaced. No new process action was performed.'
+    }
 }
 
 function Get-ServerProcesses {
@@ -73,6 +85,7 @@ try {
             $runner = Join-Path $PSScriptRoot 'run-server-launcher.ps1'
             $arguments = @('-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File', ('"{0}"' -f $runner), '-LauncherScript', ('"{0}"' -f $LauncherScript), '-DiagnosticDirectory', ('"{0}"' -f $DiagnosticDirectory))
             if ($ConfigPath) { $arguments += @('-ConfigPath', ('"{0}"' -f $ConfigPath)) }
+            Assert-RuntimeFence
             $launcher = Start-Process -FilePath "$PSHOME\powershell.exe" -WorkingDirectory $ServerDirectory -ArgumentList $arguments -PassThru
             @{ pid = $launcher.Id; started = $launcher.StartTime.ToUniversalTime().ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $DiagnosticDirectory 'launcher-state.json') -Encoding UTF8
             $deadline = [DateTime]::UtcNow.AddSeconds(15)
@@ -86,8 +99,10 @@ try {
             if ($SteamAppId) { $env:SteamAppId = [string]$SteamAppId; $env:SteamGameId = [string]$SteamAppId }
             if ($ConfigArgument) {
                 if (-not $ConfigPath -or -not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { throw 'Serverkonfiguration fehlt.' }
+                Assert-RuntimeFence
                 Start-Process -FilePath $executable -WorkingDirectory $ServerDirectory -ArgumentList @($ConfigArgument, ('"{0}"' -f $ConfigPath)) | Out-Null
             } else {
+                Assert-RuntimeFence
                 Start-Process -FilePath $executable -WorkingDirectory $ServerDirectory | Out-Null
             }
             Start-Sleep -Seconds 2
@@ -110,6 +125,16 @@ public static class GameServerConsole {
 '@
         $serverPid = [int]$processes[0].ProcessId
         $serverProcess = Get-Process -Id $serverPid -ErrorAction Stop
+        $started = $processes[0].CreationDate.ToUniversalTime()
+        if ([Math]::Abs(($serverProcess.StartTime.ToUniversalTime() - $started).TotalMilliseconds) -gt 10) {
+            throw 'The process identity changed before stop. No signal was sent.'
+        }
+        $currentPath = Get-CanonicalPath $serverProcess.MainModule.FileName
+        $expectedPath = Get-CanonicalPath (Join-Path $ServerDirectory $ExecutableName)
+        if (-not [string]::Equals($currentPath, $expectedPath, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'The process executable changed before stop. No signal was sent.'
+        }
+        Assert-RuntimeFence
         [GameServerConsole]::FreeConsole() | Out-Null
         if (-not [GameServerConsole]::AttachConsole($serverPid)) { throw 'Serverkonsole nicht erreichbar. Bitte im Serverfenster Strg+C drücken.' }
         try {

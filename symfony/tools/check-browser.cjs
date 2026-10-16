@@ -41,6 +41,10 @@ const {setTimeout: delay} = require('node:timers/promises');
     const driver = process.env.SLICE_BROWSER_DRIVER || 'simulated';
     let owner = await start('owner', 18866, driver, 18868);
     await start('viewer', 18867, 'simulated');
+    const lifecycleBefore = await fs.readFile(path.join(state, 'owner/runtime-lifecycle.json'), 'utf8');
+    await assert.rejects(start('owner', 18871, driver), /Another supervisor owns this data folder/);
+    assert.equal(await fs.readFile(path.join(state, 'owner/runtime-lifecycle.json'), 'utf8'), lifecycleBefore,
+      'A second supervisor on a different port cannot reinitialize or replace the active runtime');
     browser = await chromium.launch({headless: true});
     const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
     const errors = []; page.on('pageerror', error => errors.push(error.message));
@@ -48,6 +52,16 @@ const {setTimeout: delay} = require('node:timers/promises');
     await page.goto(origin);
     await page.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
     await page.waitForFunction(() => document.querySelector('#server-state').textContent === 'Gestoppt');
+    let interruptedStream = 0;
+    await page.route('**/api/job-events*', route => {
+      interruptedStream++;
+      return interruptedStream === 1 ? route.fulfill({status: 503, contentType: 'application/json', body: '{}'}) : route.continue();
+    });
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    assert.ok(interruptedStream >= 2, 'A temporary HTTP 503 reopens EventSource without reloading again');
+    for (const id of ['start', 'stop', 'restart']) assert.equal(await page.locator('#' + id).isEnabled(), true);
+    await page.unrouteAll({behavior: 'wait'});
     const oldToken = await page.locator('meta[name="manager-token"]').getAttribute('content');
     let releaseStatus, arrived;
     const gate = new Promise(resolve => { releaseStatus = resolve; });

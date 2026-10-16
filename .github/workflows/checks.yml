@@ -41,7 +41,7 @@ jobs:
         run: python tools/compare_configurations.py
       - name: Native disposable Windows process
         if: runner.os == 'Windows'
-        run: php vendor/bin/phpunit --filter NativeWindowsFlowTest
+        run: php vendor/bin/phpunit --filter Native
         env:
           SLICE_WINDOWS_TEST: '1'
   symfony-browser:

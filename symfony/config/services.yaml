@@ -16,6 +16,8 @@ services:
       $localPort: '%env(int:SLICE_PORT)%'
   App\:
     resource: '../src/'
-    exclude: ['../src/Kernel.php', '../src/Job/ExecuteServerJob.php', '../src/Access/Principal.php']
+    exclude: ['../src/Kernel.php', '../src/Job/ExecuteServerJob.php', '../src/Access/Principal.php', '../src/Runtime/ServerStopped.php']
   App\Runtime\ServerControl:
     alias: App\Runtime\SelectedServerControl
+  App\Runtime\ProcessGateway:
+    alias: App\Runtime\WindowsProcessGateway

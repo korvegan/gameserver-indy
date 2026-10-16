@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace App\Game;
 
+use App\Storage\UnicodeText;
+
 final class AskaConfiguration implements ConfigurationAdapter
 {
     private const SECRETS = ['password', 'authentication token'];
@@ -17,11 +19,11 @@ final class AskaConfiguration implements ConfigurationAdapter
         $document = str_starts_with($bytes, "\xef\xbb\xbf") ? substr($bytes, 3) : $bytes;
         $values = new \stdClass();
         foreach (preg_split('/\r\n|\r|\n/', $document) as $line) {
-            $line = trim($line);
+            $line = UnicodeText::trim($line);
             if ($line === '' || $this->comment($line)) { continue; }
-            $pair = explode('=', $line, 2); $key = trim($pair[0]);
+            $pair = explode('=', $line, 2); $key = UnicodeText::trim($pair[0]);
             if (count($pair) !== 2 || $key === '' || property_exists($values, $key)) { throw new \InvalidArgumentException('Ungültige oder doppelte ASKA-Einstellung.'); }
-            $values->{$key} = trim($pair[1]);
+            $values->{$key} = UnicodeText::trim($pair[1]);
         }
         return $values;
     }
@@ -34,9 +36,9 @@ final class AskaConfiguration implements ConfigurationAdapter
         $lines = preg_split('/(?<=\n)|(?<=\r)(?!\n)/', $document, -1, PREG_SPLIT_NO_EMPTY);
         $output = ''; $written = [];
         foreach ($lines as $line) {
-            $stripped = trim($line);
+            $stripped = UnicodeText::trim($line);
             if (!$this->comment($stripped) && str_contains($stripped, '=')) {
-                $key = trim(explode('=', $stripped, 2)[0]);
+                $key = UnicodeText::trim(explode('=', $stripped, 2)[0]);
                 if (!property_exists($configuration, $key)) { continue; }
                 if (!preg_match('/^(\h*[^=]+?\h*=)[ \t]*(.*?)(\r\n|\n|\r)?$/D', $line, $match)) { throw new \InvalidArgumentException('Ungültige ASKA-Zeile.'); }
                 $output .= $match[1].' '.$configuration->{$key}.($match[3] ?? ''); $written[$key] = true;
@@ -60,10 +62,10 @@ final class AskaConfiguration implements ConfigurationAdapter
     {
         foreach ($configuration as $key => $value) {
             $key = (string) $key;
-            if ($key === '' || trim($key) !== $key || str_contains($key, '=') || $this->comment($key)
+            if ($key === '' || UnicodeText::trim($key) !== $key || str_contains($key, '=') || $this->comment($key)
                 || !is_string($value) || strpbrk($key.$value, "\r\n\0") !== false) { throw new \InvalidArgumentException('ASKA-Einstellungen benötigen einzeilige Schlüssel und Textwerte.'); }
         }
-        foreach (['server name', 'display name'] as $key) { if (trim($configuration->{$key} ?? '') === '') { throw new \InvalidArgumentException($key.': Ein Name ist erforderlich.'); } }
+        foreach (['server name', 'display name'] as $key) { if (UnicodeText::trim($configuration->{$key} ?? '') === '') { throw new \InvalidArgumentException($key.': Ein Name ist erforderlich.'); } }
         foreach (['steam game port', 'steam query port'] as $key) {
             $port = $configuration->{$key} ?? '';
             if (!preg_match('/^[0-9]+$/D', $port) || (int) $port < 1 || (int) $port > 65535) { throw new \InvalidArgumentException($key.': Erlaubt sind Ports von 1 bis 65535.'); }
@@ -78,8 +80,8 @@ final class AskaConfiguration implements ConfigurationAdapter
     }
     public function validateStart(\stdClass $configuration): void
     {
-        if (trim($configuration->{'authentication token'} ?? '') === '') { throw new \DomainException('Für ASKA fehlt ein Steam-Gameserver-Token.'); }
-        if (($configuration->mode ?? '') === 'custom' && trim($configuration->{'custom game preset path'} ?? '') === '') { throw new \DomainException('Für den eigenen ASKA-Modus fehlt der Pfad zur Spielvorlage.'); }
+        if (UnicodeText::trim($configuration->{'authentication token'} ?? '') === '') { throw new \DomainException('Für ASKA fehlt ein Steam-Gameserver-Token.'); }
+        if (($configuration->mode ?? '') === 'custom' && UnicodeText::trim($configuration->{'custom game preset path'} ?? '') === '') { throw new \DomainException('Für den eigenen ASKA-Modus fehlt der Pfad zur Spielvorlage.'); }
     }
     public function initial(): \stdClass
     {

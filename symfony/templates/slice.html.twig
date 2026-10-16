@@ -8,16 +8,16 @@
   <link rel="stylesheet" href="/slice.css">
   <script type="module" src="/slice.js"></script>
 </head>
-<body data-role="{{ role }}" data-permissions="{{ permissions|json_encode }}">
+<body data-role="{{ role }}" data-driver="{{ driver }}" data-permissions="{{ permissions|json_encode }}">
 <main>
   <header><strong>GAMESERVER INDY</strong><span>{{ role == 'owner' ? 'Besitzer' : (role == 'family' ? 'Familie' : 'Leser') }} · isolierter Testbetrieb</span></header>
   <p class="eyebrow">Migration zu Symfony</p>
   <h1>Ein Auftrag. Ein klarer Verlauf.</h1>
-  <p>Diese getrennte Testoberfläche verwaltet zwei {{ driver == 'windows' ? 'temporäre Windows-Testprogramme' : 'simulierte Testserver' }}. Sie verwendet keine Spielwelt.</p>
+  <p>{{ driver == 'managed' ? 'Getrennte Profilansicht für die Migrationsabnahme.' : ('Diese getrennte Testoberfläche verwaltet zwei ' ~ (driver == 'windows' ? 'temporäre Windows-Testprogramme' : 'simulierte Testserver') ~ '. Sie verwendet keine Spielwelt.') }}</p>
   <section class="card" aria-labelledby="server-title">
     <label for="server-select">Testprofil</label>
     <select id="server-select">{% for id, label in servers %}<option value="{{ id }}">{{ label }}</option>{% endfor %}</select>
-    <h2 id="server-title">Testserver Nord</h2>
+    <h2 id="server-title">{{ servers|first ?: 'Kein Serverprofil' }}</h2>
     <p id="server-state" role="status">Status wird geladen …</p>
     <div class="actions">
       {% for id, label in {start: 'Server starten', stop: 'Stoppen', restart: 'Neu starten'} %}
