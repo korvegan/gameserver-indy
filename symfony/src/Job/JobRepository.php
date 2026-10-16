@@ -47,15 +47,17 @@ final class JobRepository
             ?: throw new \InvalidArgumentException('Auftrag nicht gefunden.');
     }
 
-    public function recent(): array
+    public function recent(?array $serverIds = null): array
     {
         $this->ready();
-        return $this->db->fetchAllAssociative('SELECT * FROM slice_jobs ORDER BY sequence DESC LIMIT 30');
+        if ($serverIds === []) { return []; }
+        $where = $serverIds === null ? '' : ' WHERE server_id IN ('.implode(',', array_fill(0, count($serverIds), '?')).')';
+        return $this->db->fetchAllAssociative('SELECT * FROM slice_jobs'.$where.' ORDER BY sequence DESC LIMIT 30', $serverIds ?? []);
     }
 
-    public function snapshot(): array
+    public function snapshot(?array $serverIds = null): array
     {
-        return $this->transaction(fn () => ['jobs' => $this->recent(),
+        return $this->transaction(fn () => ['jobs' => $this->recent($serverIds),
             'cursor' => (int) $this->db->fetchOne('SELECT COALESCE(MAX(sequence),0) FROM slice_events')]);
     }
 

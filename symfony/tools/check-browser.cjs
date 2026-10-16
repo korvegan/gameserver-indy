@@ -214,6 +214,17 @@ const {setTimeout: delay} = require('node:timers/promises');
     await privatePage.unrouteAll({behavior: 'wait'});
     await privatePage.reload();
     await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
+    // A grant may also disappear after HTML but before the very first snapshot/stream.
+    let rejectedSnapshots = 0;
+    await privatePage.route('**/api/jobs', route => { rejectedSnapshots++; return route.fulfill({status: 403, contentType: 'application/json', body: '{}'}); });
+    await privatePage.route('**/api/session', route => route.fulfill({status: 403, contentType: 'application/json', body: '{}'}));
+    await privatePage.reload();
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Freigabe geändert');
+    for (const id of ['start', 'stop', 'restart']) assert.equal(await privatePage.locator('#' + id).isEnabled(), false);
+    assert.equal(rejectedSnapshots, 1, 'A rejected initial snapshot does not start a retry loop');
+    await privatePage.unrouteAll({behavior: 'wait'});
+    await privatePage.reload();
+    await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Live verbunden');
     assert.equal((await localPost('/api/access/settings', {enabled: false, hostname: privateHost, port: 18868})).status(), 200);
     await privatePage.waitForFunction(() => document.querySelector('#live-state').textContent === 'Freigabe geändert');
     for (const id of ['start', 'stop', 'restart']) assert.equal(await privatePage.locator('#' + id).isEnabled(), false);

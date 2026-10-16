@@ -76,9 +76,8 @@ final class SliceController extends AbstractController
             $job = $this->jobs->get($id); $this->denyAccessUnlessGranted('jobs.read', $job['server_id']);
             return $this->json(['job' => JobRepository::public($job)]);
         }
-        $snapshot = $this->jobs->snapshot();
-        $snapshot['jobs'] = array_values(array_map(JobRepository::public(...),
-            array_filter($snapshot['jobs'], fn ($job) => $this->policy->visible($principal, $job))));
+        $snapshot = $this->jobs->snapshot($principal->serverIds);
+        $snapshot['jobs'] = array_map(JobRepository::public(...), $snapshot['jobs']);
         return $this->json($snapshot);
     }
 

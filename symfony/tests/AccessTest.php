@@ -90,6 +90,20 @@ final class AccessTest extends SliceTestCase
         self::assertResponseIsSuccessful();
         self::assertSame('family', json_decode($client->getResponse()->getContent(), true)['role']);
     }
+    public function testScopedSnapshotFiltersBeforeLimitingAndKeepsItsGlobalCursor(): void
+    {
+        $client = $this->client(); $this->grant('viewer');
+        $jobs = static::getContainer()->get(JobRepository::class); $actor = new Principal('local-owner', 'owner');
+        $jobs->insert('visible', 'visible-request', 'demo-a', 'start', $actor);
+        for ($i = 0; $i < 35; ++$i) { $jobs->insert('hidden-'.$i, 'hidden-request-'.$i, 'demo-b', 'start', $actor); }
+        $client->request('GET', '/api/jobs', server: $this->remote('viewer@example.test')); self::assertResponseIsSuccessful();
+        $snapshot = json_decode($client->getResponse()->getContent(), true);
+        self::assertSame(['visible'], array_column($snapshot['jobs'], 'id'));
+        self::assertGreaterThanOrEqual(36, $snapshot['cursor']);
+        self::assertArrayNotHasKey('actor', $snapshot['jobs'][0]);
+        self::assertSame([], $jobs->snapshot([])['jobs']);
+        self::assertCount(30, $jobs->snapshot()['jobs']);
+    }
     public function testConfigurationKeepsStrictTypesAndLegacyUnicodeIdentityNormalization(): void
     {
         $this->client();
