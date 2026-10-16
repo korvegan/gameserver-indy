@@ -80,6 +80,9 @@ jobs:
       - run: npm run test:symfony-browser
         env:
           SLICE_FRANKENPHP: /tmp/indy-frankenphp
+      - run: npm run test:symfony-dashboard
+        env:
+          SLICE_FRANKENPHP: /tmp/indy-frankenphp
       - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:

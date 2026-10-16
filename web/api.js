@@ -1,13 +1,31 @@
 // Explicit request targets: selection changes cannot retarget an in-flight action.
+import {state} from './state.js';
 let token = '';
 let recoverSession;
 export function setToken(value) { token = value; }
 export function onSessionExpired(callback) { recoverSession = callback; }
+export const requestId = () => [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, '0')).join('');
 
 export async function api(path, body, serverId, signal) {
   const options = {cache: 'no-store', signal};
   if (body !== undefined) {
-    const payload = serverId ? {...body, server_id: serverId} : body;
+    let payload = serverId ? {...body, server_id: serverId} : body;
+    if (state.apiVersion >= 2) {
+      payload = {...payload};
+      if (path === '/api/servers') delete payload.server_id;
+      if (['/api/jobs', '/api/config', '/api/setup', '/api/updates/check', '/api/connections/refresh', '/api/discord/send'].includes(path)) {
+        payload.request_id ??= requestId();
+      }
+      if (path === '/api/config') payload.revision ??= state.configRevision;
+      if (path === '/api/jobs') {
+        const {server_id, request_id, operation, ...values} = payload;
+        const allowed = {backup: [], backup_verify: ['backup_id'], backup_pin: ['backup_id', 'pinned'], backup_settings: ['automatic_after_stop'],
+          backup_restore: ['backup_id', 'token', 'confirmation'], backup_recover: ['backup_id', 'token', 'confirmation']}[operation];
+        const fields = allowed ?? Object.keys(values);
+        const data = Object.fromEntries(fields.filter(key => Object.hasOwn(values, key)).map(key => [key, values[key]]));
+        payload = {server_id, request_id, operation, ...(Object.keys(data).length ? {payload: data} : {})};
+      }
+    }
     Object.assign(options, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Manager-Token': token},
       body: JSON.stringify(payload)});
   } else if (serverId) {

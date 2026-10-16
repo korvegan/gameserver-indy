@@ -147,7 +147,7 @@ class Handler(BaseHTTPRequestHandler):
                 "/style.css": ("style.css", "text/css; charset=utf-8"),
                 "/favicon.svg": ("favicon.svg", "image/svg+xml"),
             }
-            for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js",
+            for name in ("api.js", "state.js", "dom.js", "forms.js", "navigation.js", "jobs.js", "job-stream.js",
                          "views/server.js", "views/logs.js", "views/catalog.js", "views/community.js", "views/updates.js", "views/connection.js", "views/chronicle-form.js", "views/story.js", "views/story-art.js", "views/access.js", "views/backups.js", "views/whatsapp.js"):
                 files["/" + name] = (name, "text/javascript; charset=utf-8")
             if path in files:

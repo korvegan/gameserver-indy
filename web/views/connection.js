@@ -68,7 +68,7 @@ export function renderConnection(connection) {
   connectionControls();
 }
 
-export function bindConnections(refresh) {
+export function bindConnections(refresh, accepted) {
   $('#join-public-host').addEventListener('input', () => { state.connectionDirty = true; draftRevision++; });
   $('#join-public-form').addEventListener('submit', async event => {
     event.preventDefault();
@@ -96,7 +96,8 @@ export function bindConnections(refresh) {
     const target = state.selectedServer, epoch = state.selectionEpoch, revision = renderRevision;
     submitting = true; $('#refresh-connections').disabled = true;
     try {
-      const {connection} = await api('/api/connections/refresh', {}, target);
+      const {connection, job} = await api('/api/connections/refresh', {}, target);
+      if (job) { accepted?.(job); notice('Adressprüfung als Auftrag angenommen.'); return; }
       if (epoch === state.selectionEpoch && revision === renderRevision) renderConnection(connection);
     } catch (error) { notice(error.message, true); }
     finally {

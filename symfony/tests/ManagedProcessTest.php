@@ -186,6 +186,7 @@ final class ManagedProcessTest extends SliceTestCase
         $client->request('GET', '/api/session'); $session = json_decode($client->getResponse()->getContent(), true);
         self::assertSame(['fixture'], array_keys($session['servers']));
         $client->request('GET', '/api/config?server=fixture'); $config = json_decode($client->getResponse()->getContent(), true);
+        unset($config['game_profile']);
         $config['config']['unknown'] = ['nested' => str_repeat('synthetic-data-', 1000)]; $config['request_id'] = str_repeat('a', 32);
         $client->request('POST', '/api/config', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://127.0.0.1:18865',
             'HTTP_X_MANAGER_TOKEN' => $session['token']], content: json_encode($config));

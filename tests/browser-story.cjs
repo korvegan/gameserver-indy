@@ -2,6 +2,7 @@
 const {chromium} = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const origin = process.env.INDY_BROWSER_ORIGIN || 'http://127.0.0.1:8766';
 
 (async () => {
   const browser = await chromium.launch({headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined});
@@ -9,7 +10,7 @@ const fs = require('node:fs');
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   try {
-    await page.goto('http://127.0.0.1:8766/#scene-qa-milestone');
+    await page.goto(origin + '/#scene-qa-milestone');
     await page.locator('#scene-qa-milestone').waitFor();
     const animations = () => page.locator('#tapestry-viewport').evaluate(node => node.getAnimations({subtree: true}).map(item => item.playState));
     assert.deepEqual(await animations(), [], 'Historical scene must stay still.');
@@ -49,7 +50,7 @@ const fs = require('node:fs');
     assert.equal(await page.locator('#story-skip').isHidden(), true);
     await page.emulateMedia({reducedMotion: 'no-preference'});
     const chapter = await page.locator('#story-chapter').inputValue();
-    await page.goto('http://127.0.0.1:8766/#scene-' + id);
+    await page.goto(origin + '/#scene-' + id);
     await page.waitForFunction(id => document.activeElement.id === 'scene-' + id, id);
     assert.equal(await page.locator('#story-chapter').inputValue(), chapter);
     assert.deepEqual(await animations(), []);
@@ -80,18 +81,18 @@ const fs = require('node:fs');
     assert.equal(await page.locator('.tapestry-canvas').getAttribute('viewBox'), released);
     await page.locator('#story-fit').click();
     assert.equal(await page.locator('.tapestry-canvas').getAttribute('viewBox'), original);
-    const token = (await (await page.request.get('http://127.0.0.1:8766/api/session')).json()).token;
-    const latest = await (await page.request.get('http://127.0.0.1:8766/api/community/story')).json();
+    const token = (await (await page.request.get(origin + '/api/session')).json()).token;
+    const latest = await (await page.request.get(origin + '/api/community/story')).json();
     const position = Math.max(...latest.events.map(event => event.scene.position));
     const padding = (6 - (position + 1) % 6) % 6;
     for (let index = 0; index < padding + 12; index++) {
-      const response = await page.request.post('http://127.0.0.1:8766/api/community', {headers: {'X-Manager-Token': token}, data: {
+      const response = await page.request.post(origin + '/api/community', {headers: {'X-Manager-Token': token, Origin: origin}, data: {
         id: 'story-growth-' + index, revision: 1, title: 'Gemeinsamer Aufbruch ' + (index + 1), game_id: ['enshrouded', 'aska', 'raft'][index % 3],
         campaign: 'Drei Welten', members: ['Indy', 'Schwester', 'Schwager', 'Gefährtin'], badge: 'Aufbruch', occurred_at: ''
       }});
       assert.equal(response.status(), 200);
     }
-    await page.goto('http://127.0.0.1:8766/#scene-story-growth-' + (padding + 11));
+    await page.goto(origin + '/#scene-story-growth-' + (padding + 11));
     await page.locator('#scene-story-growth-' + (padding + 11)).waitFor();
     assert.equal(await page.locator('.tapestry-scene').count(), 6, 'Only one bounded chapter renders.');
     const sceneNodes = await page.locator('.tapestry-canvas *').count(); assert.ok(sceneNodes < 650);

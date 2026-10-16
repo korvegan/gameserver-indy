@@ -65,7 +65,7 @@ export function renderCatalog(catalog) {
   }
   selector.value = state.selectedServer;
   if (!$('#profile-game').options.length) {
-    for (const game of catalog.games) {
+    for (const game of catalog.games.filter(game => game.server_adapter !== false)) {
       const option = element('option', game.label); option.value = game.id;
       option.dataset.directory = game.default_directory || ''; option.dataset.launcher = String(game.external_launcher || false);
       $('#profile-game').append(option);
@@ -88,7 +88,7 @@ export function renderStatus(data) {
   }
   $('#process-id').textContent = status.processes?.map(p => p.pid).join(', ') || '—';
   const pending = state.pending.get(state.selectedServer);
-  $('#server-state').textContent = pending ? '◌ Auftrag läuft' : status.starting ? '◌ Starter arbeitet' : status.running ? '● Prozess läuft' : '○ Gestoppt';
+  $('#server-state').textContent = pending ? '◌ Auftrag läuft' : status.known === false ? 'Prozessstatus unbekannt' : status.starting ? '◌ Starter arbeitet' : status.running ? '● Prozess läuft' : '○ Gestoppt';
   $('#server-state').className = 'pill' + (status.running ? ' running' : '');
   $('#process-note').textContent = pending ? 'Fortschritt und Ergebnis unter Aufträge.' : status.starting ? 'Fortschritt im Starterprotokoll prüfen.'
     : status.running ? can('logs.read') ? 'Verbindungsbereitschaft im Serverlog prüfen.' : 'Prozess läuft. Spielbereitschaft ist noch nicht bestätigt.' : 'Bereit, wenn du es bist.';
