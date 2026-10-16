@@ -12,3 +12,12 @@ test('known shader flood keeps neighboring start messages and exact raw lines', 
   assert.deepEqual(groups.flatMap(group => group.lines), lines);
   assert.equal(groups[2].shader, false); assert.equal(groups[3].lines.length, 1);
 });
+test('search and explicit level filters retain unknown lines and original group boundaries', async () => {
+  const {shaderMessage, filteredGroups, lineLevel} = await import('../web/log-lines.js');
+  const text = `${shaderMessage}\nBuilt-in Resource Error: visible\n${shaderMessage}\nUnknown game message\nWarning: own fixture`;
+  assert.equal(filteredGroups(text, 'shader').length, 2);
+  assert.equal(filteredGroups(text, '', 'error')[0].lines[0], 'Built-in Resource Error: visible');
+  assert.equal(filteredGroups(text, 'unknown', 'unknown')[0].lines[0], 'Unknown game message');
+  assert.equal(lineLevel('Connected to Steam successfully'), 'unknown');
+  assert.equal(filteredGroups(text, '', 'warning')[0].lines[0], 'Warning: own fixture');
+});

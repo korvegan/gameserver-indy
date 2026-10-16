@@ -17,6 +17,7 @@ final class ServerLogs
     {
         if (!in_array($source, [null, 'server', 'launcher'], true)) { throw new \InvalidArgumentException('Unbekannte Protokollquelle.'); }
         $profile = $this->registry->get($id); $schema = $this->games->schema($profile->game); $broken = false;
+        $status = $this->observations->view($id);
         try { $config = $this->games->adapter($profile->game)->decode(PrivateFiles::read($this->registry->configPath($profile))); }
         catch (\Throwable) { $config = new \stdClass(); $broken = true; }
         $webhook = getenv('DISCORD_WEBHOOK_URL') ?: ($this->settings->read()->discord->webhook_url ?? '');
@@ -25,7 +26,7 @@ final class ServerLogs
         if ($server === null && $source !== 'launcher') {
             if (($profile->log_directory ?? '') !== '') { $directory = $this->paths->local($profile->log_directory); }
             elseif (isset($schema->windows_log_directory)) {
-                $status = $this->observations->view($id); $home = $status['user_profile'] ?? null;
+                $home = $status['user_profile'] ?? null;
                 $directory = is_string($home) ? $this->paths->local($home).'/'.$schema->windows_log_directory : null;
             } else {
                 $directory = $config->logDirectory ?? './logs';
@@ -43,7 +44,10 @@ final class ServerLogs
         }
         $launcher = $this->registry->diagnosticPath($profile).'/launcher.log'; $launcher = is_file($launcher) ? $launcher : null;
         $selected = $source ?? ($server !== null ? 'server' : ($launcher !== null ? 'launcher' : 'server')); $path = $selected === 'server' ? $server : $launcher;
+        $process = count($status['processes'] ?? []) === 1 ? (array) $status['processes'][0] : [];
         return ['source' => $selected, 'sources' => [['id' => 'server', 'label' => 'Spielserver'], ['id' => 'launcher', 'label' => 'Starter / Startfehler']],
+            'server_id' => $id, 'profile_label' => $profile->label, 'read_at' => gmdate('Y-m-d\TH:i:s\Z'),
+            'process_started_at' => $process['started'] ?? null,
             'file' => $path !== null ? basename($path) : null, 'updated_at' => $path !== null ? gmdate('Y-m-d\TH:i:s\Z', filemtime($path)) : null,
             'text' => $path !== null ? ($broken && $selected === 'server' ? 'Die Konfiguration ist nicht lesbar; das Serverprotokoll kann deshalb gerade nicht bereinigt werden.' : LogText::tail($path, $values, 4000))
                 : ($selected === 'server' ? 'Noch keine Serverlogs vorhanden.' : 'Noch kein Starterprotokoll vorhanden. Der nächste Start über das Dashboard wird hier protokolliert.')];

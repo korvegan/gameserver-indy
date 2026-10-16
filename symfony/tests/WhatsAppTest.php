@@ -155,6 +155,20 @@ final class WhatsAppTest extends SliceTestCase
         $browser->request('POST','/api/whatsapp/connect',server:['CONTENT_TYPE'=>'application/json','HTTP_ORIGIN'=>'http://127.0.0.1:18865'],content:'{}'); self::assertResponseStatusCodeSame(403);
         $browser->request('GET','/api/logs?server=fixture'); self::assertResponseIsSuccessful(); self::assertStringNotContainsString('synthetic-password',$browser->getResponse()->getContent());
     }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testDiagnosisExportUsesTheSanitizedSelectedSourceAndFreshFile(): void
+    {
+        $browser = $this->boot(http:true); $path = $this->directory.'/own-install/logs/enshrouded_server.log';
+        PrivateFiles::write($path,"password=synthetic-password\nError: own start\n");
+        $browser->request('GET','/api/logs/export?server=fixture&source=server'); self::assertResponseIsSuccessful();
+        $body = $browser->getResponse()->getContent();
+        self::assertStringContainsString('Error: own start',$body); self::assertStringNotContainsString('synthetic-password',$body);
+        self::assertStringNotContainsString($this->directory,$body); self::assertStringContainsString('attachment',$browser->getResponse()->headers->get('Content-Disposition'));
+        PrivateFiles::write($path,"Warning: own rotated file\n");
+        $browser->request('GET','/api/logs/export?server=fixture&source=server');
+        self::assertStringContainsString('own rotated file',$browser->getResponse()->getContent());
+        self::assertStringNotContainsString('own start',$browser->getResponse()->getContent());
+    }
     public function testClaimFinalizationFailureAndSnapshotKeepUncertainHistoryWithoutCredentials(): void
     {
         $client = $this->createMock(WhatsAppClient::class); $client->method('groups')->willReturn([['id'=>self::GROUP,'label'=>'Own group']]); $client->method('session')->willReturn(['status'=>'WORKING','exists'=>true]);
