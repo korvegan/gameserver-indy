@@ -7,6 +7,7 @@ use App\Access\AccessStore;
 use App\Access\Principal;
 use App\Access\SessionKeys;
 use App\Job\JobRepository;
+use App\Community\PlatformDatabase;
 use App\Runtime\SliceRuntime;
 use App\Runtime\WindowsStandinControl;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -20,7 +21,7 @@ use Symfony\Component\Messenger\Transport\SetupableTransportInterface;
 final class InitializeCommand extends Command
 {
     public function __construct(private readonly SliceRuntime $runtime, private readonly JobRepository $jobs,
-        private readonly WindowsStandinControl $windows, private readonly AccessStore $access, private readonly SessionKeys $keys,
+        private readonly WindowsStandinControl $windows, private readonly AccessStore $access, private readonly SessionKeys $keys, private readonly PlatformDatabase $platform,
         #[Autowire(service: 'messenger.transport.async')] private readonly SetupableTransportInterface $transport)
     {
         parent::__construct();
@@ -30,6 +31,7 @@ final class InitializeCommand extends Command
     {
         $this->runtime->initialize();
         $this->access->initialize();
+        $this->platform->initialize();
         $this->keys->token(new Principal('local-owner', 'owner'), 'local-owner');
         $this->jobs->initialize();
         $this->transport->setup();

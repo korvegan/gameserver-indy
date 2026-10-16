@@ -39,6 +39,8 @@ jobs:
       - run: php vendor/bin/phpunit
       - name: Configuration parity with Python baseline
         run: python tools/compare_configurations.py
+      - name: Chronicle and evidence compatibility with Python baseline
+        run: python tools/check_chronicle_compatibility.py
       - name: Native disposable Windows process
         if: runner.os == 'Windows'
         run: php vendor/bin/phpunit --filter Native
