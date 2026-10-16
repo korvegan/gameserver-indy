@@ -47,6 +47,16 @@ Auf dem Host waren automatische AC-Energiespar- und Ruhezustandswechsel sowie de
 
 Für die nächsten Themen reicht die vorhandene Werkzeugbasis. Die Betriebs- und Kontoeinrichtung für spätere Integrationen bleibt Teil ihrer Umsetzung. Dieses Audit startet keine Backlog-Implementierung.
 
+## Symfony-Durchstich am 16.10.2026
+
+Der Nutzer hat Symfony statt des bisherigen Anwendungskerns freigegeben; Epic #45 und `docs/symfony-migration.md` beschreiben die Teilmigration. PHP und Composer waren weder in WSL noch auf dem Windows-PATH vorhanden. Für den isolierten Durchstich liegen die Werkzeuge im privaten Linux-Verzeichnis `/home/korvegan/.local/share/gameserver-indy-tools/`: `php` startet eine separat extrahierte Ubuntu-PHP-8.5-CLI mit ihren Erweiterungen, `composer.phar` ist Composer 2.10.3 und `frankenphp-1.13.0/frankenphp` der anhand des veröffentlichten SHA256 geprüfte Linux-Webserver mit PHP 8.5.11. Keine globalen Paket-, Windows-Autostart- oder Produktionslisteneränderungen daraus ableiten. Die Tests verwenden `SLICE_PHP` und `SLICE_FRANKENPHP` zur Werkzeugauswahl; normale Installationen können PHP/FrankenPHP aus PATH verwenden.
+
+Ein anfänglicher Aufruf von Composer über `frankenphp php-cli` übergab unter dieser PHP-8.5-Kombination den Skriptpfad als zusätzlichen Befehlsnamen. Die normale PHP-CLI führt Composer und Console-Befehle korrekt aus; deshalb Webserver und CLI-Werkzeug unterscheiden. Das ist keine Abnahme des nativen Windows-FrankenPHP-Pakets.
+
+Die PowerShell-Umgebung konnte `Get-FileHash` im Teststarter nicht automatisch laden, passend zur bereits bekannten Modulpfadbesonderheit. Der reine Testprogramm-Compiler berechnet SHA256 deshalb direkt mit .NET. Die produktiven Skripte bleiben unverändert. Caddy-Admin ist im Durchstich aus; XDG-Konfigurations-/Speicherpfade werden ausdrücklich in den eigenen Testdatenordner gelegt. Ein früher Fixturestart schrieb sonst die globale Caddy-Autosave-Datei.
+
+Die native Prüfung bestätigte HTTP-Annahme, Messenger-Worker, vollständige EXE-Pfadzuordnung, PID/Bereitschaft und regulären Stopp eines eigens kompilierten Stellvertreters. Symfony `ServerEvent` in 7.4 benötigt auch für einen Kommentar ein Datenargument; ein fehlendes Argument zeigte sich erst in der echten SSE-Browserprüfung. Live-Streams deshalb am realen Webserver prüfen. Bei verzögerten Browserrouten `unrouteAll({behavior: 'wait'})` nutzen, bevor eine neue Fixture beginnt; laufende Route-Handler können sonst nach dem Entfernen noch eine Antwort erfüllen. Testports vor dem Start auf Belegung prüfen und bestehende Listener niemals als erfolgreiche eigene Fixture übernehmen.
+
 ## Wiederholbare Prüfungen
 
 ```bash

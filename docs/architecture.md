@@ -1,5 +1,7 @@
 # Ausbauarchitektur und Refactoring #27
 
+Seit 16.10.2026 ist die Migration auf Symfony beauftragt: [Migrationsplan und isolierter Durchstich](symfony-migration.md), Epic #45. Dieses Dokument beschreibt weiterhin den bestehenden produktiven Python-Aufbau und seine zu übernehmenden Verträge.
+
 Stand: 15.10.2026. Die [Bewertungsmatrix](backlog.md) ordnet sämtliche bisherigen Issues und die neue Steam-Erkennung #29 ein. Die Fachfunktionen bleiben ihren Issues zugeordnet. Dieses Refactoring schafft ausführbare gemeinsame Grenzen, keine automatische Aktivierung von Fernzugriff, Modinstallation oder Errungenschaftserkennung.
 
 ## Entscheidungen

@@ -1,0 +1,19 @@
+parameters:
+  env(SLICE_STATE_DIR): '%kernel.project_dir%/var/slice'
+  env(SLICE_DRIVER): simulated
+  env(SLICE_ROLE): owner
+
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    bind:
+      $stateDirectory: '%env(resolve:SLICE_STATE_DIR)%'
+      $driver: '%env(SLICE_DRIVER)%'
+      $role: '%env(SLICE_ROLE)%'
+      $projectDirectory: '%kernel.project_dir%'
+  App\:
+    resource: '../src/'
+    exclude: ['../src/Kernel.php', '../src/Job/ExecuteServerJob.php']
+  App\Runtime\ServerControl:
+    alias: App\Runtime\SelectedServerControl

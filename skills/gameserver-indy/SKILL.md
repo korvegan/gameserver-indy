@@ -5,7 +5,7 @@ description: GameServer Indy auf korvegans Windows-/WSL-Rechner weiterentwickeln
 
 # GameServer Indy
 
-Das Projekt verwaltet native Windows-Dedicated-Server über einen lokalen Python-Dienst in WSL. Den bestehenden Python-/HTML-/JS-Aufbau fortführen. Quellen mit gezielten Patches ändern; Python für Backend, Datenverarbeitung und Prüfungen verwenden, nicht als spontanen Texteditor.
+Das Projekt verwaltet native Windows-Dedicated-Server bislang über einen lokalen Python-Dienst in WSL. Am 16.10.2026 hat der Nutzer die schrittweise Migration auf **Symfony** beauftragt, weil er Symfony-Code selbst besser lesen und reviewen kann. Epic #45 und `docs/symfony-migration.md` ordnen die getrennten Schritte #46–#54. Die vorhandene Python-Verwaltung bleibt bis zum geplanten Cutover produktiv. Quellen mit gezielten Patches ändern; Python für vorhandenes Backend, Orchestrierung, Datenverarbeitung und Prüfungen verwenden, nicht als spontanen Texteditor.
 
 Die dauerhafte Freigabe für autonomes Arbeiten einschließlich Mergen steht in `AGENTS.md`. Bei Werkzeug-, Plugin- und Ablaufentscheidungen sowie vor Arbeiten an den neuen Themen [Werkzeugstand und Arbeitsmethoden](references/tooling.md) hinzuziehen. Dort zwischen tatsächlich geprüften Fähigkeiten, verfügbaren Werkzeugen und noch einzurichtenden Integrationen unterscheiden.
 
@@ -46,6 +46,8 @@ Im unabhängigen Backup-Review wurden ein falscher ASKA-Quellordner und ein stil
 Leistungsstand vom 15.10.2026: i9-12900KF, rund 96 GB RAM, RTX 3080 mit 10 GB VRAM, Desktop 5120×1440. Vier Spieler einschließlich Host; Spielclient und Server teilen den Rechner. Native Windows-Server werden nicht durch die WSL-Grenzen von 32 GB/12 vCPUs begrenzt. Ein Speedtest ergab 10,6 Mbit/s Upload und 9 ms Leerlauflatenz; das ist keine dauerhafte Zusicherung. Vor weiteren Performance-Eingriffen unter echter Mehrspielerlast messen.
 
 ## Erweiterung und Prüfung
+
+Der erste Symfony-Durchstich #46 liegt separat unter `symfony/`, mit eigenem Datenordner und Loopbackport 18865. Er kennt ausschließlich zwei isolierte Testprofile und erzeugte `indy-symfony-standin.exe`-Programme, keine produktiven Installationen. PHP-/Composer-/FrankenPHP-Aufrufe, Prüfungen und Abnahmegrenzen stehen in der Migrationsdoku. Neue Fachfunktionen bleiben in ihren bisherigen Issues; die Migration überträgt bestehende Verträge. Insbesondere keine beliebigen Browser-Pfade an die Prozesssteuerung durchreichen oder vorhandene Welten als Testfixtures verwenden.
 
 Bei neuen Spielen zuerst Herstelleranleitung, Konfiguration, EXE, Speichern und Stoppverfahren prüfen. Das Spielprofil beschreibt Formularfelder und Startmetadaten; der Adapter implementiert Dateiformat, Validierung und Sonderfälle. Einstellungen eines Spiels nicht auf andere übertragen.
 

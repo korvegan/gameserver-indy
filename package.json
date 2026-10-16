@@ -6,7 +6,8 @@
   "description": "Development checks for GameServer Indy",
   "scripts": {
     "check:js": "node tests/check-js.cjs",
-    "test:browser": "node tests/run-browser-check.cjs"
+    "test:browser": "node tests/run-browser-check.cjs",
+    "test:symfony-browser": "node symfony/tools/check-browser.cjs"
   },
   "devDependencies": {
     "playwright": "1.64.1"
