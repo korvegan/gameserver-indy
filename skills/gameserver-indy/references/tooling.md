@@ -65,6 +65,8 @@ Bei der CI-Abnahme fiel in der bisherigen Chronik wiederholt ein Timeout beim er
 
 ## Wiederholbare Prüfungen
 
+Die Inventur vom 16.10.2026 in `docs/tech-stack.md` im Repository trennt tatsächliche App-Pakete, geplante UI-Komponenten und Hostwerkzeuge. Node 24.22.0 steht für Entwicklung und CI in `.node-version`; PHPUnit ist auf 13.4.3 aktualisiert, Symfony bleibt auf der aktuellen 7.4-LTS. Beim WSL-PHP-Audit war die scheinbar ältere 8.5.4 tatsächlich Ubuntu-Sicherheitsrevision `8.5.4-0ubuntu1.3`, bestätigt durch frischen Paketindex, DEB-Hash und Changelog. Künftig vollständige Distributionsrevision und Upstream-Version getrennt vergleichen. Die CI ergänzt Python 3.15 und prüft weiterhin 3.11; alle acht Prüfungen abwarten.
+
 ```bash
 python3 -m unittest discover -s tests -v
 npm run check:js

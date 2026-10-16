@@ -2,6 +2,8 @@
 
 Die schrittweise **Symfony-Migration** ist in [Epic #45](https://github.com/korvegan/gameserver-indy/issues/45) aufgeteilt. Der isolierte erste Durchstich liegt unter `symfony/`; Start, Prüfungen und Grenzen stehen in [docs/symfony-migration.md](docs/symfony-migration.md). Die bestehende Verwaltung bleibt bis zum geplanten Cutover der produktive Einstieg.
 
+Der geprüfte [Technik- und Versionsstand](docs/tech-stack.md) unterscheidet laufende Verwaltung, Symfony-Zielsystem und Entwicklungswerkzeuge. Die Node-Version für Entwicklung und Browser-CI steht in `.node-version`; Bibliotheken bleiben in den beiden Lockfiles festgehalten.
+
 Lokale Browseroberfläche für Windows-Dedicated-Server. **Enshrouded und ASKA** haben eigene Konfigurationsprofile. Start, regulärer Stopp, Neustart, Konfigurationssicherungen und Discord teilen sich eine gemeinsame Verwaltung. Weitere Spiele werden über Adapter ergänzt.
 
 ## Start
