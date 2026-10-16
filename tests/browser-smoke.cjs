@@ -357,24 +357,33 @@ const fs = require('node:fs');
     assert.equal(await page.locator('#community').isVisible(), true);
     await page.unroute('**/api/status?server=aska');
     assert.equal(await page.locator('#chronicle .badge-list li').count(), 4);
-    await page.evaluate(() => { window.qaScene = document.querySelector('#scene-qa-milestone'); });
-    // A command completion may legitimately refresh status after navigation. Observe idle polling
-    // only after the previously accepted commands and their follow-up refresh have settled.
-    await page.waitForFunction(async () => {
-      const {state} = await import('/state.js');
-      return state.pending.size === 0 && !state.refreshing;
-    });
-    const pollCount = requests.filter(request => request.path === '/api/status').length;
-    await page.locator('#refresh-community').click();
-    await page.waitForTimeout(8500);
-    assert.equal(requests.filter(request => request.path === '/api/status').length, pollCount);
-    assert.equal(await page.evaluate(() => window.qaScene === document.querySelector('#scene-qa-milestone')), true);
-    await page.emulateMedia({reducedMotion: 'reduce'});
-    await page.getByRole('button', {name: 'Szene ansehen', exact: true}).focus();
-    await page.keyboard.press('Enter');
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'scene-qa-milestone');
-    await page.screenshot({path: 'artifacts/sturmklingen-mobile.png', fullPage: true});
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    // The previous page deliberately has overlapping commands and held responses. Their eventual
+    // completions may refresh status even in the community view. Measure periodic idle polling in
+    // a fresh document without those callbacks, rather than inferring their lifetime from UI flags.
+    const idlePage = await browser.newPage({viewport: page.viewportSize()});
+    const idleStatusRequests = [];
+    idlePage.on('request', request => { if (new URL(request.url()).pathname === '/api/status') idleStatusRequests.push(request.url()); });
+    try {
+      await idlePage.goto('http://127.0.0.1:8766');
+      await idlePage.waitForFunction(async () => {
+        const {state} = await import('/state.js');
+        return state.catalogAvailable && state.available && state.pending.size === 0 && !state.refreshing;
+      });
+      await idlePage.getByRole('button', {name: 'Sturmklingen', exact: true}).click();
+      await idlePage.locator('#scene-qa-milestone').waitFor();
+      await idlePage.evaluate(() => { window.qaScene = document.querySelector('#scene-qa-milestone'); });
+      const pollCount = idleStatusRequests.length;
+      await idlePage.locator('#refresh-community').click();
+      await idlePage.waitForTimeout(8500);
+      assert.equal(idleStatusRequests.length, pollCount);
+      assert.equal(await idlePage.evaluate(() => window.qaScene === document.querySelector('#scene-qa-milestone')), true);
+      await idlePage.emulateMedia({reducedMotion: 'reduce'});
+      await idlePage.getByRole('button', {name: 'Szene ansehen', exact: true}).focus();
+      await idlePage.keyboard.press('Enter');
+      assert.equal(await idlePage.evaluate(() => document.activeElement.id), 'scene-qa-milestone');
+      await idlePage.screenshot({path: 'artifacts/sturmklingen-mobile.png', fullPage: true});
+      assert.equal(await idlePage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    } finally { await idlePage.close(); }
 
     // The identity is injected only by the fixture. Browser UI and API agree.
     const family = await browser.newContext({extraHTTPHeaders: {'X-QA-Identity': 'family'}, viewport: {width: 390, height: 844}});
