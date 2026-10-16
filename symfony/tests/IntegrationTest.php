@@ -227,4 +227,36 @@ final class IntegrationTest extends SliceTestCase
         self::assertStringContainsString('fixture.example.org:15637', $messages[0]); self::assertStringNotContainsString('synthetic-secret', $messages[0]);
         self::assertSame('Server gestoppt: Own Server', $messages[1]);
     }
+    public function testFullProfileDoesNotStarveOthersOrRepeatAcceptedMetadataWork(): void
+    {
+        $this->boot(); $container = static::getContainer(); $clock = new \Symfony\Component\Clock\MockClock('2026-10-16T12:00:00Z');
+        $owner = new Principal('local-owner', 'owner'); $second = $this->directory.'/own-second'; PrivateFiles::directory($second);
+        $container->get(InstanceRegistry::class)->register($owner, (object) ['id' => 'second', 'game' => 'enshrouded', 'label' => 'Second', 'server_directory' => $second]);
+        $scheduler = new \App\Integration\MetadataScheduler($container->get(\App\Runtime\SliceRuntime::class), $container->get(RuntimeLifecycle::class), $container->get(InstanceRegistry::class), $container->get(JobService::class), $clock);
+        $jobs = $container->get(JobRepository::class); $service = $container->get(JobService::class);
+        self::assertSame(1, $scheduler->tick()); foreach ($jobs->recent() as $job) { $jobs->transition($job['id'], 'succeeded', 'Own fixture'); }
+        for ($index=0; $index<8; ++$index) { $service->submit('second', 'start', bin2hex(random_bytes(16))); }
+        $clock->sleep(60); self::assertSame(1, $scheduler->tick()); self::assertSame(0, $scheduler->tick()); self::assertSame(0, $scheduler->tick());
+        self::assertSame(1, (int) $container->get(Connection::class)->fetchOne("SELECT COUNT(*) FROM slice_jobs WHERE operation='check_updates' AND server_id='fixture'"));
+        foreach ($jobs->recent() as $job) { $jobs->transition($job['id'], 'succeeded', 'Own fixture'); }
+        for ($index=0; $index<8; ++$index) { $service->submit('fixture', 'start', bin2hex(random_bytes(16))); }
+        self::assertSame(1, $scheduler->tick()); self::assertSame(0, $scheduler->tick());
+        self::assertSame(1, (int) $container->get(Connection::class)->fetchOne("SELECT COUNT(*) FROM slice_jobs WHERE operation='check_updates' AND server_id='second'"));
+    }
+    public function testDiscordUsesUnloggedUntracedDedicatedClientInTheRealContainer(): void
+    {
+        static::bootKernel(); $transport = static::getContainer()->get(DiscordWebhook::class);
+        $client = (new \ReflectionProperty($transport, 'client'))->getValue($transport);
+        self::assertNotInstanceOf(\Symfony\Component\HttpClient\TraceableHttpClient::class, $client);
+        self::assertNotInstanceOf(\Symfony\Component\HttpClient\RetryableHttpClient::class, $client);
+        self::assertNull((new \ReflectionProperty($client, 'logger'))->getValue($client));
+    }
+    public function testTwoThousandUnicodeCharactersFitBothHttpSubmissionPaths(): void
+    {
+        $client = $this->boot(http: true); $client->request('GET', '/api/session'); $token = json_decode($client->getResponse()->getContent(), true)['token'];
+        $headers = ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://127.0.0.1:18865', 'HTTP_X_MANAGER_TOKEN' => $token]; $message = str_repeat('🔥', 2000);
+        $client->request('POST', '/api/discord/send', server: $headers, content: json_encode(['server_id' => 'fixture', 'request_id' => str_repeat('a',32), 'message' => $message])); self::assertResponseStatusCodeSame(202);
+        $client->request('POST', '/api/jobs', server: $headers, content: json_encode(['server_id' => 'fixture', 'request_id' => str_repeat('b',32), 'operation' => 'discord_send', 'payload' => ['message' => $message]])); self::assertResponseStatusCodeSame(202);
+        self::assertSame(2, static::getContainer()->get(JobRepository::class)->pendingCount());
+    }
 }

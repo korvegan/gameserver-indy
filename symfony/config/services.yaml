@@ -27,3 +27,11 @@ services:
     alias: App\Integration\WindowsNetwork
   App\Integration\DiscordTransport:
     alias: App\Integration\DiscordWebhook
+  indy.discord_http:
+    class: Symfony\Contracts\HttpClient\HttpClientInterface
+    factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+    autowire: false
+    autoconfigure: false # Framework request logging/tracing would expose webhook tokens in URLs.
+  App\Integration\DiscordWebhook:
+    arguments:
+      $client: '@indy.discord_http'

@@ -35,7 +35,8 @@ final class LocalBoundary
                 $event->setResponse(new JsonResponse(['error' => 'Sitzung aktualisieren. Dieser Befehl wurde nicht ausgeführt.', 'code' => 'session_expired'], 403));
             } elseif ($request->getContentTypeFormat() !== 'json') {
                 $event->setResponse(new JsonResponse(['error' => 'JSON erforderlich.'], 415));
-            } elseif (strlen($request->getContent()) > (in_array($request->getPathInfo(), ['/api/config', '/api/community'], true) ? 1048576 : 4096)) {
+            } elseif (strlen($request->getContent()) > (in_array($request->getPathInfo(), ['/api/config', '/api/community'], true) ? 1048576
+                : (in_array($request->getPathInfo(), ['/api/discord/send', '/api/jobs'], true) ? 32768 : 4096))) {
                 $event->setResponse(new JsonResponse(['error' => 'Anfrage zu groß.'], 413));
             }
         }
