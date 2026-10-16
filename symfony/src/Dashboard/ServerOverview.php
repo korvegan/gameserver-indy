@@ -23,6 +23,7 @@ final class ServerOverview
     {
         $profile = $this->registry->get($id); $schema = $this->games->schema($profile->game); $status = $this->observations->view($id);
         unset($status['user_profile']); $directory = $this->paths->local($profile->server_directory);
+        if (isset($status['readiness'])) { unset($status['readiness']['process_key']); }
         $status = [...$status,'server_id'=>$id,'game'=>$profile->game,'game_label'=>$schema->label,'profile_label'=>$profile->label,
             'installed'=>is_file($directory.'/'.$schema->executable),'configured'=>is_file($this->registry->configPath($profile)),
             'external_launcher'=>($profile->launcher_script ?? '') !== '',
@@ -41,7 +42,7 @@ final class ServerOverview
             $status['directory'] = $profile->server_directory; $discord = $this->discord->view($actor,$id);
             $status['discord_configured'] = $discord['configured']; $status['auto_notify'] = $discord['auto_notify'];
         } else {
-            $status = array_intersect_key($status,array_flip(['server_id','game','game_label','profile_label','installed','configured','running','starting','known','recovery_required']));
+            $status = array_intersect_key($status,array_flip(['server_id','game','game_label','profile_label','installed','configured','running','starting','known','recovery_required','ready','readiness']));
         }
         return ['server_id'=>$id,'status'=>$status,'summary'=>$summary,'config_error'=>$error,'connection'=>$connection,
             'update'=>$this->updates->view($id,$status)];

@@ -14,7 +14,7 @@ use App\Runtime\RuntimeLifecycle;
 use App\Storage\PrivateFiles;
 use App\WhatsApp\DeliveryStore;
 use App\WhatsApp\LocalWhatsAppClient;
-use App\WhatsApp\Readiness;
+use App\Runtime\Readiness;
 use App\WhatsApp\WhatsApp;
 use App\WhatsApp\WhatsAppClient;
 use App\WhatsApp\WhatsAppError;
@@ -67,6 +67,23 @@ final class WhatsAppTest extends SliceTestCase
         $offset = 262144-11; PrivateFiles::write($path,$prefix.str_repeat('x',$offset-strlen($prefix)-1)."\n[Session] 'HostOnline' (down)!\n"); self::assertSame('unknown',$readiness->probe('fixture',$this->ownStatus())['state']);
         self::assertNull(Readiness::identity(['processes'=>[['pid'=>42,'started'=>'2999-01-01T00:00:00Z']]]));
         self::assertNull(Readiness::identity(['processes'=>array_fill(0,2,$this->ownStatus()['processes'][0])]));
+    }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testReadinessIsSharedCachedAndBoundToTheCurrentStart(): void
+    {
+        $this->boot(); $observer = static::getContainer()->get(ProcessObservation::class);
+        $first = $observer->view('fixture'); self::assertTrue($first['ready']);
+        self::assertSame('ready',$first['readiness']['state']); self::assertNotEmpty($first['readiness']['source']);
+        self::assertNotEmpty($first['readiness']['observed_at']);
+        $observer->record('fixture',$this->ownStatus());
+        self::assertSame($first['readiness']['revision'],$observer->view('fixture')['readiness']['revision']);
+        PrivateFiles::write($this->directory.'/own-install/logs/enshrouded_server.log',"Current UTC date: 2023.12.31 10:00:00\n[Session] 'HostOnline' (up)!\n");
+        $observer->record('fixture',$this->ownStatus()); $stale = $observer->view('fixture');
+        self::assertNull($stale['ready']); self::assertSame('unknown',$stale['readiness']['state']);
+        self::assertNotSame($first['readiness']['revision'],$stale['readiness']['revision']);
+        $observer->record('fixture',['known'=>true,'running'=>false,'starting'=>false,'processes'=>[]]);
+        self::assertFalse($observer->view('fixture')['ready']);
+        self::assertSame('stopped',$observer->view('fixture')['readiness']['state']);
     }
     public function testExplicitGroupProfilesAndDurableClaimsPreventRepeatedSends(): void
     {

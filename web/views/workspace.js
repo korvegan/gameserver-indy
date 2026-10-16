@@ -46,6 +46,7 @@ export function initWorkspace(selectServer, go) {
     ['backup-summary', 'Weltsicherungen', '72 Stunden · Pins bleiben', 'backups']]) {
     const button = element('button', undefined, 'overview-summary'); button.type = 'button';
     button.append(element('small', title), Object.assign(element('strong', value), {id}));
+    if (id === 'readiness-summary') button.append(Object.assign(element('small',''),{id:'readiness-evidence'}));
     button.addEventListener('click', () => go(target));
     if (target === 'backups') button.dataset.permission = 'backups.manage';
     if (target === 'logs') button.dataset.permission = 'jobs.read';
@@ -89,6 +90,7 @@ export function renderWorkspace() {
     $('#game-label').textContent = `${style?.label || game || 'Spielserver'} · DEDICATED SERVER`;
     $('#profile-caption').textContent = profile?.label || 'Serverprofil wird geladen';
     $('#readiness-summary').textContent = 'Unbekannt';
+    $('#readiness-evidence').textContent = '';
   }
   const list = $('#world-list'), signature = JSON.stringify(state.catalog.servers.map(({id, game, label}) => ({id, game, label})));
   if (list.dataset.catalog !== signature) {
@@ -126,7 +128,11 @@ export function renderWorkspace() {
 export function adoptWorkspaceStatus(data) {
   observations.set(state.selectedServer, (observations.get(state.selectedServer) || 0) + 1);
   snapshots.set(state.selectedServer, {...data, observedAt: Date.now()});
-  $('#readiness-summary').textContent = data.status.known === false ? 'Unbekannt' : data.status.running ? 'Nicht bestätigt' : data.status.starting ? 'Starter arbeitet' : 'Server gestoppt';
+  const evidence = data.status.readiness;
+  $('#readiness-summary').textContent = data.status.known === false ? 'Unbekannt' : evidence?.label || (data.status.running ? 'Nicht bestätigt' : data.status.starting ? 'Starter arbeitet' : 'Server gestoppt');
+  $('#readiness-summary').title = evidence ? [evidence.source, evidence.observed_at ? `Beobachtet: ${new Date(evidence.observed_at).toLocaleString('de-DE')}` : '',
+    'Lokaler Nachweis; externer Beitritt bleibt separat zu prüfen.'].filter(Boolean).join(' · ') : '';
+  $('#readiness-evidence').textContent = evidence?.source ? `${evidence.source} · beobachtet ${new Date(evidence.observed_at).toLocaleTimeString('de-DE')}` : '';
   renderWorkspace();
 }
 export function markWorkspaceUnknown() {

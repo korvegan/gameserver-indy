@@ -99,7 +99,8 @@ export function renderStatus(data) {
   $('#server-state').textContent = pending ? '◌ Auftrag läuft' : status.known === false ? 'Prozessstatus unbekannt' : status.starting ? '◌ Starter arbeitet' : status.running ? '● Prozess läuft' : '○ Gestoppt';
   $('#server-state').className = 'pill' + (status.running ? ' running' : '');
   $('#process-note').textContent = pending ? 'Auftrag läuft' : status.starting ? 'Starterprotokoll beachten'
-    : status.running ? 'Spielbereitschaft nicht bestätigt' : '';
+    : status.ready === true ? 'Sitzung lokal bereit · externer Beitritt ungeprüft'
+      : status.running ? 'Spielbereitschaft nicht bestätigt' : '';
   $('#setup-panel').hidden = status.configured || !can('server.setup');
   $('#installation-check').textContent = status.installed ? 'Server gefunden' : 'Serverprogramm fehlt';
   $('#configuration-check').textContent = data.config_error ? 'Konfiguration nicht lesbar' : status.configured ? 'Konfiguration vorhanden' : 'Erstes Setup ausstehend';

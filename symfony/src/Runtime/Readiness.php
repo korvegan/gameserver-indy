@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-namespace App\WhatsApp;
+namespace App\Runtime;
 
 use App\Community\ChronicleTime;
 use App\Game\GameCatalog;
@@ -30,7 +30,8 @@ final class Readiness
             $state = !empty($status['starting']) ? 'starting' : (($status['running'] ?? null) === true ? 'unknown' : (($status['running'] ?? null) === false ? 'stopped' : 'unknown'));
             return ['state' => $state, 'label' => ['starting' => 'Starter arbeitet', 'unknown' => 'Unbekannt', 'stopped' => 'Gestoppt'][$state]];
         }
-        [$key, $started] = $identity; $result = ['state' => 'unknown', 'label' => 'Bereitschaft noch nicht bestätigt', 'process_key' => $key];
+        [$key, $started] = $identity; $result = ['state' => 'unknown', 'label' => 'Bereitschaft noch nicht bestätigt', 'process_key' => $key,
+            'started_at'=>$started->format('Y-m-d\TH:i:s\Z')];
         try {
             $profile = $this->registry->get($id);
             if ($profile->game === 'enshrouded') {
@@ -57,18 +58,29 @@ final class Readiness
                 preg_match_all("/\\[Session\\] 'HostOnline' \\((up|down)\\)!/", substr($head, $from), $transitions);
                 $ready = in_array($difference, [0,1], true) && $transitions[1] && end($transitions[1]) === 'up';
                 $source = 'Enshrouded · HostOnline / Startdatum UTC';
+                $current = in_array($difference,[0,1],true);
+                if ($current) { $result['transition'] = count($transitions[1]).':'.($transitions[1] ? end($transitions[1]) : 'boot'); }
             } elseif ($profile->game === 'aska') {
                 $file = @fopen($this->registry->diagnosticPath($profile).'/server.log', 'rb'); if ($file === false) { return $result; }
                 try { fseek($file, max(0, fstat($file)['size'] - 262144)); $text = LogText::decode(fread($file, 262144)); } finally { fclose($file); }
-                $ready = false;
+                $ready = false; $current = false;
                 foreach (LogText::lines($text) as $line) {
-                    if (!str_contains($line, 'The session is now open!')) { continue; }
-                    $stamp = ChronicleTime::parse(explode(' ', $line, 2)[0]);
-                    if ($stamp >= $started && $stamp <= new \DateTimeImmutable()) { $ready = true; }
+                    try { $stamp = ChronicleTime::parse(explode(' ', $line, 2)[0]); } catch (\Throwable) { continue; }
+                    if ($stamp < $started || $stamp > new \DateTimeImmutable()) { continue; }
+                    $current = true;
+                    if (str_contains($line, 'The session is now open!')) { $ready = true; $result['evidence_at']=$stamp->format('Y-m-d\TH:i:s\Z'); }
                 }
                 $source = 'ASKA · aktuelle Sitzungsöffnung';
             } else { return $result; }
             if ($ready) { $result = [...$result, 'state' => 'ready', 'label' => 'Sitzung bereit · lokal bestätigt', 'source' => $source]; }
+            elseif ($current) {
+                $timeout = time()-$started->getTimestamp()>300;
+                $result = [...$result,'state'=>$timeout ? 'unknown' : 'starting','source'=>$source,'startup_timeout'=>$timeout,
+                    'label'=>$timeout ? 'Spielbereitschaft unbestätigt · Startprotokoll prüfen' : 'Prozess gestartet · Sitzung noch nicht bestätigt'];
+                if ($profile->game === 'enshrouded' && $transitions[1] && end($transitions[1]) === 'down') {
+                    $result = [...$result,'state'=>'unknown','startup_timeout'=>false,'label'=>'Sitzung geschlossen · Prozess läuft'];
+                }
+            }
         } catch (\Throwable) {}
         return $result;
     }
