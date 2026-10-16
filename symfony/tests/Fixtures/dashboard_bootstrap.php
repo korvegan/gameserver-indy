@@ -11,5 +11,10 @@ function dashboardKernel(): App\Kernel
     foreach ([App\Runtime\ProcessGateway::class,App\Integration\SteamProvider::class,
         App\Integration\HostNetworkProvider::class,App\Integration\DiscordTransport::class] as $id) { $container->set($id,$fixture); }
     $container->set(App\WhatsApp\WhatsAppClient::class,new App\Tests\Fixtures\DashboardWhatsApp($fixture));
+    $container->set(App\Runtime\RuntimeSupervisor::class,new App\Runtime\RuntimeSupervisor(
+        $container->get(App\Runtime\SliceRuntime::class),$container->get(App\Runtime\RuntimeSettings::class),
+        $container->get(App\Runtime\RuntimeLifecycle::class),$container->get(App\Access\AccessStore::class),
+        $container->get(App\Integration\Discord::class),$container->get(App\WhatsApp\DeliveryStore::class),
+        $container->get(App\Community\CommunityLedger::class),$fixture->root.'/release','test'));
     return $kernel;
 }

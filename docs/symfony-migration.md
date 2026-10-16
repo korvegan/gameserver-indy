@@ -282,6 +282,10 @@ Die Sitzung kennzeichnet die Symfony-API mit `api_version: 2`. Die gemeinsame Br
 
 `npm run test:symfony-dashboard` startet FrankenPHP und drei echte Messenger-Worker mit einer eigenen, markierten temporären Installation. HTTP und Worker erhalten dieselben reinen Testadapter für Prozesse, Steam, Netz und Nachrichtentransporte; die Fixture kann keine echte EXE ausführen und versendet nichts. Sie prüft FIFO während verzögerter Statusabfrage, eine verspätete Annahme nach gestreamtem Abschluss, erfolgreiche/fehlgeschlagene Konfigurationsaufträge, Profilwechsel, kaputte Konfiguration, tatsächliche ZIP-Sicherung samt Byte-Restore der Testwelt, Updateabfrage, synthetischen WhatsApp-QR, privaten Besitzerzugang und Mobilansicht. Die bestehenden fachlichen Chronik-/Wandteppichprüfungen werden gegen den neuen HTTP-Aufbau wiederverwendet, einschließlich Kapitel-/Detailrennen, einmaliger Enthüllung, reduzierter Bewegung, Tastatur, Export und 320/390/5120 Pixeln. Die ursprüngliche Python-Browsersuite und der isolierte Symfony-Durchstich bleiben zusätzliche Prüfungen. Der Produktivstart und tatsächliche externe Gerätezugang folgen #54.
 
+## Laufzeitvorbereitung #54
+
+Der einzelne PHP-Supervisor, die private Laufzeitkonfiguration, der gemeinsame spätere Datenvertrag und der native Windows-FrankenPHP-Vergleich stehen in [symfony-runtime.md](symfony-runtime.md). Die vollständige Dashboardfixture läuft darüber einschließlich Workerersatz, Doppeltstart, Neustart und Ausfall eines eigenen Unterprozesses. Diese Vorbereitung aktiviert keinen produktiven Dienst; Datenübernahme, versioniertes Release, Launcher und echte Betriebsabnahme bleiben weitere Schritte von #54.
+
 ## Quellen der Entscheidung
 
 - [Symfony 7.4 LTS und Wartungszeitraum](https://symfony.com/releases/7.4)

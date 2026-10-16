@@ -69,6 +69,9 @@ jobs:
           node-version-file: '.node-version'
           cache: npm
       - run: composer install --no-interaction --prefer-dist --working-dir=symfony
+      - name: Linux supervisor process extensions
+        run: |
+          php -r 'exit(extension_loaded("pcntl") && extension_loaded("posix") ? 0 : 1);'
       - name: Verified FrankenPHP binary
         run: |
           curl -fL --retry 2 -o /tmp/indy-frankenphp https://github.com/php/frankenphp/releases/download/v1.13.0/frankenphp-linux-x86_64

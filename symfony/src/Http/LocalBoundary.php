@@ -63,6 +63,7 @@ final class LocalBoundary
     public function headers(ResponseEvent $event): void
     {
         $headers = $event->getResponse()->headers;
+        $headers->set('Server','GameServerIndy/Symfony');
         $headers->set('Cache-Control', 'no-store');
         $headers->set('X-Content-Type-Options', 'nosniff');
         $headers->set('X-Frame-Options', 'DENY');
