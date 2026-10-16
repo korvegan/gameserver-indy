@@ -1,6 +1,6 @@
 # Symfony-Laufzeit vorbereiten
 
-Dieser Stand bereitet #54 vor. Die produktive Python-Verwaltung wurde nicht umgeschaltet. Datenübernahme, versionierte Installation, angepasster Windows-Starter und tatsächliche Betriebsabnahme folgen getrennt. Eine selbst angelegte Markierungsdatei ist keine geprüfte Datenmigration.
+Dieser Stand bereitet #54 vor. Die produktive Python-Verwaltung wurde nicht umgeschaltet. Datenübernahme, Releasepakete, Windows-Starter und tatsächliche Betriebsabnahme werden getrennt geprüft. Eine selbst angelegte Markierungsdatei ist keine geprüfte Datenmigration.
 
 ## Entscheidung für den ersten Betrieb
 
@@ -31,6 +31,18 @@ Der Python-Einstieg akzeptiert für den vorbereiteten Rückweg nun `python3 -m g
 Ein ausschließlich aus vertrauenswürdigen importierten Profilmetadaten stammender `diagnostic_directory` bleibt auch im Python-Rückweg erhalten. Dadurch lesen Bereitschaft und Protokollanzeige weiterhin den aktiven ASKA-Runnerpfad. Die HTTP-Profilanlage kann dieses interne Feld nicht festlegen. Dieser Schritt führt keine Kopie oder tatsächliche Umschaltung aus; Releaseinstallation, konsistente Datenübernahme, Launcher und vollständiger Rückwegtest folgen.
 
 Nach Erwerb der Sperre und vor Dienstaufbau prüft der explizite Rückweg die Profile ohne Standardableitung, bestehenden Schlüssel, Zugangseinstellungen und vollständigen bekannten Zugriffs-/Plattform-/WhatsApp-Datenbankschemata ausschließlich lesend. Fehlende leere Datenbanken, unbekannte Versionen und Versandzustände werden abgelehnt. Eine erhaltene WhatsApp-Gruppenwahl verlangt auch erhaltene private Zugangsdaten. Die Prüfung verändert insbesondere keinen `sending`-Claim und legt keine Ersatzdatenbank an. Der bisherige Standardstart ohne ausdrückliche gemeinsame Ablage behält seinen eigenen Einrichtungspfad.
+
+## Commitgebundene Releasepakete
+
+`app:release:build <sauberer-Checkout> <neuer-Releaseordner> <vollständige-Commit-SHA>` erstellt unter WSL/Linux ein getrenntes Codepaket. Der Checkout muss genau auf dem angegebenen, zuvor geprüften Commit stehen. `git archive` übernimmt ausschließlich versionierte Dateien. Private Datenpfade und verknüpfte Archiveinträge werden zusätzlich abgewiesen. Der zukünftige Starterpfad liegt unter `<Releaseordner>/code/symfony/bin/indy`; das Paket wählt keinen aktiven Release aus und verändert keinen Windows-Starter.
+
+Die zuvor mit Composer installierten Bibliotheken müssen vollständig zu `composer.lock` passen: Paketnamen, Versionen sowie Source-/Dist-Referenzen einschließlich der Entwicklungsbibliotheken. Diese erste lokale Paketfassung übernimmt bewusst die gesamte passende Installation, einschließlich PHPUnit; sie führt beim Kopieren keine Composer-Skripte, Plugins oder Downloads aus. Composer-Metadaten sind keine Signatur des Lieferanten. Wie beim ursprünglichen Composer-Installieren müssen der lokale Checkout und dessen Bibliotheken vertrauenswürdig sein. Die Prüfung bindet das fertige Paket anschließend an die konkret kopierten Bytes.
+
+`.indy-release.json` hält Commit, Lockdateihash und SHA256 aller Code-/Bibliotheksdateien fest. Die erneute Prüfung weist veränderte, fehlende und zusätzliche Dateien ab. Verzeichnisse und Dateien werden nach Veröffentlichung schreibgeschützt; ein bestehender Releaseordner wird niemals ersetzt. Fehler entfernen nur den eigenen neuen Zwischenordner beziehungsweise das gerade exklusiv angelegte Ziel. Werkzeuge, veränderliche Daten und Aktivierungsentscheidung gehören nicht zum Paket. Eine erfolgreiche Erstellung ist deshalb noch keine Installation oder Umschaltung.
+
+Symfony-Frameworkschlüssel werden bei vorbereitetem Produktionsbestand zur Laufzeit mit eigenem HMAC-Zweck aus dem bestehenden `data/session-key` abgeleitet. Fehlende oder ungültige Schlüssel werden abgewiesen und niemals ersetzt. Der Prototypwert bleibt nur für unmarkierte isolierte Durchstiche ohne Schlüssel zulässig. Der Schlüssel wird über einen [eigenen Symfony-Umgebungsprozessor](https://symfony.com/doc/7.4/configuration/env_var_processors.html#custom-environment-variable-processors) aufgelöst und nicht in die versionierte Frameworkkonfiguration geschrieben. Produktionslogs liegen unter `<Datenordner>/runtime/logs`, sodass Codepakete schreibgeschützt bleiben können.
+
+Isolierte Prüfungen erstellen ein eigenes Git-Repository mit synthetischen Bibliotheken und privaten Köderdaten. Sie prüfen Commitbindung, Bibliotheksabweichung, Links, überlappende/bestehende Ziele, unveränderte private Quelldaten sowie nachträgliche Paketmanipulation. Der tatsächliche Container löst den Frameworkschlüssel aus einem eigenen Testdatenordner auf. Das ersetzt keinen Kaltstart eines installierten Originalbestands.
 
 ## Nachweise und offene Abnahme
 

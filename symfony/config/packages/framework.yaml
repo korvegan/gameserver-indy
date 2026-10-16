@@ -1,5 +1,5 @@
 framework:
-  secret: '%kernel.project_dir%:isolated-slice-only'
+  secret: '%env(indy_secret:resolve:SLICE_STATE_DIR)%'
   http_method_override: false
   handle_all_throwables: true
   http_client: ~

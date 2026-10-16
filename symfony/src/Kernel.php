@@ -16,4 +16,11 @@ final class Kernel extends BaseKernel
         $directory = $_SERVER['INDY_CACHE_DIR'] ?? getenv('INDY_CACHE_DIR') ?: parent::getCacheDir();
         return rtrim($directory, '/\\').'/'.PHP_OS_FAMILY;
     }
+
+    public function getLogDir(): string
+    {
+        $state=$_SERVER['SLICE_STATE_DIR'] ?? getenv('SLICE_STATE_DIR');
+        return is_string($state) && is_file(rtrim($state,'/\\').'/.indy-managed-state')
+            ? rtrim($state,'/\\').'/runtime/logs' : parent::getLogDir();
+    }
 }
