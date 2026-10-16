@@ -11,7 +11,7 @@ use Symfony\Component\Lock\Store\FlockStore;
 final class ProcessObservation
 {
     public function __construct(private readonly SliceRuntime $runtime, private readonly InstanceRegistry $registry,
-        private readonly ProcessGateway $gateway) {}
+        private readonly ProcessGateway $gateway, private readonly Readiness $readiness) {}
     public function refresh(string $serverId): void
     {
         $profile = $this->registry->get($serverId);
@@ -38,6 +38,12 @@ final class ProcessObservation
             $folder = $this->runtime->directory.'/observations'; PrivateFiles::directory($folder);
             $path = $folder.'/'.$serverId.'.json';
             if ($compare && (is_file($path) ? hash_file('sha256', $path) : null) !== $previous) { return; }
+            $evidence = $this->readiness->probe($serverId,$status);
+            $evidence['revision'] = hash('sha256',json_encode([$evidence['process_key'] ?? null,$evidence['state'],
+                $evidence['source'] ?? null,$evidence['transition'] ?? null,$evidence['evidence_at'] ?? null],JSON_THROW_ON_ERROR));
+            $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z');
+            $status['readiness'] = $evidence;
+            $status['ready'] = $evidence['state'] === 'ready' ? true : ($evidence['state'] === 'stopped' ? false : null);
             PrivateFiles::write($path, PrivateFiles::json((object) [
                 // Equal status and timestamps still represent a newer completed observation/action.
                 'generation' => bin2hex(random_bytes(16)),
@@ -53,7 +59,9 @@ final class ProcessObservation
             $cached = PrivateFiles::object(PrivateFiles::read($path, 65536));
             if (($cached->fingerprint ?? '') !== $this->fingerprint($profile) || !is_int($cached->observed_at ?? null)
                 || time() - $cached->observed_at > 30 || time() < $cached->observed_at || !($cached->status ?? null) instanceof \stdClass) { return $unknown; }
-            return [...get_object_vars($cached->status), 'observed_at' => gmdate('Y-m-d\TH:i:s\Z', $cached->observed_at)];
+            $status = get_object_vars($cached->status);
+            if (isset($status['readiness'])) { $status['readiness'] = (array) $status['readiness']; }
+            return [...$status, 'observed_at' => gmdate('Y-m-d\TH:i:s\Z', $cached->observed_at)];
         } catch (\Throwable) { return $unknown; }
     }
     private function fingerprint(\stdClass $profile): string
