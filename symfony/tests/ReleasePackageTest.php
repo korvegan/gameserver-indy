@@ -96,6 +96,17 @@ final class ReleasePackageTest extends TestCase
         $code=$packages->build($this->source,$target,$this->commit)['directory']; chmod($code,0700); PrivateFiles::write($code.'/extra.php','unexpected');
         $this->expectException(\DomainException::class); $packages->verify($code,$this->commit);
     }
+    public function testLocalGitExportAttributesCannotRemoveOrSubstituteReviewedFiles(): void
+    {
+        $packages=new ReleasePackage(); $target=$this->directory.'/rejected';
+        PrivateFiles::write($this->source.'/web/critical.js','// reviewed $Format:%H$'); $this->git(['add','web/critical.js']); $commit=$this->commit();
+        foreach (['export-ignore','export-subst'] as $attribute) {
+            PrivateFiles::write($this->source.'/.git/info/attributes','web/critical.js '.$attribute."\n");
+            self::assertSame('',$this->git(['status','--porcelain','--untracked-files=no']));
+            try { $packages->build($this->source,$target,$commit); self::fail('Local Git archive alteration accepted.'); }
+            catch (\DomainException) { self::assertDirectoryDoesNotExist($target); self::assertSame([],glob($this->directory.'/.indy-build-*')); }
+        }
+    }
     protected function tearDown(): void { if (isset($this->directory)) { $this->remove($this->directory); } }
     private function remove(string $path): void
     {

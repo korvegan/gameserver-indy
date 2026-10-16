@@ -37,6 +37,7 @@ final class ReleasePackage
             $this->git($source,['archive','--format=zip','--output='.$archive,$commit]); chmod($archive,0600);
             PrivateFiles::directory($staging.'/code'); $code=$staging.'/code';
             $this->extract($archive,$code); unlink($archive);
+            $this->committedFiles($source,$code,$commit);
             if (!hash_equals(hash('sha256',$lockBytes),hash_file('sha256',$code.'/symfony/composer.lock'))) {
                 throw new \DomainException('Abhängigkeiten gehören nicht zum Commit.');
             }
@@ -90,6 +91,27 @@ final class ReleasePackage
         }
         ksort($expected); ksort($actual);
         if ($expected===[] || $expected!==$actual) { throw new \DomainException('Installierte Bibliotheken entsprechen nicht vollständig composer.lock.'); }
+    }
+    private function committedFiles(string $source,string $directory,string $commit): void
+    {
+        // Git archive also reads local info/attributes: neither export-ignore nor export-subst may
+        // silently remove/change committed application bytes while retaining the reviewed SHA.
+        $expected=[];
+        foreach (explode("\0",$this->git($source,['ls-tree','-r','-z','--full-tree',$commit])) as $entry) {
+            if ($entry==='') { continue; }
+            if (!preg_match('/^(100644|100755) blob ([a-f0-9]{40})\t(.+)$/Ds',$entry,$match)) {
+                throw new \DomainException('Nur reguläre versionierte Codedateien sind erlaubt.');
+            }
+            $this->relative($match[3]); $expected[$match[3]]=$match[2];
+        }
+        $actual=$this->inventory($directory); ksort($expected);
+        if (array_keys($expected)!==array_keys($actual)) { throw new \DomainException('Git-Archiv enthält nicht den vollständigen geprüften Commit.'); }
+        foreach ($expected as $relative=>$object) {
+            $file=$directory.'/'.$relative; $hash=hash_init('sha1'); hash_update($hash,'blob '.filesize($file)."\0");
+            if (!hash_update_file($hash,$file) || !hash_equals($object,hash_final($hash))) {
+                throw new \DomainException('Git-Archiv enthält veränderte Commitbytes.');
+            }
+        }
     }
     private function extract(string $path,string $target): void
     {
