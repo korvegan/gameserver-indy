@@ -60,7 +60,8 @@ final class DashboardServices implements \App\Runtime\ProcessGateway, \App\Integ
     public function qr(): string { return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPioAAAAASUVORK5CYII='); }
     public function groups(): array { return [['id'=>'123456789@g.us','label'=>'Browser-Gruppe'],['id'=>'987654321@g.us','label'=>'Zweite Gruppe']]; }
     // Synthetic transport receipt; no network I/O in this test service.
-    public function send(string $destination,string $text): string { return 'fixture-receipt'; }
+    public function send(string $destination,string $text): string { return '90001'; }
+    public function edit(string $url,string $messageId,string $message): string { return $messageId; }
     public function logout(): void { PrivateFiles::write($this->root.'/whatsapp-state','STOPPED'); }
 
     public function seed(\App\Kernel $kernel): void

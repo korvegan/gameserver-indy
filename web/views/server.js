@@ -3,6 +3,7 @@ import {can, state} from '../state.js';
 import {renderUpdate} from './updates.js';
 import {connectionControls, renderConnection} from './connection.js';
 import {backupControls} from './backups.js';
+import {discordCardControls} from './discord-card.js';
 import {adoptWorkspaceStatus, renderWorkspace, renderWorkspaceJobs} from './workspace.js';
 
 export function controls() {
@@ -37,6 +38,7 @@ export function controls() {
   for (const node of document.querySelectorAll('[data-permission]')) node.hidden = !can(node.dataset.permission);
   for (const node of document.querySelectorAll('[data-local-owner]')) node.hidden = state.principal?.id !== 'local-owner' || !can('discord.write');
   for (const button of document.querySelectorAll('#discord button')) button.disabled = state.submitting || !can('discord.write');
+  discordCardControls();
   connectionControls();
   $('#access-note').hidden = state.principal?.role === 'owner';
   backupControls();

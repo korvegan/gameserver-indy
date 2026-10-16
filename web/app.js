@@ -15,6 +15,7 @@ import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
 import {initWorkspace, markWorkspaceUnknown, refreshFleet, renderWorkspace} from './views/workspace.js';
 import {bindPerformance, clearPerformance, loadPerformance} from './views/performance.js';
+import {bindDiscordCard, clearDiscordCard, loadDiscordCard} from './views/discord-card.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map(), requestContexts = new Map();
@@ -76,6 +77,7 @@ async function refresh() {
     })());
     tasks.push(refreshFleet());
     if (state.view === 'overview') tasks.push(loadPerformance());
+    if (state.view === 'discord') tasks.push(loadDiscordCard());
     if (state.view === 'logs' && can('logs.read')) tasks.push(loadLogs());
     if (state.view === 'settings') tasks.push(loadConfig());
     if (state.view === 'backups') tasks.push(loadBackups());
@@ -109,7 +111,7 @@ async function selectServer(target, openOverview = false) {
   $('#server-name').textContent = state.catalog.servers.find(profile => profile.id === target)?.label || 'Serverprofil';
   $('#server-state').textContent = 'Status wird geprüft'; $('#status-updated').textContent = '';
   for (const id of ['slot-count', 'preset-label', 'query-port', 'process-id']) $(`#${id}`).textContent = '—';
-  $('#log-source').value = 'server'; clearLogs(); clearPerformance();
+  $('#log-source').value = 'server'; clearLogs(); clearPerformance(); clearDiscordCard();
   renderEvents([]); renderJobs(); controls();
   renderUpdate();
   renderConnection();
@@ -137,6 +139,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'backups') await loadBackups();
   if (next === 'whatsapp') await loadWhatsApp();
   if (next === 'overview') await loadPerformance();
+  if (next === 'discord') await loadDiscordCard();
 }
 
 async function finishJob(job) {
@@ -216,6 +219,7 @@ async function mutate(path, body = {}) {
 
 initWorkspace(selectServer, go);
 bindNavigation(go); bindForms(mutate); bindConnections(refresh, job => acceptJob(job, controls, finishJob)); bindCommunity(); bindAccess(); bindBackups(runOperation);
+bindDiscordCard(job => acceptJob(job, controls, finishJob));
 bindWhatsApp(); bindPerformance();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;

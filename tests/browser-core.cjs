@@ -26,6 +26,17 @@ const fs=require('node:fs/promises');
         assert.equal(await page.locator('#start').isEnabled(),true);
       }
     }
+    // A synthetic fixture transport creates/edits locally; no Discord network access.
+    await page.evaluate(async()=>{const {api}=await import('/api.js');await api('/api/discord/settings',{webhook_url:'https://discord.com/api/webhooks/123/synthetic',auto_notify:false},'enshrouded');});
+    await page.getByRole('tab',{name:'Mitteilungen',exact:true}).click();
+    await page.locator('#create-discord-card:not([disabled])').waitFor();
+    page.once('dialog',d=>d.accept()); await page.locator('#create-discord-card').click();
+    await page.waitForFunction(()=>document.querySelector('#discord-card-state').textContent.includes('Statuskarte aktiv'));
+    await page.locator('#disable-discord-card').click();
+    await page.waitForFunction(()=>document.querySelector('#discord-card-state').textContent.includes('Aktualisierung aus'));
+    await page.setViewportSize({width:390,height:1000});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.setViewportSize({width:1440,height:1000});
     await page.getByRole('tab',{name:'Einstellungen',exact:true}).click();
     await page.getByLabel('Servername',{exact:true}).fill('Familienentwurf');
     await page.getByRole('tab',{name:'Updates',exact:true}).click();

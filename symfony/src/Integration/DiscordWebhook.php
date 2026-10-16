@@ -19,14 +19,25 @@ final class DiscordWebhook implements DiscordTransport
         return $message;
     }
     public function send(string $url, string $message): string
+    { return $this->request('POST', $url, $message); }
+    public function edit(string $url, string $messageId, string $message): string
+    {
+        if (!preg_match('/^[0-9]{1,30}$/D', $messageId)) { throw new \InvalidArgumentException('Ungültige Nachrichtenkennung.'); }
+        return $this->request('PATCH', $url, $message, $messageId);
+    }
+    private function request(string $method, string $url, string $message, ?string $messageId = null): string
     {
         if (!self::valid($url)) { throw new \InvalidArgumentException('Bitte eine gültige Discord-Webhook-URL verwenden.'); }
         $message = self::message($message); $response = null;
         try {
-            $response = $this->client->request('POST', $url.'?wait=true', ['json' => ['content' => $message, 'allowed_mentions' => ['parse' => []]],
+            $response = $this->client->request($method, $url.($messageId === null ? '?wait=true' : '/messages/'.$messageId), ['json' => ['content' => $message, 'allowed_mentions' => ['parse' => []]],
                 'headers' => ['User-Agent' => 'GameServerIndy/0.3'], 'max_redirects' => 0, 'timeout' => 12, 'max_duration' => 12, 'buffer' => false]);
             $status = $response->getStatusCode();
-            if ($status >= 300 && $status < 500) { throw new \DomainException($status === 429 ? 'Discord begrenzt die Anfragen. Später einen neuen Versand beauftragen.' : 'Discord hat die Nachricht abgelehnt (HTTP '.$status.').'); }
+            if ($status === 429) {
+                $retry = $response->getHeaders(false)['retry-after'][0] ?? 60;
+                throw new DiscordRateLimit(is_numeric($retry) ? max(1,min(86400,(int)ceil((float)$retry))) : 60);
+            }
+            if ($status >= 300 && $status < 500) { throw new \DomainException('Discord hat die Nachricht abgelehnt (HTTP '.$status.').'); }
             if ($status < 200 || $status >= 300) { throw new OutcomeUnknown('Discord-Versand unklar. Kein automatischer Wiederholungsversuch.'); }
             $body = '';
             foreach ($this->client->stream($response) as $chunk) {

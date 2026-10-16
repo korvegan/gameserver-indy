@@ -1,4 +1,8 @@
 <?php
 declare(strict_types=1);
 namespace App\Integration;
-interface DiscordTransport { public function send(string $url, string $message): string; }
+interface DiscordTransport
+{
+    public function send(string $url, string $message): string;
+    public function edit(string $url, string $messageId, string $message): string;
+}
