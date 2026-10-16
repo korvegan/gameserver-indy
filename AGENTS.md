@@ -39,3 +39,9 @@ Die Reasoning-Einstellung bleibt bis zu einer neuen ausdrücklichen Entscheidung
 - Zusammenhängende UI-Befunde in einem Browserlauf sammeln und gemeinsam auswerten. Ohne Änderung oder offenen Befund keine wiederholte vollständige Browserabnahme.
 - Für laufende CI- oder andere lange Prüfungen einen Beobachter verwenden. Zusätzliche Statusabfragen dienen einer konkreten Diagnose; keine konkurrierenden Poll-Schleifen starten.
 - Quellen durch gezielte Patches ändern und vorhandene Projektbefehle bevorzugen. Wiederkehrende Installationsschritte versionieren; keine neue Plugin- oder Orchestrierungsschicht ohne konkrete fehlende Fähigkeit einführen.
+
+## Kommunikation während der Arbeit
+
+Fortschrittsmeldungen kurz auf neue Erkenntnisse, ein konkretes Hindernis oder den nächsten entscheidenden Nachweis konzentrieren. Bei längeren Arbeiten weiterhin regelmäßig informieren, ohne denselben Prüfstatus ausführlich zu wiederholen. Toolabläufe und bereits geklärte Routineentscheidungen nur erklären, wenn sie für eine Entscheidung des Nutzers relevant sind.
+
+Abschlussmeldungen beginnen mit dem Ergebnis und bei Oberflächenänderungen dem erreichbaren Einstieg. Relevante Validierung und tatsächliche Einschränkungen knapp ergänzen. Bereits freigegebene Aktionen ausführen; nur bei einer wesentlichen offenen Information oder fehlenden Autorisierung gezielt nachfragen und den Grund nennen. Diese Regeln betreffen die Zusammenarbeit, nicht Discord-/WhatsApp-Betriebsmeldungen.
