@@ -7,6 +7,7 @@ from .core import ManagerError
 from .server import serve
 from .registry import ServerRegistry
 from .games import GAME_TYPES
+from .runtime_state import state_directory, controller_lease
 
 
 def main():
@@ -19,6 +20,7 @@ def main():
     parser.add_argument("--directory")
     parser.add_argument("--config-path")
     parser.add_argument("--launcher-script")
+    parser.add_argument("--state-dir", help="Vorbereitete gemeinsame Datenablage für den kontrollierten Rückweg; keine automatische Übernahme")
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("Port muss zwischen 1 und 65535 liegen.")
@@ -28,19 +30,21 @@ def main():
             with tempfile.TemporaryDirectory(prefix="gameserver-prototype-") as temporary:
                 print(json.dumps(demonstrate(Path(temporary)), ensure_ascii=False, indent=2))
             return
-        registry = ServerRegistry()
-        if args.command == "serve":
-            serve(registry, args.port)
-        elif args.command == "register":
-            result = registry.register({
-                "id": args.server, "game": args.game, "label": args.label,
-                "server_directory": args.directory, "config_path": args.config_path or "",
-                "launcher_script": args.launcher_script or "",
-            })
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-        else:
-            manager = registry.get(args.server, explicit=True)
-            print(json.dumps(manager.setup() if args.command == "setup" else manager.status(), ensure_ascii=False, indent=2))
+        root = state_directory(args.state_dir)
+        with controller_lease(root):
+            registry = ServerRegistry(root=root)
+            if args.command == "serve":
+                serve(registry, args.port)
+            elif args.command == "register":
+                result = registry.register({
+                    "id": args.server, "game": args.game, "label": args.label,
+                    "server_directory": args.directory, "config_path": args.config_path or "",
+                    "launcher_script": args.launcher_script or "",
+                })
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                manager = registry.get(args.server, explicit=True)
+                print(json.dumps(manager.setup() if args.command == "setup" else manager.status(), ensure_ascii=False, indent=2))
     except (ManagerError, OSError) as exc:
         parser.exit(1, f"Fehler: {exc}\n")
 

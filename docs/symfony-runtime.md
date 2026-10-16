@@ -24,7 +24,11 @@ Der Linux-Supervisor benötigt zusätzlich `pcntl` und `posix`. Vor Datenbankzug
 
 ## Gemeinsame Daten als Voraussetzung des Rückwegs
 
-Die vorbereitete Produktionsablage verwendet den bestehenden Datenvertrag unter `data/`, einschließlich Freigaben, `session-key`, Chronik, Sicherungen und WhatsApp-Zuordnungen. Nur diese ausdrücklich markierte Ablage verwendet für Zugriffe `data/access.sqlite3` und `data/session-key`; isolierte Durchstiche behalten ihre bisherigen Testpfade. So kann der spätere Rückweg dieselben neu entstandenen Daten weiterverwenden. Der eigentliche Datenkopier-/Aktivierungs- und Python-Rückweg ist in diesem Schritt noch nicht implementiert.
+Die vorbereitete Produktionsablage verwendet den bestehenden Datenvertrag unter `data/`, einschließlich Freigaben, `session-key`, Chronik, Sicherungen und WhatsApp-Zuordnungen. Nur diese ausdrücklich markierte Ablage verwendet für Zugriffe `data/access.sqlite3` und `data/session-key`; isolierte Durchstiche behalten ihre bisherigen Testpfade. So kann der spätere Rückweg dieselben neu entstandenen Daten weiterverwenden. Konsistente Datenkopie, Aktivierung und vollständige Rückwegabnahme stehen noch aus.
+
+Der Python-Einstieg akzeptiert für den vorbereiteten Rückweg nun `python3 -m gameserver_manager --state-dir <absoluter-Datenordner>`. Ohne diese Option bleibt der bisherige Repository-Datenpfad erhalten. Die ausdrückliche Option verlangt denselben Markierungsvertrag sowie vorhandene Profil-, Zugriffs- und Schlüsseldateien; fehlende oder unbekannte Bestände werden nicht initialisiert. Gemeinsamer Produktionsbetrieb erfolgt ausschließlich unter WSL/Linux. Vor dem Aufbau aller Dienste und bis nach ihrem Ende hält jeder Python-CLI-Befehl dieselbe `.indy-controller.lock` wie der PHP-Supervisor. So sind zwei gleichzeitig schreibende Verwaltungen unabhängig von der Wahl ihrer HTTP-Ports ausgeschlossen. Der bereits laufende alte Python-Prozess erhält diese Sperre nicht nachträglich; vor der ersten tatsächlichen Übernahme muss er weiterhin geordnet beendet werden.
+
+Ein ausschließlich aus vertrauenswürdigen importierten Profilmetadaten stammender `diagnostic_directory` bleibt auch im Python-Rückweg erhalten. Dadurch lesen Bereitschaft und Protokollanzeige weiterhin den aktiven ASKA-Runnerpfad. Die HTTP-Profilanlage kann dieses interne Feld nicht festlegen. Dieser Schritt führt keine Kopie oder tatsächliche Umschaltung aus; Releaseinstallation, konsistente Datenübernahme, Launcher und vollständiger Rückwegtest folgen.
 
 ## Nachweise und offene Abnahme
 
