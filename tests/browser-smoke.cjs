@@ -23,7 +23,7 @@ const fs = require('node:fs');
   async function expectNotice(text) {
     await page.waitForFunction(expected => document.querySelector('#notice').textContent.includes(expected), text);
   }
-  const nav = name => page.getByRole('button', {name, exact: true});
+  const nav = require('./browser-navigation.cjs').navigation(page);
   try {
     await page.goto('http://127.0.0.1:8766');
     await page.getByRole('button', {name: 'Server vorbereiten', exact: true}).waitFor();
@@ -32,6 +32,7 @@ const fs = require('node:fs');
     assert.equal(await page.locator('#start').isDisabled(), false, 'Commands are accepted; missing setup is checked by the worker.');
     await page.locator('#setup').click();
     await expectNotice('Server vorbereitet');
+    await page.locator('#network-details').evaluate(node => { node.open = true; });
     assert.equal(await page.locator('#start').isEnabled(), true);
     assert.equal(requests.some(request => request.path === '/api/state' || request.path === '/api/config'), false);
     assert.equal(await page.locator('[data-scope="local"] code').textContent(), '127.0.0.1:15637');
@@ -80,22 +81,23 @@ const fs = require('node:fs');
     await page.waitForFunction(() => document.querySelector('#query-port').textContent === '15637');
     assert.equal(await page.locator('#installed-build').textContent(), '100');
     assert.equal(await page.locator('#update-state').textContent(), 'Unbekannt');
-    await page.locator('#check-updates').click();
+    await nav('Updates').click(); await page.locator('#check-updates').click();
     await page.waitForFunction(() => document.querySelector('#job-list').textContent.includes('Steam-Update prüfen'));
     assert.equal(await page.locator('#start').isEnabled(), true);
     await expectNotice('Steam-Version geprüft');
     assert.equal(await page.locator('#update-state').textContent(), 'Update verfügbar');
     assert.equal(await page.locator('#available-build').textContent(), '200');
+    await nav('Übersicht').click();
     // Global views keep profile selection and menu geometry stable on desktop/mobile.
     for (const viewport of [{width: 1440, height: 960}, {width: 390, height: 844}, {width: 320, height: 800}]) {
       await page.setViewportSize(viewport);
       await nav('Übersicht').click();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-      const before = await page.locator('nav').boundingBox();
+      const before = await page.locator('.sidebar nav').boundingBox();
       const selected = await page.locator('#server-select').inputValue();
       for (const name of ['Sturmklingen', 'Spiele / Mods', 'Übersicht']) {
         await nav(name).click();
-        const after = await page.locator('nav').boundingBox();
+        const after = await page.locator('.sidebar nav').boundingBox();
         assert.equal(await page.locator('#server-select').isVisible(), true, `${name}: profile selection stays visible`);
         assert.equal(await page.locator('#server-select').inputValue(), selected);
         for (const axis of ['x', 'y', 'width', 'height']) {
@@ -262,7 +264,7 @@ const fs = require('node:fs');
     await page.unroute('**/api/connections/refresh');
     await page.locator('#server-select').selectOption('aska');
     await page.waitForFunction(() => document.querySelector('#join-addresses').hidden && !document.querySelector('#check-updates').disabled);
-    await page.locator('#check-updates').click();
+    await nav('Updates').click(); await page.locator('#check-updates').click();
     await page.waitForFunction(() => document.querySelector('#job-list').textContent.includes('Steam-Update prüfen'));
     await page.locator('#server-select').selectOption('enshrouded');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Indy Browser Test');
@@ -391,7 +393,7 @@ const fs = require('node:fs');
       const familyPage = await family.newPage();
       await familyPage.goto('http://127.0.0.1:8766');
       await familyPage.waitForFunction(() => !document.querySelector('#start').disabled);
-      assert.equal(await familyPage.getByRole('button', {name: 'Einstellungen', exact: true}).count(), 0);
+      assert.equal(await familyPage.getByRole('tab', {name: 'Einstellungen', exact: true}).count(), 0);
       assert.equal(await familyPage.getByRole('button', {name: 'Steam-Updates prüfen', exact: true}).count(), 0);
       assert.equal(await familyPage.getByRole('button', {name: 'Adressen aktualisieren', exact: true}).count(), 0);
       assert.equal(await familyPage.locator('#server-select option').count(), 1);

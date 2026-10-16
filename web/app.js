@@ -13,6 +13,7 @@ import {bindConnections, renderConnection} from './views/connection.js';
 import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
 import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
+import {initWorkspace, markWorkspaceUnknown, refreshFleet, renderWorkspace} from './views/workspace.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map(), requestContexts = new Map();
@@ -68,10 +69,11 @@ async function refresh() {
       mergeJobs(jobs); renderJobs();
       for (const job of jobs) watchJob(job, controls, finishJob);
     })()];
-    if (can('config.read') && state.view === 'overview') tasks.push((async () => {
+    if (can('config.read') && ['overview', 'logs'].includes(state.view)) tasks.push((async () => {
       const {events} = await api('/api/events', undefined, target, signal);
       if (current()) renderEvents(events);
     })());
+    tasks.push(refreshFleet());
     if (state.view === 'logs' && can('logs.read')) tasks.push(loadLogs());
     if (state.view === 'settings') tasks.push(loadConfig());
     if (state.view === 'backups') tasks.push(loadBackups());
@@ -82,6 +84,7 @@ async function refresh() {
   } catch (error) {
     if (!current() || error.name === 'AbortError') return;
     state.available = false;
+    markWorkspaceUnknown();
     renderConnection();
     $('#server-state').textContent = 'Status nicht erreichbar'; $('#server-state').className = 'pill error';
     $('#status-updated').textContent = 'Stand veraltet · Aktualisierung fehlgeschlagen';
@@ -100,6 +103,7 @@ async function selectServer(target, openOverview = false) {
     $('#server-select').value = state.selectedServer; return false;
   }
   replaceSelection(target); clearConfig(); $('#server-select').value = target;
+  renderWorkspace();
   $('#server-name').textContent = state.catalog.servers.find(profile => profile.id === target)?.label || 'Serverprofil';
   $('#server-state').textContent = 'Status wird geprüft'; $('#status-updated').textContent = '';
   for (const id of ['slot-count', 'preset-label', 'query-port', 'process-id']) $(`#${id}`).textContent = '—';
@@ -207,6 +211,7 @@ async function mutate(path, body = {}) {
   finally { state.submitting = false; controls(); }
 }
 
+initWorkspace(selectServer, go);
 bindNavigation(go); bindForms(mutate); bindConnections(refresh, job => acceptJob(job, controls, finishJob)); bindCommunity(); bindAccess(); bindBackups(runOperation);
 bindWhatsApp();
 $('#check-updates').addEventListener('click', async () => {

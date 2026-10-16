@@ -4,6 +4,16 @@ import {can, state} from '../state.js';
 
 let submitting = false, currentConnection, renderRevision = 0;
 let formServer, draftRevision = 0, saving = false;
+let quickAddress = '';
+
+async function copyAddress(address, value) {
+  try { await navigator.clipboard.writeText(address); notice('Beitrittsadresse kopiert.'); }
+  catch {
+    const range = document.createRange(); range.selectNodeContents(value);
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    notice('Adresse markiert. Mit Strg+C oder dem Kopiermenü kopieren.');
+  }
+}
 
 export function connectionControls() {
   $('#use-join-message').disabled = state.submitting || !can('discord.write') || !currentConnection?.share_message;
@@ -21,14 +31,7 @@ function addressCard(label, addresses, empty, id) {
     const value = element('code', address, 'path');
     const button = element('button', 'Kopieren', 'button secondary');
     button.type = 'button'; button.setAttribute('aria-label', `${label}: Adresse kopieren`);
-    button.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(address); notice('Beitrittsadresse kopiert.'); }
-      catch {
-        const range = document.createRange(); range.selectNodeContents(value);
-        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-        notice('Adresse markiert. Mit Strg+C oder dem Kopiermenü kopieren.');
-      }
-    });
+    button.addEventListener('click', () => copyAddress(address, value));
     row.append(value, button); card.append(row);
   }
   return card;
@@ -44,6 +47,12 @@ export function renderConnection(connection) {
   }
   if (connection && !state.connectionDirty) $('#join-public-host').value = data.public_host || '';
   const direct = data.mode === 'ip_query';
+  quickAddress = connection ? direct ? data.external || '' : data.server_name || '' : '';
+  $('#quick-join-label').textContent = direct ? 'Extern · für Mitspieler' : 'Servername für die Suche';
+  $('#quick-join-value').textContent = quickAddress || (direct ? 'Externe Adresse unbekannt' : 'Beitrittsangabe noch nicht geladen');
+  $('#quick-join-hint').textContent = direct ? 'Im Spiel: Suche nach IPv4 / Domain · externer Zugang ungeprüft'
+    : connection ? 'Im Spiel: Serverliste nach diesem Namen durchsuchen' : 'Beitrittsinformationen werden geladen …';
+  $('#quick-join-copy').disabled = !quickAddress;
   const signature = JSON.stringify(data);
   if (container.dataset.snapshot !== signature) {
     container.dataset.snapshot = signature;
@@ -69,6 +78,7 @@ export function renderConnection(connection) {
 }
 
 export function bindConnections(refresh, accepted) {
+  $('#quick-join-copy').addEventListener('click', () => { if (quickAddress) copyAddress(quickAddress, $('#quick-join-value')); });
   $('#join-public-host').addEventListener('input', () => { state.connectionDirty = true; draftRevision++; });
   $('#join-public-form').addEventListener('submit', async event => {
     event.preventDefault();

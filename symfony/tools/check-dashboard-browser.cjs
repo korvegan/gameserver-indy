@@ -27,7 +27,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     browser = await chromium.launch({headless:true});
     const page = await browser.newPage({viewport:{width:1440,height:1000}}), errors = [];
     page.on('pageerror',error => errors.push(error.message));
-    const nav = name => page.getByRole('button',{name,exact:true});
+    const nav = require('../../tests/browser-navigation.cjs').navigation(page);
     const terminal = async id => {
       for (let attempt = 0; attempt < 200; attempt++) {
         const {job} = await (await page.request.get(origin+'/api/jobs?id='+id)).json();
@@ -73,7 +73,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     });
     page.once('dialog',dialog => dialog.accept()); await page.locator('#stop').click(); await acceptanceArrival;
     assert.equal((await terminal(delayedJob.id)).state,'succeeded');
-    await page.locator(`[data-job-id="${delayedJob.id}"][data-state="succeeded"]`).waitFor();
+    await page.locator(`[data-job-id="${delayedJob.id}"][data-state="succeeded"]`).waitFor({state:'attached'});
     releaseAcceptance(); await page.unrouteAll({behavior:'wait'});
     await page.waitForFunction(() => !document.querySelector('#start').disabled);
     assert.equal(await page.locator(`[data-job-id="${delayedJob.id}"]`).getAttribute('data-state'),'succeeded');
@@ -112,7 +112,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     await page.getByRole('button',{name:'Wiederherstellen',exact:true}).click();
     await page.waitForFunction(() => document.querySelectorAll('.backup-entry').length === 2);
     assert.equal(await fs.readFile(path.join(root,'library/steamapps/common/EnshroudedServer/savegame/world0.ksd'),'utf8'),'own-browser-world');
-    await nav('Übersicht').click(); response = accepted('/api/updates/check'); await page.locator('#check-updates').click();
+    await nav('Updates').click(); response = accepted('/api/updates/check'); await page.locator('#check-updates').click();
     assert.equal((await terminal((await (await response).json()).job.id)).state,'succeeded');
     // Personal WhatsApp has a synthetic QR/account; no message is sent.
     await nav('WhatsApp').click(); await page.locator('#wa-connect').click();
@@ -164,7 +164,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     // Restore the original scope required by the shared chronicle permission regression.
     assert.equal((await post('/api/access/users',{id:familyGrant.id,revision:2,login:'family@example.test',name:'Scoped family',role:'family',server_ids:['aska'],enabled:true})).status(),200);
     // The existing extensive chronicle and tapestry regressions also run against Symfony.
-    for (const script of ['tests/browser-chronicle.cjs','tests/browser-story.cjs']) {
+    for (const script of ['tests/browser-chronicle.cjs','tests/browser-story.cjs','tests/browser-workspace.cjs']) {
       const child = spawn(process.execPath,[script],{cwd:project,stdio:'inherit',env:{...process.env,INDY_BROWSER_ORIGIN:origin,INDY_BROWSER_FAMILY_ORIGIN:privateOrigin}});
       const [code] = await once(child,'exit'); assert.equal(code,0,script);
     }

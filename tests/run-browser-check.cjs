@@ -22,7 +22,7 @@ async function main() {
       await delay(100);
     }
     if (!started) throw new Error(`Test fixture did not start: ${output}`);
-    for (const script of ['tests/browser-smoke.cjs', 'tests/browser-chronicle.cjs', 'tests/browser-story.cjs', 'tests/browser-access.cjs', 'tests/browser-backups.cjs', 'tests/browser-controls.cjs', 'tests/browser-join.cjs', 'tests/browser-whatsapp.cjs']) {
+    for (const script of ['tests/browser-smoke.cjs', 'tests/browser-chronicle.cjs', 'tests/browser-story.cjs', 'tests/browser-access.cjs', 'tests/browser-backups.cjs', 'tests/browser-controls.cjs', 'tests/browser-join.cjs', 'tests/browser-whatsapp.cjs', 'tests/browser-workspace.cjs']) {
       const browser = spawn(process.execPath, [script], {cwd: root, stdio: 'inherit'});
       const [code] = await once(browser, 'exit');
       if (code !== 0) throw new Error(`Browser check failed in ${script} (exit ${code}).`);

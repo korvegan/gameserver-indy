@@ -7,6 +7,7 @@
   <title>GameServer Indy · Serververwaltung</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/serverzentrale.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
@@ -15,15 +16,10 @@
     <label class="server-picker">Serverprofil<select id="server-select" disabled><option>Wird geladen …</option></select></label>
     <p class="nav-label">VERWALTUNG</p>
     <nav aria-label="Hauptnavigation">
-      <button class="nav active" data-view="overview" aria-current="page"><span aria-hidden="true">◈</span> Übersicht</button>
-      <button class="nav" data-view="settings" data-permission="config.read" hidden><span aria-hidden="true">⚙</span> Einstellungen</button>
-      <button class="nav" data-view="logs" data-permission="logs.read" hidden><span aria-hidden="true">≡</span> Serverlog</button>
-      <button class="nav" data-view="backups" data-permission="backups.manage" hidden><span aria-hidden="true">▣</span> Weltsicherungen</button>
-      <button class="nav" data-view="discord" data-permission="discord.write" hidden><span aria-hidden="true">↗</span> Discord</button>
-      <button class="nav" data-view="whatsapp" data-permission="discord.write" data-local-owner hidden><span aria-hidden="true">◌</span> WhatsApp</button>
-      <button class="nav" data-view="profiles" data-permission="catalog.write" hidden><span aria-hidden="true">＋</span> Serverprofile</button>
+      <button class="nav active" data-view="overview" aria-current="page"><span aria-hidden="true">◈</span> Serverzentrale</button>
       <button class="nav" data-view="games"><span aria-hidden="true">▦</span> Spiele / Mods</button>
       <button class="nav" data-view="community"><span aria-hidden="true">⚑</span> Sturmklingen</button>
+      <button class="nav" data-view="profiles" data-permission="catalog.write" hidden><span aria-hidden="true">＋</span> Serverprofile</button>
       <button class="nav" data-view="access" data-permission="access.manage" hidden><span aria-hidden="true">♙</span> Familienzugang</button>
     </nav>
     <div class="sidebar-bottom"><span class="local-dot"></span> <span id="location-label">Lokal auf deinem Rechner</span><small>GameServer Indy · v0.3</small></div>
@@ -31,6 +27,29 @@
   <main>
     <header class="topbar"><span><span class="muted">Verwaltung</span><span class="slash">/</span><span id="breadcrumb">Übersicht</span></span><span class="local-badge" id="identity-label">LOCAL HOST</span></header>
     <div id="notice" role="status" aria-live="polite" hidden></div>
+    <section id="server-workspace" aria-label="Serverzentrale">
+      <div class="page-heading workspace-heading"><div><h1>Serverzentrale</h1><p class="subtitle">Deine Spiele. Ein gemeinsamer Überblick.</p></div><div id="workspace-heading-actions"></div></div>
+      <div class="workspace-layout">
+        <section class="worlds"><div class="worlds-heading"><h2>Deine Spielwelten</h2><span id="world-count">Profile laden …</span></div><div id="world-list"><p class="empty">Serverprofile werden geladen …</p></div></section>
+        <section id="server-detail" class="server-detail" data-game="generic" aria-label="Ausgewählter Server">
+          <header class="game-banner"><img id="game-banner-art" class="game-banner-art" alt="" hidden width="1920" height="620"><div class="game-banner-shade" aria-hidden="true"></div><span class="game-banner-kicker">DEINE SPIELWELT · DEDICATED SERVER</span><span id="game-wordmark" class="game-wordmark"><span id="game-wordmark-fallback">GameServer Indy</span><img id="game-wordmark-image" alt="" width="640" height="360" hidden></span><span id="game-banner-caption" class="game-banner-caption">Deine gemeinsame Spielwelt.</span></header>
+          <div id="workspace-controlbar" class="workspace-controlbar"><div id="workspace-identity"></div><div id="workspace-state" class="workspace-state"></div><div id="workspace-actions"></div></div>
+          <div class="quick-join"><div><small id="quick-join-label">Beitrittsangabe</small><strong id="quick-join-value">Wird geladen …</strong><span id="quick-join-hint">Verbindung wird geprüft.</span></div><button id="quick-join-copy" class="button secondary" disabled>Kopieren</button><button class="text-button" id="open-join-details">Details →</button></div>
+          <div class="workspace-receipt"><p id="workspace-job-state" role="status">Keine Auftragsdaten geladen.</p><button class="text-button" data-go="logs" data-permission="logs.read" hidden>Aufträge ansehen <span id="workspace-job-count"></span> →</button></div>
+          <div id="workspace-setup"></div>
+          <nav class="server-tabs" role="tablist" aria-label="Serverbereiche">
+            <button id="tab-overview" role="tab" aria-selected="true" aria-controls="overview" data-view="overview">Übersicht</button>
+            <button id="tab-settings" role="tab" aria-selected="false" aria-controls="settings" tabindex="-1" data-view="settings" data-permission="config.read" hidden>Einstellungen</button>
+            <button id="tab-logs" role="tab" aria-selected="false" aria-controls="logs" tabindex="-1" data-view="logs" data-permission="logs.read" hidden>Protokoll &amp; Aufträge</button>
+            <button id="tab-backups" role="tab" aria-selected="false" aria-controls="backups" tabindex="-1" data-view="backups" data-permission="backups.manage" hidden>Sicherungen</button>
+            <button id="tab-updates" role="tab" aria-selected="false" aria-controls="updates" tabindex="-1" data-view="updates">Updates <span id="update-tab-hint" aria-hidden="true" title="Update-Hinweis" hidden>•</span></button>
+            <button id="tab-discord" role="tab" aria-selected="false" aria-controls="discord" tabindex="-1" data-view="discord" data-permission="discord.write" hidden>Mitteilungen</button>
+          </nav>
+          <nav id="message-channels" class="message-channels" aria-label="Mitteilungskanal" hidden><button data-view="discord" class="button secondary">Discord</button><button data-view="whatsapp" class="button secondary" data-local-owner data-permission="discord.write" hidden>WhatsApp</button></nav>
+          <div id="server-panels" class="server-panels"></div>
+        </section>
+      </div>
+    </section>
     <section id="overview" class="view">
       <div class="page-heading"><div><p class="eyebrow">DEINE SPIELE. DEINE SERVER.</p><h1>Dein nächster Spielabend.</h1><p class="subtitle">Dedicated Server an einem Ort verwalten.</p></div><button class="button secondary" id="refresh">↻ Aktualisieren</button></div>
       <div class="server-card">
@@ -63,6 +82,7 @@
       <div class="overview-grid" data-permission="config.read"><section class="panel"><div class="panel-heading"><h3>Alles an seinem Platz</h3><span class="small-tag">INSTALLATION</span></div><p class="muted">Deine Steam-Installation</p><code class="path" id="install-path"></code><div class="check-row"><span id="installation-check">Installation wird geprüft</span><span id="configuration-check">Konfiguration wird geprüft</span></div><button class="text-button" data-go="settings">Einstellungen öffnen <span>→</span></button></section><section class="panel"><div class="panel-heading"><h3>Deine Gruppe auf dem Laufenden</h3><span class="discord-mark" aria-hidden="true">◉</span></div><p class="muted">Teile den nächsten Aufbruch direkt in Discord.</p><p id="discord-status" class="connection-status">Verbindung wird geprüft</p><button class="text-button" data-go="discord">Discord einrichten <span>→</span></button></section></div>
       <section class="panel activity" data-permission="config.read"><div class="panel-heading"><h3>Letzte Aktivitäten</h3><span class="muted">Auf diesem Rechner</span></div><div id="events"><p class="empty">Noch keine Aktivitäten. Deine Reise beginnt hier.</p></div></section>
     </section>
+    <section id="updates" class="view" hidden><div class="page-heading"><div><h1>Steam-Updates</h1><p class="subtitle">Installierten und angebotenen Build vergleichen.</p></div></div></section>
     <section id="backups" class="view" hidden>
       <div class="page-heading"><div><p class="eyebrow">EURE WELT BLEIBT BEI EUCH</p><h1>Weltsicherungen</h1><p class="subtitle">Welt und zugehörige Konfiguration. Drei Tage rollend; angeheftete Stände bleiben erhalten.</p></div><button id="backup-refresh" class="button secondary">↻ Aktualisieren</button></div>
       <section class="panel"><h2 class="section-title">Dieses Weltziel</h2><code id="backup-target" class="path">Weltziel wird geladen …</code><p id="backup-last"></p><p class="muted" id="backup-progress" role="status"></p>

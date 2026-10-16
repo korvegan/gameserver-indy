@@ -28,7 +28,11 @@ final class DashboardTest extends SliceTestCase
     public function testManagedRootRendersFullTwigDashboardAndOnlyWhitelistedAssets(): void
     {
         $client = $this->boot(); $client->request('GET','/'); self::assertResponseIsSuccessful(); self::assertSelectorExists('#server-select'); self::assertSelectorExists('#community'); self::assertSelectorExists('#whatsapp'); self::assertSelectorExists('#new-moment[disabled]');
-        foreach (['/app.js','/job-stream.js','/views/story-art.js','/style.css','/favicon.svg'] as $path) { $client->request('GET',$path); self::assertResponseIsSuccessful(); }
+        foreach (['/app.js','/job-stream.js','/views/story-art.js','/views/workspace.js','/style.css','/serverzentrale.css','/favicon.svg'] as $path) { $client->request('GET',$path); self::assertResponseIsSuccessful(); }
+        foreach (['hero.jpg'=>'image/jpeg','logo.png'=>'image/png'] as $file=>$type) {
+            $client->request('GET','/artwork/enshrouded-'.$file); self::assertResponseIsSuccessful(); self::assertResponseHeaderSame('Content-Type',$type);
+        }
+        $client->request('GET','/artwork/unknown-hero.jpg'); self::assertResponseStatusCodeSame(404);
         $client->request('GET','/views/../../composer.lock'); self::assertResponseStatusCodeSame(404);
     }
     public function testOverviewNeverQueriesProcessesAndBrokenConfigDoesNotBreakCatalog(): void

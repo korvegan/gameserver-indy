@@ -3,6 +3,7 @@ import {can, state} from '../state.js';
 import {renderUpdate} from './updates.js';
 import {connectionControls, renderConnection} from './connection.js';
 import {backupControls} from './backups.js';
+import {adoptWorkspaceStatus, renderWorkspace, renderWorkspaceJobs} from './workspace.js';
 
 export function controls() {
   const status = state.snapshot?.status;
@@ -35,6 +36,7 @@ export function controls() {
   connectionControls();
   $('#access-note').hidden = state.principal?.role === 'owner';
   backupControls();
+  renderWorkspace(); renderWorkspaceJobs();
   if (pending && state.available) {
     $('#server-state').textContent = '◌ Auftrag läuft';
     $('#process-note').textContent = 'Fortschritt und Ergebnis unter Aufträge.';
@@ -64,6 +66,7 @@ export function renderCatalog(catalog) {
     selector.dataset.profiles = JSON.stringify(catalog.servers);
   }
   selector.value = state.selectedServer;
+  renderWorkspace();
   if (!$('#profile-game').options.length) {
     for (const game of catalog.games.filter(game => game.server_adapter !== false)) {
       const option = element('option', game.label); option.value = game.id;
@@ -75,6 +78,7 @@ export function renderCatalog(catalog) {
 
 export function renderStatus(data) {
   state.snapshot = data;
+  adoptWorkspaceStatus(data);
   const {status, summary} = data;
   renderUpdate(data.update);
   renderConnection(data.connection);
