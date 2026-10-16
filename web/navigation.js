@@ -2,7 +2,7 @@ import {$} from './dom.js';
 import {state} from './state.js';
 
 const names = {overview: 'Übersicht', settings: 'Einstellungen', logs: 'Serverlog', discord: 'Discord',
-  profiles: 'Serverprofile', games: 'Spiele / Mods', community: 'Sturmklingen', access: 'Familienzugang', backups: 'Weltsicherungen'};
+  profiles: 'Serverprofile', games: 'Spiele / Mods', community: 'Sturmklingen', access: 'Familienzugang', backups: 'Weltsicherungen', whatsapp: 'WhatsApp'};
 
 export function navigate(next) {
   if (!Object.hasOwn(names, next)) return;

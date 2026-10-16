@@ -119,6 +119,6 @@ export function bindForms(mutate) {
       launcher_script: $('#profile-game').selectedOptions[0].dataset.launcher === 'true' ? $('#profile-launcher').value : ''});
   });
   window.addEventListener('beforeunload', event => {
-    if (state.dirty || state.discordDirty || state.messageDirty || state.profileDirty || state.communityDirty || state.accessDirty || state.connectionDirty) { event.preventDefault(); event.returnValue = ''; }
+    if (state.dirty || state.discordDirty || state.messageDirty || state.profileDirty || state.communityDirty || state.accessDirty || state.connectionDirty || state.whatsappDirty) { event.preventDefault(); event.returnValue = ''; }
   });
 }

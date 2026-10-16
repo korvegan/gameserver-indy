@@ -1,0 +1,18 @@
+{
+  "services": {
+    "whatsapp": {
+      "image": "devlikeapro/waha@sha256:280bdc8f860267a2488a45d00ec88529646f7468c0bf0283c595d6efdd1b5e3b",
+      "container_name": "gameserver-indy-whatsapp",
+      "labels": {"io.gameserver-indy.service": "whatsapp"},
+      "restart": "unless-stopped",
+      "ports": ["127.0.0.1:18768:3000"],
+      "env_file": ["${INDY_WHATSAPP_DATA}/waha.env"],
+      "volumes": ["${INDY_WHATSAPP_DATA}/sessions:/app/.sessions"],
+      "cap_drop": ["ALL"],
+      "security_opt": ["no-new-privileges:true"],
+      "mem_limit": "1g",
+      "cpus": 1.0,
+      "logging": {"driver": "none"}
+    }
+  }
+}

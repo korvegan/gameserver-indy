@@ -12,6 +12,7 @@ from .logs import redact, secret_values
 from .security import AccessDenied, Principal
 from .storage import Database
 from .updates import UpdateService
+from .whatsapp import WhatsAppService
 
 PUBLIC_STATUS = {"installed", "configured", "running", "server_id", "game", "game_label", "profile_label", "starting", "recovery_required"}
 
@@ -27,6 +28,7 @@ class Application:
         self.connections = ConnectionService()
         self.community = CommunityService(self.database, self.catalog, registry)
         self.chronicle = ChronicleService(self.community)
+        self.whatsapp = WhatsAppService(registry)
 
     def instance(self, principal, server_id=None, permission="status.read", explicit=False):
         principal.require(permission, server_id)
@@ -169,6 +171,7 @@ class Application:
         return future.result()
 
     def close(self):
+        self.whatsapp.close()
         self.connections.close()
         self.updates.close()
         self.jobs.close()

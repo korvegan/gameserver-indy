@@ -884,3 +884,6 @@ dialog h2 { overflow-wrap:anywhere; }
 :root .backup-actions input[type=checkbox] { flex: 0 0 auto; }
 :root .backup-entry { padding: 22px 0; border-bottom: 1px solid var(--border, #384638); overflow-wrap: anywhere; }
 :root #backup-target { white-space: pre-wrap; overflow-wrap: anywhere; }
+:root .wa-qr { display: block; width: 320px; max-width: 100%; height: auto; background: white; padding: 12px; margin: 20px 0; }
+:root .wa-qr[hidden] { display: none; }
+:root .wa-preview { min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.7; }

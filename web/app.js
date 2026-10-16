@@ -12,6 +12,7 @@ import {renderUpdate} from './views/updates.js';
 import {bindConnections, renderConnection} from './views/connection.js';
 import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
 import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
+import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map();
@@ -109,6 +110,7 @@ async function selectServer(target, openOverview = false) {
 }
 
 async function go(next, {keepNotice = false} = {}) {
+  if (next === 'whatsapp' && state.principal?.id !== 'local-owner') return notice('WhatsApp wird am lokalen Besitzerzugang eingerichtet.', true);
   if (state.accessDirty && next !== 'access') {
     if (!confirm('Ungespeicherte Freigabe verwerfen und die Ansicht wechseln?')) return;
     discardAccessDrafts();
@@ -124,6 +126,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'community') await loadCommunity();
   if (next === 'access') await loadAccess();
   if (next === 'backups') await loadBackups();
+  if (next === 'whatsapp') await loadWhatsApp();
 }
 
 async function finishJob(job) {
@@ -183,6 +186,7 @@ async function mutate(path, body = {}) {
 }
 
 bindNavigation(go); bindForms(mutate); bindConnections(refresh); bindCommunity(); bindAccess(); bindBackups(runOperation);
+bindWhatsApp();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;
