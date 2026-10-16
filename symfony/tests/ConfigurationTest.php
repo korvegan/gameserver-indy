@@ -190,4 +190,20 @@ final class ConfigurationTest extends SliceTestCase
         $client->request('POST', '/api/config', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://127.0.0.1:18865', 'HTTP_X_MANAGER_TOKEN' => $token], content: json_encode($config));
         self::assertResponseStatusCodeSame(409);
     }
+    public function testFilesystemRootCannotBecomeAWorldOrEscapeOverlapChecks(): void
+    {
+        $this->boot(); $profile = $this->profile(); $this->registry()->register($this->owner(), $profile); $this->configuration($profile);
+        $paths = new NativePaths();
+        $root = PHP_OS_FAMILY === 'Windows' ? substr($this->directory, 0, 3) : '/';
+        self::assertNotSame('', $paths->identity($root));
+        if (PHP_OS_FAMILY !== 'Windows') { self::assertSame('/', $paths->identity($root)); }
+        self::assertTrue($paths->contains($root, $this->directory));
+        $worlds = static::getContainer()->get(WorldBinding::class);
+        self::assertTrue($worlds->overlaps(['world' => $root, 'files' => []], ['world' => $this->directory, 'files' => []]));
+        $view = $this->service()->view($this->owner(), $profile->id); $view['config']->saveDirectory = $root;
+        try { $worlds->resolve($profile, $view['config'], null); self::fail('Root world accepted'); }
+        catch (\DomainException) { self::assertTrue(true); }
+        try { $this->service()->save($this->owner(), $profile->id, $view['config'], $view['revision']); self::fail('Root world written'); }
+        catch (\DomainException) { self::assertDirectoryDoesNotExist($this->registry()->dataPath($profile->id).'/backups'); }
+    }
 }

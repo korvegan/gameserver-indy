@@ -20,10 +20,8 @@ final class WorldBinding
             $world = rtrim($this->paths->local($windowsProfile), '/\\').'/AppData/LocalLow/Sand Sailor Studio/Aska/data/server/savegame_'.$saveId;
             if (($configuration->{'custom game preset path'} ?? '') !== '') { $files[] = $this->paths->local($configuration->{'custom game preset path'}); }
         } else { throw new \DomainException('Kein Weltadapter eingerichtet.'); }
-        $identity = $this->paths->identity($world);
         foreach ([$this->paths->local($profile->server_directory), ...$files] as $protected) {
-            $other = $this->paths->identity($protected);
-            if ($identity === $other || str_starts_with($other, $identity.'/')) { throw new \DomainException('Weltordner und geschützte Installations-/Konfigurationsdateien überschneiden sich.'); }
+            if ($this->paths->contains($world, $protected)) { throw new \DomainException('Weltordner und geschützte Installations-/Konfigurationsdateien überschneiden sich.'); }
         }
         return ['world' => $world, 'files' => $files, 'save_id' => $saveId];
     }
@@ -32,8 +30,7 @@ final class WorldBinding
         $one = array_filter([$one['world'], ...$one['files']], fn ($path) => $path !== null);
         $two = array_filter([$two['world'], ...$two['files']], fn ($path) => $path !== null);
         foreach ($one as $first) { foreach ($two as $second) {
-            $a = $this->paths->identity($first); $b = $this->paths->identity($second);
-            if ($a === $b || str_starts_with($a, $b.'/') || str_starts_with($b, $a.'/')) { return true; }
+            if ($this->paths->contains($first, $second) || $this->paths->contains($second, $first)) { return true; }
         } }
         return false;
     }

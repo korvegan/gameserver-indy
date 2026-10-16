@@ -37,10 +37,18 @@ final class NativePaths
             if ($parent === $local) { $resolved = $local; break; }
             array_unshift($tail, basename($local)); $local = $parent;
         }
+        $normalized = rtrim(str_replace('\\', '/', $resolved), '/').'/'.implode('/', $tail);
+        $prefix = str_starts_with($normalized, '//') ? '//' : (str_starts_with($normalized, '/') ? '/' : '');
         $parts = [];
-        foreach (explode('/', str_replace('\\', '/', $resolved.'/'.implode('/', $tail))) as $part) {
+        foreach (explode('/', $normalized) as $part) {
             if ($part === '..') { array_pop($parts); } elseif ($part !== '' && $part !== '.') { $parts[] = $part; }
         }
-        return mb_convert_case(implode('/', $parts), MB_CASE_FOLD, 'UTF-8');
+        $identity = $prefix.mb_convert_case(implode('/', $parts), MB_CASE_FOLD, 'UTF-8');
+        return preg_match('/^[a-z]:$/D', $identity) ? $identity.'/' : $identity;
+    }
+    public function contains(string $directory, string $path): bool
+    {
+        $parent = $this->identity($directory); $child = $this->identity($path);
+        return $parent === $child || str_starts_with($child, rtrim($parent, '/').'/');
     }
 }

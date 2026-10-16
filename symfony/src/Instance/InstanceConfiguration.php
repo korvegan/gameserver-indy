@@ -69,13 +69,11 @@ final class InstanceConfiguration
     {
         $own = $this->worlds->resolve($profile, $configuration, $status['user_profile'] ?? null);
         if ($own['world'] !== null) {
-            $world = $this->paths->identity($own['world']);
             foreach ([$this->runtime->directory, dirname($this->projectDirectory)] as $protected) {
-                $identity = $this->paths->identity($protected);
-                if ($world === $identity || str_starts_with($identity, $world.'/')) { throw new \DomainException('Weltordner und Verwaltungsdaten überschneiden sich.'); }
+                if ($this->paths->contains($own['world'], $protected)) { throw new \DomainException('Weltordner und Verwaltungsdaten überschneiden sich.'); }
             }
-            $storage = $this->paths->identity($this->runtime->directory.'/data/world-backups');
-            if ($world === $storage || str_starts_with($storage, $world.'/') || str_starts_with($world, $storage.'/')) { throw new \DomainException('Weltordner und Sicherungsablage überschneiden sich.'); }
+            $storage = $this->runtime->directory.'/data/world-backups';
+            if ($this->paths->contains($own['world'], $storage) || $this->paths->contains($storage, $own['world'])) { throw new \DomainException('Weltordner und Sicherungsablage überschneiden sich.'); }
         }
         foreach ($this->registry->settings()->servers as $other) {
             if ($other->id === $profile->id) { continue; }
