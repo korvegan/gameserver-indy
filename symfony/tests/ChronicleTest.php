@@ -149,10 +149,11 @@ final class ChronicleTest extends SliceTestCase
         self::assertSame($access, hash_file('sha256', $this->directory.'/access.sqlite3')); self::assertSame($original, hash_file('sha256', $this->database->path()));
         $this->rejected(fn () => $snapshot->copy($this->database->path(), $this->directory.'/v2-package'));
         $v1 = $this->directory.'/v1.sqlite3'; copy($this->database->path(), $v1); $db = PlatformDatabase::open($v1);
-        $db->exec("DELETE FROM community_events; DELETE FROM scenes; DROP TABLE community_media; PRAGMA user_version=1"); unset($db); $before = hash_file('sha256', $v1);
+        $db->exec("UPDATE community_events SET payload=json_remove(payload,'$.media_id'); DROP TABLE community_media; PRAGMA user_version=1"); unset($db); $before = hash_file('sha256', $v1);
         $manifest = $snapshot->copy($v1, $this->directory.'/v1-package'); self::assertSame(1, $manifest['source_schema']); self::assertSame($before, hash_file('sha256', $v1));
         $saved = PlatformDatabase::open($this->directory.'/v1-package/source.sqlite3'); self::assertSame(1, (int) $saved->query('PRAGMA user_version')->fetchColumn()); unset($saved);
         $working = PlatformDatabase::open($this->directory.'/v1-package/platform.sqlite3'); self::assertSame(2, (int) $working->query('PRAGMA user_version')->fetchColumn()); unset($working);
+        self::assertSame(1, $manifest['tables']['community_events']['rows']); self::assertSame(1, $manifest['tables']['scenes']['rows']);
         self::assertFileDoesNotExist($this->directory.'/v1-package/access.sqlite3');
     }
     public function testOutboxKeepsRemoteMappingAndNeverReplaysUncertainOrOldRevisions(): void
