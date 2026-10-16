@@ -19,7 +19,8 @@ let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map(), requestContexts = new Map();
 onSessionExpired(async () => {
   const session = await api('/api/session');
-  if (JSON.stringify(session.principal) !== JSON.stringify(state.principal)) { location.reload(); throw new Error('Zugriff geändert'); }
+  if (JSON.stringify(session.principal) !== JSON.stringify(state.principal)
+      || (state.apiVersion >= 2 && (session.grant_revision ?? null) !== state.grantRevision)) { location.reload(); throw new Error('Zugriff geändert'); }
   setToken(session.token);
   state.apiVersion = session.api_version || 1;
 });
@@ -234,7 +235,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ![
 
 (async () => {
   try {
-    const session = await api('/api/session'); setToken(session.token); state.principal = session.principal; state.apiVersion = session.api_version || 1;
+    const session = await api('/api/session'); setToken(session.token); state.principal = session.principal;
+    state.apiVersion = session.api_version || 1; state.grantRevision = session.grant_revision ?? null;
     $('#identity-label').textContent = {owner: session.access_mode === 'private' ? 'Besitzer · privat' : 'Besitzer · lokal', family: 'Familienbediener', viewer: 'Lesezugriff'}[session.principal.role] || 'Zugriff eingeschränkt';
     if (session.access_mode === 'private') $('#location-label').textContent = 'Privater Familienzugang';
     await refreshCatalog(); await refresh();

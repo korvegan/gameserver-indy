@@ -131,6 +131,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     assert.equal((await post('/api/access/settings',{enabled:true,hostname:privateHost,port:18877})).status(),200);
     assert.equal((await post('/api/access/users',{login:'remote@example.test',name:'Remote owner',role:'owner',server_ids:null,enabled:true})).status(),200);
     const grant = await post('/api/access/users',{login:'family@example.test',name:'Scoped family',role:'family',server_ids:['aska'],enabled:true}); assert.equal(grant.status(),200);
+    const familyGrant = await grant.json();
     proxy = http.createServer((request,response) => {
       const headers = {...request.headers,host:privateHost,'tailscale-user-login':request.headers['x-qa-identity'] === 'family' ? 'family@example.test' : 'remote@example.test'};
       delete headers['x-qa-identity']; if (headers.origin === privateOrigin) headers.origin = 'https://'+privateHost;
@@ -147,6 +148,17 @@ const {setTimeout: delay} = require('node:timers/promises');
     assert.equal(await remote.evaluate(() => document.documentElement.scrollWidth > innerWidth),false);
     await fs.mkdir(path.join(project,'artifacts'),{recursive:true}); await remote.screenshot({path:path.join(project,'artifacts/symfony-dashboard-mobile.png'),fullPage:true});
     await remote.close(); assert.deepEqual(errors,[]);
+    const familyContext = await browser.newContext({extraHTTPHeaders:{'X-QA-Identity':'family'}}), familyPage = await familyContext.newPage();
+    let firstStreamSeen;
+    const firstStream = new Promise(resolve => { firstStreamSeen = resolve; });
+    await familyPage.route('**/api/job-events*',route => { firstStreamSeen(); return route.fulfill({status:503,contentType:'application/json',body:'{}'}); });
+    await familyPage.goto(privateOrigin); await firstStream;
+    // Change only profile scope, leaving the public id/role/permissions identical, during an SSE gap.
+    assert.equal((await post('/api/access/users',{id:familyGrant.id,revision:1,login:'family@example.test',name:'Scoped family',role:'family',server_ids:['enshrouded'],enabled:true})).status(),200);
+    await familyPage.waitForFunction(() => document.querySelector('#job-live-state').textContent === 'Freigabe geändert');
+    assert.equal(await familyPage.locator('#start').isDisabled(),true); await familyContext.close();
+    // Restore the original scope required by the shared chronicle permission regression.
+    assert.equal((await post('/api/access/users',{id:familyGrant.id,revision:2,login:'family@example.test',name:'Scoped family',role:'family',server_ids:['aska'],enabled:true})).status(),200);
     // The existing extensive chronicle and tapestry regressions also run against Symfony.
     for (const script of ['tests/browser-chronicle.cjs','tests/browser-story.cjs']) {
       const child = spawn(process.execPath,[script],{cwd:project,stdio:'inherit',env:{...process.env,INDY_BROWSER_ORIGIN:origin,INDY_BROWSER_FAMILY_ORIGIN:privateOrigin}});

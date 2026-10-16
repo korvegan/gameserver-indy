@@ -16,7 +16,8 @@ export function connectJobStream({snapshot, job, controls}) {
   async function identity() {
     try {
       const session = await api('/api/session');
-      if (JSON.stringify(session.principal) !== JSON.stringify(state.principal)) revoke();
+      if (JSON.stringify(session.principal) !== JSON.stringify(state.principal)
+          || (session.grant_revision ?? null) !== state.grantRevision) revoke();
     } catch (error) { if (error.status === 403) revoke(); }
   }
   function retry() { if (!stopped && timer === undefined) timer = setTimeout(() => { timer = undefined; connect(); }, 2000); }
