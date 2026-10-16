@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Job;
 
+use App\Access\AccessPolicy;
+use App\Access\Principal;
 use App\Runtime\OutcomeUnknown;
 use App\Runtime\ServerControl;
 use App\Runtime\SliceRuntime;
@@ -10,12 +12,13 @@ use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 #[AsMessageHandler]
 final class ExecuteServerJobHandler
 {
     public function __construct(private readonly JobRepository $jobs, private readonly SliceRuntime $runtime,
-        private readonly ServerControl $control) {}
+        private readonly ServerControl $control, private readonly AccessPolicy $policy) {}
 
     public function __invoke(ExecuteServerJob $message): void
     {
@@ -47,10 +50,12 @@ final class ExecuteServerJobHandler
             while ($job = $this->jobs->next($serverId)) {
                 $this->jobs->transition($job['id'], 'running', 'Wird ausgeführt.');
                 try {
+                    $this->policy->require(Principal::fromClaim($job['actor']), 'server.'.$job['operation'], $serverId);
                     $this->control->execute($serverId, $job['operation']);
                 } catch (\Throwable $error) {
-                    $this->jobs->failWithFollowers($job['id'], $error instanceof OutcomeUnknown ? 'interrupted' : 'failed',
-                        $error instanceof OutcomeUnknown ? $error->getMessage() : 'Auftrag fehlgeschlagen. Testkonfiguration prüfen.');
+                    $interrupted = $error instanceof OutcomeUnknown || $error instanceof AccessDeniedException;
+                    $this->jobs->failWithFollowers($job['id'], $interrupted ? 'interrupted' : 'failed',
+                        $interrupted ? $error->getMessage() : 'Auftrag fehlgeschlagen. Testkonfiguration prüfen.');
                     return;
                 }
                 // A failed write leaves running; redelivery or the HTTP/SSE reconciler only interrupts it.

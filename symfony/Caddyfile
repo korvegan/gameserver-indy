@@ -10,5 +10,9 @@ http://127.0.0.1:{$SLICE_PORT:18865} {
 	request_body {
 		max_size 8KB
 	}
-	php_server
+	php_server {
+		env INDY_LISTENER_PORT {$SLICE_PORT:18865}
+	}
 }
+
+import "{$SLICE_FAMILY_CONFIG:family-disabled.caddy}"

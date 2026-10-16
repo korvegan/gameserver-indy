@@ -2,7 +2,7 @@ framework:
   secret: '%kernel.project_dir%:isolated-slice-only'
   http_method_override: false
   handle_all_throwables: true
-  trusted_hosts: ['^127\.0\.0\.1$', '^localhost$']
+  trusted_hosts: ['^127\.0\.0\.1$', '^localhost$', '^(?:[a-z0-9-]+\.){2,}ts\.net$']
   messenger:
     transports:
       async:

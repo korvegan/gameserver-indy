@@ -2,14 +2,15 @@ const $ = selector => document.querySelector(selector);
 const jobs = new Map(), requestVersions = new Map();
 let selected = $('#server-select').value, submitting = false;
 let token = $('meta[name="manager-token"]').content;
-const owner = document.body.dataset.role === 'owner';
+const permissions = JSON.parse(document.body.dataset.permissions);
+let revoked = false;
 const phases = {queued: 'Wartet', running: 'Läuft', succeeded: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen'};
 const operations = {start: 'Starten', stop: 'Stoppen', restart: 'Neu starten'};
 function notice(message) { $('#notice').textContent = message; }
 function mergeJob(job) {
   if (!jobs.has(job.id) || Number(job.revision) > Number(jobs.get(job.id).revision)) jobs.set(job.id, job);
 }
-function controls() { for (const button of document.querySelectorAll('[data-operation]')) button.disabled = !owner || submitting; }
+function controls() { for (const button of document.querySelectorAll('[data-operation]')) button.disabled = revoked || !selected || !permissions.includes('server.' + button.dataset.operation) || submitting; }
 async function api(path, body) {
   const response = await fetch(path, {cache: 'no-store', ...(body ? {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Manager-Token': token}, body: JSON.stringify(body)} : {})});
   const data = await response.json();
@@ -45,7 +46,7 @@ function renderJobs() {
   if (!container.childElementCount) container.textContent = 'Noch keine Aufträge für dieses Testprofil.';
 }
 for (const button of document.querySelectorAll('[data-operation]')) button.addEventListener('click', async () => {
-  if (submitting || !owner) return;
+  if (submitting || revoked || !selected || !permissions.includes('server.' + button.dataset.operation)) return;
   const target = selected, operation = button.dataset.operation;
   submitting = true; controls(); notice('Auftrag wird angenommen …');
   try {
@@ -70,12 +71,25 @@ async function connectEvents() {
     for (const job of initial) mergeJob(job);
     renderJobs(); refreshStatus();
     const events = new EventSource('/api/job-events?after=' + cursor);
-    events.addEventListener('open', () => { $('#live-state').textContent = 'Live verbunden'; });
-    events.addEventListener('error', () => { $('#live-state').textContent = 'Live-Verbindung wird erneuert …'; });
+    const revoke = () => {
+      revoked = true; events.close(); controls();
+      $('#live-state').textContent = 'Freigabe geändert'; notice('Deine Freigabe wurde geändert. Bitte die Seite neu laden.');
+    };
+    events.addEventListener('open', () => { if (!revoked) $('#live-state').textContent = 'Live verbunden'; });
+    events.addEventListener('error', async () => {
+      if (revoked) return;
+      $('#live-state').textContent = 'Live-Verbindung wird erneuert …';
+      try {
+        const response = await fetch('/api/session', {cache: 'no-store'});
+        if (response.status === 403) revoke();
+        else if (response.ok && (await response.json()).token !== token) revoke();
+      } catch { /* A transport interruption alone does not revoke command rights. */ }
+    });
     events.addEventListener('job', event => {
       const job = JSON.parse(event.data); mergeJob(job); renderJobs();
       if (['succeeded', 'failed', 'interrupted'].includes(job.state)) refreshStatus(job.server_id);
     });
+    events.addEventListener('access-revoked', revoke);
   } catch (error) { notice(error.message); setTimeout(connectEvents, 2000); }
 }
 connectEvents();

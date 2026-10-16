@@ -22,7 +22,7 @@ final class WorkerRecoveryTest extends SliceTestCase
     #[DataProvider('terminalFailures')]
     public function testRealWorkerRetainsDeliveryAndHttpRecoversWithoutReplay(string $terminal): void
     {
-        $client = static::createClient([], ['HTTP_HOST' => '127.0.0.1:18865', 'SERVER_PORT' => '18865', 'REMOTE_ADDR' => '127.0.0.1']);
+        $client = static::createClient([], ['HTTP_HOST' => '127.0.0.1:18865', 'SERVER_PORT' => '18865', 'REMOTE_ADDR' => '127.0.0.1', 'INDY_LISTENER_PORT' => '18865']);
         $jobs = $this->ledger();
         $service = static::getContainer()->get(JobService::class);
         $first = $service->submit('demo-a', 'start', str_repeat('a', 32));
@@ -90,7 +90,7 @@ final class WorkerRecoveryTest extends SliceTestCase
 
     public function testEventStreamSettlesOrphanWithoutAnotherCommandOrSnapshot(): void
     {
-        $client = static::createClient([], ['HTTP_HOST' => '127.0.0.1:18865', 'SERVER_PORT' => '18865', 'REMOTE_ADDR' => '127.0.0.1']);
+        $client = static::createClient([], ['HTTP_HOST' => '127.0.0.1:18865', 'SERVER_PORT' => '18865', 'REMOTE_ADDR' => '127.0.0.1', 'INDY_LISTENER_PORT' => '18865']);
         $jobs = $this->ledger();
         $job = static::getContainer()->get(JobService::class)->submit('demo-a', 'restart', str_repeat('a', 32));
         $jobs->transition($job['id'], 'running', 'Worker lost.');

@@ -15,7 +15,7 @@ final class NativeWindowsFlowTest extends SliceTestCase
     {
         if (getenv('SLICE_WINDOWS_TEST') !== '1') { self::markTestSkipped('Windows-Standin explizit aktivieren.'); }
         $_ENV['SLICE_DRIVER'] = $_SERVER['SLICE_DRIVER'] = 'windows'; putenv('SLICE_DRIVER=windows');
-        $client = static::createClient([], ['HTTP_HOST' => '127.0.0.1:18865', 'SERVER_PORT' => '18865', 'REMOTE_ADDR' => '127.0.0.1']);
+        $client = static::createClient([], ['HTTP_HOST' => '127.0.0.1:18865', 'SERVER_PORT' => '18865', 'REMOTE_ADDR' => '127.0.0.1', 'INDY_LISTENER_PORT' => '18865']);
         $this->ledger();
         $control = static::getContainer()->get(WindowsStandinControl::class);
         $control->prepare();

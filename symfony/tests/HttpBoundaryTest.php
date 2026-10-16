@@ -11,7 +11,7 @@ final class HttpBoundaryTest extends SliceTestCase
     private function client(): \Symfony\Bundle\FrameworkBundle\KernelBrowser
     {
         $client = static::createClient([], ['HTTP_HOST' => '127.0.0.1:18865', 'SERVER_PORT' => '18865',
-            'REMOTE_ADDR' => '127.0.0.1']);
+            'REMOTE_ADDR' => '127.0.0.1', 'INDY_LISTENER_PORT' => '18865']);
         $this->ledger();
         return $client;
     }

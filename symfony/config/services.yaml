@@ -2,6 +2,7 @@ parameters:
   env(SLICE_STATE_DIR): '%kernel.project_dir%/var/slice'
   env(SLICE_DRIVER): simulated
   env(SLICE_ROLE): owner
+  env(SLICE_PORT): '18865'
 
 services:
   _defaults:
@@ -12,8 +13,9 @@ services:
       $driver: '%env(SLICE_DRIVER)%'
       $role: '%env(SLICE_ROLE)%'
       $projectDirectory: '%kernel.project_dir%'
+      $localPort: '%env(int:SLICE_PORT)%'
   App\:
     resource: '../src/'
-    exclude: ['../src/Kernel.php', '../src/Job/ExecuteServerJob.php']
+    exclude: ['../src/Kernel.php', '../src/Job/ExecuteServerJob.php', '../src/Access/Principal.php']
   App\Runtime\ServerControl:
     alias: App\Runtime\SelectedServerControl

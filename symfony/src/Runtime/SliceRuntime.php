@@ -31,7 +31,6 @@ final class SliceRuntime
                 throw new \RuntimeException('Nur einen leeren eigenen Testdatenordner initialisieren.');
             }
             $this->write($marker, 'isolated-slice-v1');
-            $this->write($this->directory.'/csrf-key', bin2hex(random_bytes(32)));
         }
         $this->assertInitialized();
         foreach (['locks', 'native', 'simulated'] as $folder) {
@@ -47,16 +46,6 @@ final class SliceRuntime
         if (!is_file($marker) || file_get_contents($marker) !== 'isolated-slice-v1') {
             throw new \RuntimeException('Isolierten Durchstich zuerst mit slice:init initialisieren.');
         }
-    }
-
-    public function csrfToken(): string
-    {
-        $this->assertInitialized();
-        $key = file_get_contents($this->directory.'/csrf-key');
-        if (!is_string($key) || !preg_match('/^[a-f0-9]{64}$/D', $key)) {
-            throw new \RuntimeException('Privater Test-Sitzungsschlüssel nicht lesbar.');
-        }
-        return hash_hmac('sha256', 'isolated-local:'.$this->role, $key);
     }
 
     public function server(string $id): string

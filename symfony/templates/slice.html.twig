@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="/slice.css">
   <script type="module" src="/slice.js"></script>
 </head>
-<body data-role="{{ role }}">
+<body data-role="{{ role }}" data-permissions="{{ permissions|json_encode }}">
 <main>
-  <header><strong>GAMESERVER INDY</strong><span>{{ role == 'owner' ? 'Besitzer' : 'Leser' }} · isolierter Testbetrieb</span></header>
+  <header><strong>GAMESERVER INDY</strong><span>{{ role == 'owner' ? 'Besitzer' : (role == 'family' ? 'Familie' : 'Leser') }} · isolierter Testbetrieb</span></header>
   <p class="eyebrow">Migration zu Symfony</p>
   <h1>Ein Auftrag. Ein klarer Verlauf.</h1>
   <p>Diese getrennte Testoberfläche verwaltet zwei {{ driver == 'windows' ? 'temporäre Windows-Testprogramme' : 'simulierte Testserver' }}. Sie verwendet keine Spielwelt.</p>
@@ -21,7 +21,7 @@
     <p id="server-state" role="status">Status wird geladen …</p>
     <div class="actions">
       {% for id, label in {start: 'Server starten', stop: 'Stoppen', restart: 'Neu starten'} %}
-      <button id="{{ id }}" data-operation="{{ id }}"{% if role != 'owner' %} disabled{% endif %}>{{ label }}</button>
+      <button id="{{ id }}" data-operation="{{ id }}"{% if ('server.' ~ id) not in permissions or servers is empty %} disabled{% endif %}>{{ label }}</button>
       {% endfor %}
       <button id="refresh" class="secondary">Status aktualisieren</button>
     </div>

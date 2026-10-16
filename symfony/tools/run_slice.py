@@ -22,28 +22,40 @@ def main():
     parser.add_argument('--role', choices=['owner', 'viewer'], default='owner')
     parser.add_argument('--state-dir', type=Path)
     parser.add_argument('--port', type=int, default=18865)
+    parser.add_argument('--family-port', type=int)
     options = parser.parse_args()
     if not 18800 <= options.port <= 18999:
         parser.error('Use an isolated test port between 18800 and 18999.')
+    if options.family_port is not None and (not 18800 <= options.family_port <= 18999 or options.family_port == options.port):
+        parser.error('Use a separate isolated family test port between 18800 and 18999.')
     root = Path(__file__).resolve().parents[1]
     if not (root / 'vendor/autoload.php').is_file():
         parser.error('Run composer install in symfony/ first.')
     for tool in (options.php, options.frankenphp):
         if not shutil.which(tool):
             parser.error('Tool not found: ' + tool)
-    with socket.socket() as probe:
-        if os.name != 'nt':
-            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            probe.bind(('127.0.0.1', options.port))
-        except OSError:
-            parser.error('The isolated port is already in use; no existing listener is adopted.')
+    for port in (options.port, options.family_port):
+        if port is None:
+            continue
+        with socket.socket() as probe:
+            if os.name != 'nt':
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                probe.bind(('127.0.0.1', port))
+            except OSError:
+                parser.error('The isolated port is already in use; no existing listener is adopted.')
     state = (options.state_dir or root / 'var/slice').resolve()
     environment = dict(os.environ, APP_ENV='prod', SLICE_STATE_DIR=str(state), SLICE_DRIVER=options.driver,
                        SLICE_ROLE=options.role, SLICE_PORT=str(options.port),
+                       INDY_CACHE_DIR=str(state.with_name(state.name + '.cache')),
                        XDG_CONFIG_HOME=str(state / 'caddy-config'), XDG_DATA_HOME=str(state / 'caddy-data'))
     command = [options.php, 'bin/console']
     subprocess.run(command + ['slice:init'], cwd=root, env=environment, check=True)
+    family_config = state / 'family.caddy'
+    family_config.write_text('' if options.family_port is None else (
+        f'http://:{options.family_port} {{\n bind 127.0.0.1\n root * public\n'
+        f' request_body {{\n max_size 8KB\n }}\n php_server {{\n env INDY_LISTENER_PORT {options.family_port}\n }}\n}}\n'), encoding='utf-8')
+    environment['SLICE_FAMILY_CONFIG'] = family_config.as_posix()
     children = []
     try:
         for _ in range(2):
