@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="manager-token" content="{{ token }}">
+  <title>GameServer Indy · Symfony-Durchstich</title>
+  <link rel="stylesheet" href="/slice.css">
+  <script type="module" src="/slice.js"></script>
+</head>
+<body data-role="{{ role }}">
+<main>
+  <header><strong>GAMESERVER INDY</strong><span>{{ role == 'owner' ? 'Besitzer' : 'Leser' }} · isolierter Testbetrieb</span></header>
+  <p class="eyebrow">Migration zu Symfony</p>
+  <h1>Ein Auftrag. Ein klarer Verlauf.</h1>
+  <p>Diese getrennte Testoberfläche verwaltet zwei {{ driver == 'windows' ? 'temporäre Windows-Testprogramme' : 'simulierte Testserver' }}. Sie verwendet keine Spielwelt.</p>
+  <section class="card" aria-labelledby="server-title">
+    <label for="server-select">Testprofil</label>
+    <select id="server-select">{% for id, label in servers %}<option value="{{ id }}">{{ label }}</option>{% endfor %}</select>
+    <h2 id="server-title">Testserver Nord</h2>
+    <p id="server-state" role="status">Status wird geladen …</p>
+    <div class="actions">
+      {% for id, label in {start: 'Server starten', stop: 'Stoppen', restart: 'Neu starten'} %}
+      <button id="{{ id }}" data-operation="{{ id }}"{% if role != 'owner' %} disabled{% endif %}>{{ label }}</button>
+      {% endfor %}
+      <button id="refresh" class="secondary">Status aktualisieren</button>
+    </div>
+    <p class="muted">Befehle werden je Testprofil nacheinander ausgeführt. Eine Statusabfrage sperrt die Bedienung nicht.</p>
+  </section>
+  <p id="notice" role="status" aria-live="polite"></p>
+  <section class="card" aria-labelledby="jobs-title">
+    <div class="section-title"><h2 id="jobs-title">Aufträge</h2><span id="live-state">Live-Verbindung wird aufgebaut …</span></div>
+    <div id="jobs" aria-live="polite"></div>
+  </section>
+  <footer>Symfony-Durchstich · Produktionsverwaltung bleibt getrennt.</footer>
+</main>
+</body>
+</html>

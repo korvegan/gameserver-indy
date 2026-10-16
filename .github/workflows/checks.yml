@@ -9,6 +9,70 @@ concurrency:
   group: checks-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  symfony:
+    name: Symfony (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: symfony
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, dom, mbstring, xml, xmlwriter, ctype, tokenizer
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict
+      - run: composer install --no-interaction --prefer-dist
+      - run: composer audit
+      - run: php bin/console lint:container
+      - run: php bin/console lint:twig templates
+      - run: php vendor/bin/phpunit
+      - name: Native disposable Windows process
+        if: runner.os == 'Windows'
+        run: php vendor/bin/phpunit --filter NativeWindowsFlowTest
+        env:
+          SLICE_WINDOWS_TEST: '1'
+  symfony-browser:
+    name: Symfony browser (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, dom, mbstring, xml, xmlwriter
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: composer install --no-interaction --prefer-dist --working-dir=symfony
+      - name: Verified FrankenPHP binary
+        run: |
+          curl -fL --retry 2 -o /tmp/indy-frankenphp https://github.com/php/frankenphp/releases/download/v1.13.0/frankenphp-linux-x86_64
+          echo '486673e20c014bfc4c9d27d5d3e78929f811c2834534f8117a56ab14de09e656  /tmp/indy-frankenphp' | sha256sum --check
+          chmod 755 /tmp/indy-frankenphp
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: mkdir -p artifacts
+      - run: npm run test:symfony-browser
+        env:
+          SLICE_FRANKENPHP: /tmp/indy-frankenphp
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: symfony-browser-screenshots
+          path: artifacts/symfony-*.png
+          if-no-files-found: ignore
   test:
     name: Backend (${{ matrix.os }})
     strategy:

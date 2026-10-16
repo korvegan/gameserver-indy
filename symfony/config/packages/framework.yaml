@@ -1,0 +1,17 @@
+framework:
+  secret: '%kernel.project_dir%:isolated-slice-only'
+  http_method_override: false
+  handle_all_throwables: true
+  trusted_hosts: ['^127\.0\.0\.1$', '^localhost$']
+  messenger:
+    transports:
+      async:
+        dsn: 'doctrine://default'
+        options: {auto_setup: false}
+        retry_strategy: {max_retries: 0}
+    routing:
+      App\Job\ExecuteServerJob: async
+
+when@test:
+  framework:
+    test: true
