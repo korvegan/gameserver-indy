@@ -76,7 +76,8 @@ final class LocalBoundary
                 '/api/servers', '/api/connections/settings', '/api/community', '/api/community/options', '/api/community/event',
                 '/api/community/story', '/api/community/media', '/api/community/export',
                 '/api/updates', '/api/updates/check', '/api/connections', '/api/connections/refresh',
-                '/api/discord', '/api/discord/settings', '/api/discord/send'], true) ? $request->getPathInfo() : 'request.unknown';
+                '/api/discord', '/api/discord/settings', '/api/discord/send', '/api/logs', '/api/whatsapp', '/api/whatsapp/qr', '/api/whatsapp/groups',
+                '/api/whatsapp/connect', '/api/whatsapp/disconnect', '/api/whatsapp/settings', '/api/whatsapp/send'], true) ? $request->getPathInfo() : 'request.unknown';
             $this->access->audit($request->attributes->get('_indy_principal')?->id ?? 'unrecognized',
                 $operation, '', (string) $event->getResponse()->getStatusCode());
         }

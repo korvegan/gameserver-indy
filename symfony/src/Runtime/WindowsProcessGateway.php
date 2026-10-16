@@ -26,7 +26,7 @@ final class WindowsProcessGateway implements ProcessGateway
         $arguments = (object) ['Action' => $action, 'ServerDirectory' => $this->powershell->windowsPath($profile->server_directory),
             'ExecutableName' => $schema->executable, 'SteamAppId' => $schema->launch_steam_app_id ?? 0,
             'ConfigArgument' => $schema->config_argument ?? '', 'ConfigPath' => $this->powershell->windowsPath($this->registry->configPath($profile)),
-            'DiagnosticDirectory' => $this->powershell->windowsPath($this->registry->dataPath($serverId).'/logs')];
+            'DiagnosticDirectory' => $this->powershell->windowsPath($this->registry->diagnosticPath($profile))];
         if (($profile->launcher_script ?? '') !== '') { $arguments->LauncherScript = $this->powershell->windowsPath($profile->launcher_script); }
         if ($action !== 'Status') {
             $arguments->RuntimeEpoch = $this->lifecycle->epoch();

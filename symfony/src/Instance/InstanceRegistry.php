@@ -48,7 +48,7 @@ final class InstanceRegistry
         $schema = $this->games->schema($profile->game);
         if (!is_string($profile->label ?? null) || mb_strlen(trim($profile->label)) < 1 || mb_strlen(trim($profile->label)) > 80) { throw new \InvalidArgumentException('Profilname: 1–80 Zeichen.'); }
         $this->paths->absolute($profile->server_directory ?? null);
-        foreach (['config_path', 'launcher_script', 'log_directory', 'steam_manifest'] as $key) {
+        foreach (['config_path', 'launcher_script', 'log_directory', 'steam_manifest', 'diagnostic_directory'] as $key) {
             if (property_exists($profile, $key) && $profile->{$key} !== '') { $this->paths->absolute($profile->{$key}); }
         }
         if (property_exists($profile, 'steam_branch') && (!is_string($profile->steam_branch) || !preg_match('/^[A-Za-z0-9_-]{1,80}$/D', $profile->steam_branch))) { throw new \InvalidArgumentException('Ungültiger Steam-Branch.'); }
@@ -92,6 +92,10 @@ final class InstanceRegistry
     {
         $this->get($id);
         return $this->runtime->directory.'/data'.($id === 'enshrouded' ? '' : '/servers/'.$id);
+    }
+    public function diagnosticPath(\stdClass $profile): string
+    {
+        return ($profile->diagnostic_directory ?? '') !== '' ? $this->paths->local($profile->diagnostic_directory) : $this->dataPath($profile->id).'/logs';
     }
     public function catalog(Principal $actor): array
     {

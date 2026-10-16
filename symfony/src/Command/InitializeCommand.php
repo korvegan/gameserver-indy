@@ -24,7 +24,7 @@ final class InitializeCommand extends Command
         private readonly WindowsStandinControl $windows, private readonly AccessStore $access, private readonly SessionKeys $keys, private readonly PlatformDatabase $platform,
         #[Autowire(service: 'messenger.transport.async')] private readonly SetupableTransportInterface $transport,
         #[Autowire(service: 'messenger.transport.metadata')] private readonly SetupableTransportInterface $metadata,
-        private readonly \App\Integration\Discord $discord)
+        private readonly \App\Integration\Discord $discord, private readonly \App\WhatsApp\DeliveryStore $whatsapp)
     {
         parent::__construct();
     }
@@ -37,7 +37,7 @@ final class InitializeCommand extends Command
         $this->keys->token(new Principal('local-owner', 'owner'), 'local-owner');
         $this->jobs->initialize();
         $this->transport->setup();
-        $this->metadata->setup(); $this->discord->initialize();
+        $this->metadata->setup(); $this->discord->initialize(); $this->whatsapp->initialize();
         if ($this->runtime->driver === 'windows') {
             $this->windows->prepare();
         }
