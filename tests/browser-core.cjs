@@ -41,6 +41,13 @@ const fs=require('node:fs/promises');
       assert.equal(await page.locator('#world-list').isVisible(),true);
     }
     await fs.mkdir('artifacts',{recursive:true});
+    await page.getByRole('tab',{name:'Übersicht',exact:true}).click();
+    await page.getByText('Leistung & Ruckler',{exact:true}).click();
+    await page.locator('#performance-chart svg').waitFor();
+    await page.locator('#performance-note').fill('Eigene Browserfixture');
+    await page.locator('#mark-stutter').click();
+    await page.waitForFunction(()=>document.querySelector('#performance-markers').textContent.includes('Eigene Browserfixture'));
+    await page.getByText('Leistung & Ruckler',{exact:true}).click();
     const shader = 'Trying to access a shader but no shaders were included in the build because Dedicated Server Optimizations is enabled.';
     let launcherLine = 'Own launcher line';
     await page.route('**/api/logs?*', route => route.fulfill({json:{file:'own-fixture.log',updated_at:'2026-10-15T15:00:00Z',
@@ -73,6 +80,12 @@ const fs=require('node:fs/promises');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       assert.equal(await page.locator('#quick-join-value').isVisible(),true);
       await page.screenshot({path:`artifacts/symfony-core-${width}.png`,fullPage:true});
+      if (width===390) {
+        await page.getByText('Leistung & Ruckler',{exact:true}).click(); await page.locator('#performance-chart svg').waitFor();
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+        await page.screenshot({path:'artifacts/symfony-performance-390.png',fullPage:true});
+        await page.getByText('Leistung & Ruckler',{exact:true}).click();
+      }
     }
     assert.deepEqual(errors,[]);console.log('Family UI passed: both games, server tabs, drafts, join details and desktop/mobile.');
   }finally{await browser.close();}

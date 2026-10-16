@@ -2,6 +2,8 @@
 
 `docs/symfony-runtime.md`, `docs/architecture.md`: Symfony/FrankenPHP unter WSL, Windows-Steuerung per PowerShell. Code-Releases und private Daten getrennt; alte Python-Cutoverpflichten aufgehoben.
 
+Leistungsverlauf: `docs/performance.md`. Prozesszähler im vorhandenen nativen Abruf; rechnerweite WMI-Werte werden höchstens acht Sekunden zwischen Profilen geteilt. Ohne diesen kleinen Hostcache stieg der gemessene Statusaufruf von etwa 0,63 auf 1,65 Sekunden. Neue interne Prozessargumente auch in der Zulassungsliste von `symfony/tools/invoke-managed-server.ps1` ergänzen; sonst wird bereits der native Aufruf abgewiesen. Keine CPU-Affinität/Priorität aus den Hardwaredaten ableiten; echte Viererlast bleibt gesondert zu messen.
+
 - `app:release:build`: sauberer vollständiger Commit, lockgleiche Composer-Installation, keine Originaldaten. Extrahierte Pfade/Blobs gegen Git-Tree prüfen: lokale Git-Attribute hatten Dateien mit `export-ignore` entfernt.
 - Controllersperre, PID/Startidentität/Laufkennung erhalten. Nur nachgewiesenen eigenen Supervisor geordnet beenden, keine breite Prozessnamen-/Spielprozessgruppe.
 - SIGKILL-Review reproduzierte verwaiste Verwaltungsprozesse; vorhandenen unabhängigen Wächter/Lease erhalten. Laufkennung erst nach Ende eigener Kinder freigeben.

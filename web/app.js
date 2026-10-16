@@ -14,6 +14,7 @@ import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
 import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
 import {initWorkspace, markWorkspaceUnknown, refreshFleet, renderWorkspace} from './views/workspace.js';
+import {bindPerformance, clearPerformance, loadPerformance} from './views/performance.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map(), requestContexts = new Map();
@@ -74,6 +75,7 @@ async function refresh() {
       if (current()) renderEvents(events);
     })());
     tasks.push(refreshFleet());
+    if (state.view === 'overview') tasks.push(loadPerformance());
     if (state.view === 'logs' && can('logs.read')) tasks.push(loadLogs());
     if (state.view === 'settings') tasks.push(loadConfig());
     if (state.view === 'backups') tasks.push(loadBackups());
@@ -107,7 +109,7 @@ async function selectServer(target, openOverview = false) {
   $('#server-name').textContent = state.catalog.servers.find(profile => profile.id === target)?.label || 'Serverprofil';
   $('#server-state').textContent = 'Status wird geprüft'; $('#status-updated').textContent = '';
   for (const id of ['slot-count', 'preset-label', 'query-port', 'process-id']) $(`#${id}`).textContent = '—';
-  $('#log-source').value = 'server'; clearLogs();
+  $('#log-source').value = 'server'; clearLogs(); clearPerformance();
   renderEvents([]); renderJobs(); controls();
   renderUpdate();
   renderConnection();
@@ -134,6 +136,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'access') await loadAccess();
   if (next === 'backups') await loadBackups();
   if (next === 'whatsapp') await loadWhatsApp();
+  if (next === 'overview') await loadPerformance();
 }
 
 async function finishJob(job) {
@@ -196,7 +199,7 @@ async function mutate(path, body = {}) {
     }
     if (path === '/api/servers') {
       if (epoch === state.selectionEpoch && (!state.connectionDirty || $('#join-public-host').value === connectionDraft)) {
-        replaceSelection(result.server_id); clearConfig(); renderConnection();
+        replaceSelection(result.server_id); clearConfig(); renderConnection(); clearLogs(); clearPerformance();
       }
       state.profileDirty = false; await refreshCatalog();
     } else if ((path === '/api/config' || path === '/api/setup') && epoch === state.selectionEpoch) {
@@ -213,7 +216,7 @@ async function mutate(path, body = {}) {
 
 initWorkspace(selectServer, go);
 bindNavigation(go); bindForms(mutate); bindConnections(refresh, job => acceptJob(job, controls, finishJob)); bindCommunity(); bindAccess(); bindBackups(runOperation);
-bindWhatsApp();
+bindWhatsApp(); bindPerformance();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;

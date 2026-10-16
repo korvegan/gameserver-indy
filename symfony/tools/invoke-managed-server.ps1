@@ -24,7 +24,7 @@ $destination = Join-Path $directory ('reply-' + $nonce + '.json')
 $result = @{ ok = $false }
 try {
     $request = [IO.File]::ReadAllText($RequestPath) | ConvertFrom-Json
-    $allowed = @('Action', 'ServerDirectory', 'ExecutableName', 'SteamAppId', 'ConfigArgument', 'ConfigPath', 'LauncherScript', 'DiagnosticDirectory', 'RuntimeEpoch', 'RuntimeFencePath')
+    $allowed = @('Action', 'ServerDirectory', 'ExecutableName', 'SteamAppId', 'ConfigArgument', 'ConfigPath', 'LauncherScript', 'DiagnosticDirectory', 'RuntimeEpoch', 'RuntimeFencePath', 'MetricsCachePath')
     $arguments = @{}
     foreach ($property in $request.PSObject.Properties) {
         if ($allowed -cnotcontains $property.Name) { throw 'Unexpected process argument.' }
