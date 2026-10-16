@@ -20,6 +20,18 @@ final class InstanceMutation
         private readonly WorkerClaim $claim, private readonly RuntimeLifecycle $lifecycle) {}
     public function stopped(Principal $actor, string $id, string $permission, callable $change): mixed
     {
+        return $this->reserved($actor, $id, $permission, function (callable $guard) use ($id, $change): mixed {
+            $pending = $this->runtime->directory.'/data/world-backups/'.$id.'/restore-pending.json';
+            if (file_exists($pending) || is_link($pending)) { throw new \DomainException('Eine Weltwiederherstellung benötigt zuerst die ausdrückliche Rückkehr zum gesicherten Stand.'); }
+            try { $status = $this->control->status($id); }
+            catch (\InvalidArgumentException) { throw new \DomainException('Für dieses Profil ist der native Prozessadapter noch nicht aktiviert.'); }
+            if (($status['running'] ?? null) !== false || ($status['starting'] ?? null) !== false
+                || ($status['launcher_running'] ?? null) !== false) { throw new \DomainException('Server und Starter müssen eindeutig gestoppt sein.'); }
+            $guard(); return $change($status);
+        });
+    }
+    public function reserved(Principal $actor, string $id, string $permission, callable $change, bool $lifecycleFollowers = false): mixed
+    {
         $this->policy->require($actor, $permission, $id); $this->runtime->assertInitialized();
         $factory = new LockFactory(new FlockStore($this->runtime->directory.'/locks'));
         $acceptance = $factory->createLock('acceptance'); $execution = $factory->createLock('execute:'.$id);
@@ -30,18 +42,13 @@ final class InstanceMutation
             try {
                 $this->policy->require($actor, $permission, $id);
                 $fence = $current ?? ['runtime_epoch' => $this->lifecycle->epoch()];
-                $this->lifecycle->requireClaim($fence);
-                if ($this->jobs->pendingCount($id) !== ($current === null ? 0 : 1)) { throw new \DomainException('Für dieses Profil stehen noch Aufträge aus.'); }
-                $pending = $this->runtime->directory.'/data/world-backups/'.$id.'/restore-pending.json';
-                if (file_exists($pending) || is_link($pending)) { throw new \DomainException('Eine Weltwiederherstellung benötigt zuerst die ausdrückliche Rückkehr zum gesicherten Stand.'); }
-                try { $status = $this->control->status($id); }
-                catch (\InvalidArgumentException) { throw new \DomainException('Für dieses Profil ist der native Prozessadapter noch nicht aktiviert.'); }
-                if (($status['running'] ?? null) !== false || ($status['starting'] ?? null) !== false
-                    || ($status['launcher_running'] ?? null) !== false) { throw new \DomainException('Server und Starter müssen eindeutig gestoppt sein.'); }
-                // The native query may outlive shutdown or a personal grant revision.
-                $this->lifecycle->requireClaim($fence);
-                $this->policy->require($actor, $permission, $id);
-                return $change($status);
+                $guard = function () use ($fence, $actor, $permission, $id): void {
+                    $this->lifecycle->requireClaim($fence); $this->policy->require($actor, $permission, $id);
+                };
+                $guard();
+                $followersAllowed = $lifecycleFollowers && in_array($current['operation'] ?? '', ['stop', 'restart'], true);
+                if (!$followersAllowed && $this->jobs->pendingCount($id) !== ($current === null ? 0 : 1)) { throw new \DomainException('Für dieses Profil stehen noch Aufträge aus.'); }
+                return $change($guard);
             } finally { if ($current === null) { $execution->release(); } }
         } finally { if ($current === null) { $acceptance->release(); } }
     }

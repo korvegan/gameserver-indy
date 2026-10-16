@@ -14,6 +14,7 @@ use App\Job\JobService;
 use App\Runtime\ServerControl;
 use App\Runtime\ProcessObservation;
 use App\Runtime\SliceRuntime;
+use App\Storage\PrivateFiles;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\EventStreamResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -90,8 +91,8 @@ final class SliceController extends AbstractController
     public function submit(Request $request): JsonResponse
     {
         $this->denyAccessUnlessGranted('server.start');
-        $body = $request->toArray();
-        if (array_diff(array_keys($body), ['server_id', 'operation', 'request_id'])) {
+        $body = get_object_vars(PrivateFiles::object($request->getContent()));
+        if (array_diff(array_keys($body), ['server_id', 'operation', 'request_id', 'payload'])) {
             throw new \InvalidArgumentException('Unbekannte Felder. Rollen und Prozesspfade werden nicht angenommen.');
         }
         foreach (['server_id', 'operation', 'request_id'] as $key) {
@@ -99,7 +100,8 @@ final class SliceController extends AbstractController
                 throw new \InvalidArgumentException('Befehl unvollständig.');
             }
         }
-        return $this->json(['job' => JobRepository::public($this->service->submit($body['server_id'], $body['operation'], $body['request_id'], $this->principal()))], 202);
+        if (isset($body['payload']) && !$body['payload'] instanceof \stdClass) { throw new \InvalidArgumentException('Auftragsnutzdaten müssen ein Objekt sein.'); }
+        return $this->json(['job' => JobRepository::public($this->service->submit($body['server_id'], $body['operation'], $body['request_id'], $this->principal(), $body['payload'] ?? null))], 202);
     }
 
     #[Route('/api/job-events', methods: ['GET'])]

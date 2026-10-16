@@ -5,6 +5,8 @@ namespace App\Job;
 
 use App\Access\AccessPolicy;
 use App\Access\Principal;
+use App\Backup\BackupOperations;
+use App\Backup\WorldBackups;
 use App\Instance\InstanceConfiguration;
 use App\Runtime\OutcomeUnknown;
 use App\Runtime\RuntimeLifecycle;
@@ -23,7 +25,7 @@ final class ExecuteServerJobHandler
     public function __construct(private readonly JobRepository $jobs, private readonly SliceRuntime $runtime,
         private readonly ServerControl $control, private readonly AccessPolicy $policy,
         private readonly RuntimeLifecycle $lifecycle, private readonly WorkerClaim $claim,
-        private readonly InstanceConfiguration $configuration) {}
+        private readonly InstanceConfiguration $configuration, private readonly WorldBackups $backups) {}
 
     public function __invoke(ExecuteServerJob $message): void
     {
@@ -64,6 +66,9 @@ final class ExecuteServerJobHandler
                             return $this->configuration->save($actor, $serverId, $payload->config, $payload->revision);
                         }
                         if ($job['operation'] === 'setup') { return $this->configuration->setup($actor, $serverId); }
+                        if (in_array($job['operation'], BackupOperations::ALL, true)) {
+                            return $this->backups->execute($actor, $serverId, $job['operation'], $job['payload'] === null ? null : PrivateFiles::object($job['payload']));
+                        }
                         $this->control->execute($serverId, $job['operation']); return null;
                     });
                 } catch (\Throwable $error) {
