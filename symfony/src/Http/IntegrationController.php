@@ -72,12 +72,12 @@ final class IntegrationController extends AbstractController
     #[Route('/api/discord/card', methods: ['POST'])]
     public function card(Request $request): JsonResponse
     {
-        $body=$this->body($request,['server_id','request_id','replace','action']); $id=$this->id($body->server_id ?? null);
+        $body=$this->body($request,['server_id','request_id','replace','action','generation']); $id=$this->id($body->server_id ?? null);
         if (($body->action ?? null)==='disable') {
             $this->cards->disable($this->actor(),$id); return $this->json(['message'=>'Automatische Statuskarte pausiert. Die vorhandene Nachricht bleibt erhalten.']);
         }
         if (($body->action ?? null)!=='create') { throw new \InvalidArgumentException('Kartenaktion auswählen.'); }
         return $this->json(['job'=>JobRepository::public($this->jobs->submit($id,'discord_card_create',$this->id($body->request_id ?? null),
-            $this->actor(),(object)['replace'=>$body->replace ?? false]))],202);
+            $this->actor(),(object)['replace'=>$body->replace ?? false,'generation'=>$body->generation ?? null]))],202);
     }
 }

@@ -35,7 +35,7 @@ export function bindDiscordCard(accepted) {
       if (action === 'create' && !confirm(replace ? 'Eine neue Nachricht anlegen? Prüfe zuerst den Kanal: Die bisherige Karte bleibt dort bestehen. Ein unklarer Versand könnte bereits angekommen sein.' : 'Eine Statuskarte in Discord anlegen und künftig automatisch aktualisieren?')) return;
       busy = true; $('#create-discord-card').disabled = true; $('#disable-discord-card').disabled = true;
       try {
-        const result = await api('/api/discord/card',{action, replace, request_id:requestId()},target);
+        const result = await api('/api/discord/card',{action, replace, generation:current.generation, request_id:requestId()},target);
         if (result.job) accepted(result.job);
         if (epoch === state.selectionEpoch) { notice(result.message || 'Statuskarte als Auftrag angenommen.'); await loadDiscordCard(); }
       } catch (error) { if (epoch === state.selectionEpoch) notice(error.message,true); }

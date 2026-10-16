@@ -37,7 +37,8 @@ final class JobService
             if (!$payload || !($payload->config ?? null) instanceof \stdClass || !is_string($payload->revision ?? null)
                 || !preg_match('/^[a-f0-9]{64}$/D', $payload->revision) || array_diff(array_keys(get_object_vars($payload)), ['config', 'revision'])) { throw new \InvalidArgumentException('Konfiguration und Dateistand erforderlich.'); }
         } elseif ($operation === 'discord_card_create') {
-            if ($payload === null || array_keys(get_object_vars($payload))!==['replace'] || !is_bool($payload->replace)) { throw new \InvalidArgumentException('Ersetzen einer vorhandenen Karte ausdrücklich bestätigen.'); }
+            if ($payload === null || array_diff(array_keys(get_object_vars($payload)),['replace','generation']) || !is_bool($payload->replace ?? null)
+                || !is_string($payload->generation ?? null) || !preg_match('/^(?:new|[a-f0-9]{32})$/D',$payload->generation)) { throw new \InvalidArgumentException('Kartenstand und ausdrückliche Ersatzauswahl erforderlich.'); }
         } elseif ($operation === 'discord_send') {
             if ($payload === null || array_keys(get_object_vars($payload)) !== ['message']) { throw new \InvalidArgumentException('Discord-Nachricht erforderlich.'); }
             DiscordWebhook::message($payload->message);

@@ -45,7 +45,7 @@ final class IntegrationTest extends SliceTestCase
         $client=$this->boot(discord:$transport,http:true); $container=static::getContainer(); $owner=new Principal('local-owner','owner');
         $container->get(Discord::class)->save($owner,'fixture',(object)['auto_notify'=>true,'webhook_url'=>'https://discord.com/api/webhooks/123/synthetic']);
         $card=$container->get(\App\Integration\DiscordStatusCard::class);
-        $job=$container->get(JobService::class)->submit('fixture','discord_card_create',str_repeat('c',32),$owner,(object)['replace'=>false]);
+        $job=$container->get(JobService::class)->submit('fixture','discord_card_create',str_repeat('c',32),$owner,(object)['replace'=>false,'generation'=>'new']);
         self::assertSame('metadata',$container->get(Connection::class)->fetchOne('SELECT queue_name FROM messenger_messages LIMIT 1'));
         $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id']));
         self::assertSame('succeeded',$container->get(JobRepository::class)->get($job['id'])['state']);
@@ -63,7 +63,10 @@ final class IntegrationTest extends SliceTestCase
         $client->request('GET','/api/discord?server=fixture'); self::assertResponseIsSuccessful();
         $data=json_decode($client->getResponse()->getContent(),true); self::assertSame('7654',$data['card']['message_id']);
         self::assertSame('active',$data['card']['state']); self::assertStringNotContainsString('/api/webhooks/', $client->getResponse()->getContent());
-        $card->disable($owner,'fixture'); self::assertFalse($card->active('fixture')); self::assertSame([],$card->due());
+        $replacement=$container->get(JobService::class)->submit('fixture','discord_card_create',str_repeat('d',32),$owner,(object)['replace'=>true,'generation'=>$data['card']['generation']]);
+        $card->disable($owner,'fixture');
+        $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($replacement['id']));
+        self::assertFalse($card->active('fixture')); self::assertSame([],$card->due());
     }
     public function testStatusCardHttpEditSuppressesMentionsAndRespectsRateLimit(): void
     {

@@ -17,7 +17,7 @@ final class Discord
             state TEXT NOT NULL, remote_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)');
         $this->db->executeStatement('CREATE TABLE IF NOT EXISTS discord_status_cards (server_id TEXT PRIMARY KEY, webhook_hash TEXT NOT NULL,
             remote_id TEXT, revision TEXT NOT NULL, state TEXT NOT NULL, enabled INTEGER NOT NULL, attempted_at INTEGER NOT NULL,
-            updated_at INTEGER, next_try INTEGER NOT NULL, error TEXT)');
+            updated_at INTEGER, next_try INTEGER NOT NULL, error TEXT, generation TEXT NOT NULL)');
     }
     private function configuration(): array
     {

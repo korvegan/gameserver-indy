@@ -20,33 +20,44 @@ final class DiscordStatusCard
         private readonly JobRepository $jobs, private readonly AccessPolicy $policy) {}
     private function row(string $id): array|false
     { return $this->db->fetchAssociative('SELECT * FROM discord_status_cards WHERE server_id=?',[$id]); }
-    public function active(string $id): bool { return (bool)($this->row($id)['enabled'] ?? false); }
+    public function active(string $id): bool
+    { $row=$this->row($id); return $row && $row['enabled'] && in_array($row['state'],['active','updating','retry'],true); }
     public function view(Principal $actor,string $id): array
     {
         $this->policy->require($actor,'discord.write',$id); $row=$this->row($id);
         return ['enabled'=>(bool)($row['enabled'] ?? false),'state'=>$row['state'] ?? 'none',
             'message_id'=>$row['remote_id'] ?? null,'updated_at'=>isset($row['updated_at']) ? gmdate('Y-m-d\TH:i:s\Z',(int)$row['updated_at']) : null,
-            'error'=>$row['error'] ?? null,'next_try'=>$row['next_try'] ?? null];
+            'error'=>$row['error'] ?? null,'next_try'=>$row['next_try'] ?? null,'generation'=>$row['generation'] ?? 'new'];
     }
     public function disable(Principal $actor,string $id): void
     {
         $this->policy->require($actor,'discord.write',$id);
-        $this->db->update('discord_status_cards',['enabled'=>0],['server_id'=>$id]);
+        $this->db->update('discord_status_cards',['enabled'=>0,'generation'=>bin2hex(random_bytes(16))],['server_id'=>$id]);
     }
     public function due(): array
     {
         return $this->db->fetchFirstColumn("SELECT server_id FROM discord_status_cards WHERE enabled=1 AND remote_id IS NOT NULL
             AND state IN ('active','updating','retry') AND attempted_at<=? AND next_try<=?",[time()-60,time()]);
     }
-    public function execute(string $id,bool $create,bool $replace,callable $guard): array
+    public function execute(string $id,bool $create,bool $replace,callable $guard,?string $generation=null): array
     {
-        $guard(); $profile=$this->registry->get($id); $url=$this->discord->webhook();
-        if ($url==='') { throw new \DomainException('Bitte zuerst den Discord-Webhook einrichten.'); }
-        $hash=hash('sha256',$url); $row=$this->row($id); $now=time();
+        $guard(); $profile=$this->registry->get($id); $row=$this->row($id); $now=time();
+        try { $url=$this->discord->webhook(); } catch (\DomainException) { $url=''; }
+        if ($url==='') {
+            if ($row && !$create) {
+                $this->db->update('discord_status_cards',['state'=>'blocked','error'=>'Webhook entfernt oder ungültig. Verbindung zuerst einrichten.'],['server_id'=>$id]);
+                return ['message'=>'Statuskarte gesperrt: Webhook fehlt.'];
+            }
+            throw new \DomainException('Bitte zuerst den Discord-Webhook einrichten.');
+        }
+        $hash=hash('sha256',$url);
         if ($create) {
+            if ($generation!==null && $generation!==($row['generation'] ?? 'new')) {
+                return ['message'=>'Kartenauftrag durch eine spätere Änderung aufgehoben. Es wurde keine Nachricht angelegt.'];
+            }
             if ($row && !$replace) { throw new \DomainException('Es gibt bereits eine Statuskarte oder einen unklaren Versand. Ersetzen ausdrücklich bestätigen.'); }
             $data=['webhook_hash'=>$hash,'remote_id'=>null,'revision'=>'','state'=>'creating','enabled'=>1,
-                'attempted_at'=>$now,'updated_at'=>null,'next_try'=>0,'error'=>null];
+                'attempted_at'=>$now,'updated_at'=>null,'next_try'=>0,'error'=>null,'generation'=>bin2hex(random_bytes(16))];
             if ($row) { $this->db->update('discord_status_cards',$data,['server_id'=>$id]); }
             else { $this->db->insert('discord_status_cards',['server_id'=>$id,...$data]); }
             $row=['server_id'=>$id,...$data]; // Durable before POST: interrupted creation must never be replayed.

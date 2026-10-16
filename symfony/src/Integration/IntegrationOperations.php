@@ -29,7 +29,7 @@ final class IntegrationOperations
             'check_updates' => $this->updates->check($job['server_id']),
             'refresh_connections' => $this->connections->refresh(),
             'discord_send' => $this->discord->send($job['id'], PrivateFiles::object($job['payload'])->message, $guard),
-            'discord_card_create' => $this->cards->execute($job['server_id'],true,PrivateFiles::object($job['payload'])->replace,$guard),
+            'discord_card_create' => $this->cards->execute($job['server_id'],true,PrivateFiles::object($job['payload'])->replace,$guard,PrivateFiles::object($job['payload'])->generation),
             'discord_card_update' => $this->cards->execute($job['server_id'],false,false,$guard),
             default => throw new \InvalidArgumentException('Unbekannte Integration.'),
         };
