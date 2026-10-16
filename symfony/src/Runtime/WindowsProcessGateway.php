@@ -21,6 +21,9 @@ final class WindowsProcessGateway implements ProcessGateway
             throw new \DomainException('Der native Profiladapter ist in diesem Laufzeitmodus nicht aktiviert.');
         }
         $profile = $this->registry->get($serverId); $schema = $this->games->schema($profile->game);
+        if ($action !== 'Status' && ($schema->capabilities->process_control->state ?? 'unknown') !== 'supported') {
+            throw new \DomainException('Für dieses Spiel ist kein geprüfter Prozessadapter freigegeben.');
+        }
         $folder = $this->runtime->directory.'/native/requests'; PrivateFiles::directory($folder);
         $nonce = bin2hex(random_bytes(16)); $request = $folder.'/request-'.$nonce.'.json'; $reply = $folder.'/reply-'.$nonce.'.json';
         $arguments = (object) ['Action' => $action, 'ServerDirectory' => $this->powershell->windowsPath($profile->server_directory),

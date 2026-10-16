@@ -14,11 +14,14 @@ export async function loadGames(openServer) {
       card.append(element('p', 'DEINE SPIELE', 'eyebrow'), element('h2', game.label));
       const instances = state.catalog.servers.filter(server => server.game === game.id);
       card.append(element('p', instances.length ? `${instances.length} Serverprofil${instances.length > 1 ? 'e' : ''} eingerichtet.` : 'Kein Serverprofil eingerichtet.', 'muted'));
-      card.append(element('p', game.server_adapter ? 'Serververwaltung verfügbar.' : 'Kein Serveradapter eingerichtet.'));
+      card.append(element('p', game.capabilities.process_control?.state === 'supported' ? 'Serververwaltung verfügbar.'
+        : game.server_adapter ? 'Konfigurationsadapter verfügbar. Prozesssteuerung noch nicht freigegeben.' : 'Kein Serveradapter eingerichtet.'));
       const features = element('ul', undefined, 'capability-list');
-      for (const [key, label] of Object.entries({readiness: 'Spielbereitschaft', world_backup: 'Weltsicherung', update_detection: 'Steam-Updates', mods: 'Modverwaltung'})) {
-        const status = game.capabilities[key]?.state;
-        features.append(element('li', `${label}: ${status === 'supported' ? 'Verfügbar' : status === 'unsupported' ? 'Nicht unterstützt' : 'Noch nicht eingerichtet / geprüft'}`));
+      for (const [key, label] of Object.entries({configuration:'Konfiguration', process_control:'Prozesssteuerung', readiness: 'Spielbereitschaft', save:'Speicherbefehl', world_backup: 'Weltsicherung', update_detection: 'Steam-Updates', players:'Spielerabfrage', rcon:'RCON', mods: 'Modverwaltung'})) {
+        const capability = game.capabilities[key], status = capability?.state;
+        const row = element('li', `${label}: ${status === 'supported' ? 'Verfügbar' : status === 'unsupported' ? 'Nicht unterstützt' : 'Unbekannt / nicht eingerichtet'}`);
+        if (capability?.reason) { row.append(element('small', capability.reason)); }
+        features.append(row);
       }
       card.append(features);
       for (const instance of instances) {

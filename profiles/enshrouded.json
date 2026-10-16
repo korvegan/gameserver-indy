@@ -7,6 +7,16 @@
   "steam_game_app_id": 1203620,
   "steam_server_app_id": 2278520,
   "role_groups": true,
+  "capabilities": {
+    "process_control": {"state":"supported","method":"windows-console","reason":"Native Windows-Konsole; Zuordnung über vollständigen EXE-Pfad, PID und Startzeit, regulärer Ctrl+C-Stopp."},
+    "readiness": {"state":"supported","method":"enshrouded-hostonline","reason":"HostOnline-Marker und UTC-Logkopf müssen zum aktuellen Prozessstart gehören; kein Nachweis externer Erreichbarkeit."},
+    "save": {"state":"unknown","reason":"Kein separater Speicherbefehl eingerichtet. Sicherungen erfolgen ausschließlich nach beendetem Server."},
+    "world_backup": {"state":"supported","method":"enshrouded-save-directory","reason":"Vollständiger konfigurierter Weltordner und Konfiguration, offline mit geprüftem Archiv/Rückweg."},
+    "update_detection": {"state":"supported","method":"steam-branch","reason":"Installiertes Steam-Appmanifest gegen SteamCMD-Branch; benötigt eingerichtetes SteamCMD."},
+    "players": {"state":"unknown","reason":"Noch keine zuverlässige Spielerabfrage angebunden; unbekannt zählt nicht als leer."},
+    "rcon": {"state":"unknown","reason":"Keine RCON-Schnittstelle für diese Installation geprüft."},
+    "mods": {"state":"unknown","reason":"Quellen und gemeinsame Modprofile sind noch nicht eingerichtet."}
+  },
   "connection": {
     "mode": "ip_query", "port_key": "queryPort", "bind_key": "ip",
     "instructions": "Enshrouded → Online-Spiele → Dedizierter Server → T (Suche nach IPv4 / Domain). Adresse samt Port eingeben. Bei der Namenssuche auch leere und passwortgeschützte Server anzeigen. Alternativ in Steam unter Ansicht → Spielserver → Favoriten die Adresse mit Query-Port hinzufügen.",

@@ -24,6 +24,21 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 final class ConfigurationTest extends SliceTestCase
 {
     private function boot(): void { static::bootKernel(); $this->ledger(); }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testGameCapabilitiesDescribeImplementedAndUnknownFunctionsWithoutPromotingCatalogGames(): void
+    {
+        $this->boot(); $games = static::getContainer()->get(GameCatalog::class)->entries([(object)['id'=>'own-game','label'=>'Own game']]);
+        foreach (array_slice($games,0,2) as $game) {
+            self::assertSame('supported',$game['capabilities']['process_control']['state']);
+            self::assertSame('supported',$game['capabilities']['readiness']['state']);
+            self::assertSame('supported',$game['capabilities']['world_backup']['state']);
+            self::assertSame('unknown',$game['capabilities']['players']['state']);
+            self::assertNotEmpty($game['capabilities']['save']['reason']);
+        }
+        self::assertFalse($games[2]['server_adapter']);
+        self::assertSame('unsupported',$games[2]['capabilities']['process_control']['state']);
+        self::assertSame('unknown',$games[2]['capabilities']['rcon']['state']);
+    }
     private function owner(): Principal { return new Principal('local-owner', 'owner'); }
     private function registry(): InstanceRegistry { return static::getContainer()->get(InstanceRegistry::class); }
     private function profile(string $id = 'enshrouded', string $game = 'enshrouded', array $extra = []): \stdClass

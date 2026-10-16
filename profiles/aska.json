@@ -11,6 +11,16 @@
   "windows_log_directory": "AppData/LocalLow/Sand Sailor Studio/Aska",
   "log_files": ["Player.log", "Player-prev.log"],
   "external_launcher": true,
+  "capabilities": {
+    "process_control": {"state":"supported","method":"windows-console-external-launcher","reason":"Native Windows-Konsole oder registrierter externer Starter; vollständiger EXE-Pfad/PID/Startzeit. Echter ASKA-Speichervorgang beim Stopp bleibt praktisch zu bestätigen."},
+    "readiness": {"state":"supported","method":"aska-session","reason":"Zeitgestempelte aktuelle Sitzungsöffnung im eigenen Starterlog; Bestandswelt/Beitritt vom Nutzer bestätigt."},
+    "save": {"state":"unknown","reason":"Kein separater Speicherbefehl geprüft; Autosave ist Spieleinstellung und kein bestätigter Backup-Abschluss."},
+    "world_backup": {"state":"supported","method":"aska-server-save-id","reason":"Konkrete Welt unter data/server/savegame_<id>, externe Konfiguration und Offline-Rückweg; feste Starterbindung bleibt erhalten."},
+    "update_detection": {"state":"supported","method":"steam-branch","reason":"Installiertes Steam-Appmanifest gegen SteamCMD-Branch; externe Konfiguration und Starter bleiben getrennt."},
+    "players": {"state":"unknown","reason":"Keine verlässliche Belegung eingerichtet; keine Null-Spieler-Annahme aus fehlenden Logs."},
+    "rcon": {"state":"unknown","reason":"Keine RCON-Schnittstelle dieser Installation geprüft."},
+    "mods": {"state":"unknown","reason":"Quellen und kompatible Modprofile sind noch nicht eingerichtet."}
+  },
   "connection": {"mode": "server_browser"},
   "fields": [
     {"key": "server name", "label": "Servername", "type": "text", "required": true, "wide": true},

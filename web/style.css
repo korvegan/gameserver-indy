@@ -662,6 +662,7 @@ dialog h2 { overflow-wrap:anywhere; }
 #moment-error { color:var(--red); }
 .catalog-grid .button { margin:8px 8px 0 0; white-space:normal; }
 .capability-list { padding-left:18px; color:var(--muted); font-size:12px; }
+.capability-list small { display:block; margin:2px 0 10px; font-size:10px; }
 .section-title { font-size:25px; margin-bottom:20px; }
 .badge-list { list-style:none; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
 .badge-list li { padding:4px 8px; color:var(--accent); background:#282d21; border:1px solid #4b4d32; border-radius:5px; font-size:11px; overflow-wrap:anywhere; }
