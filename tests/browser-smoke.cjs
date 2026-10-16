@@ -358,6 +358,12 @@ const fs = require('node:fs');
     await page.unroute('**/api/status?server=aska');
     assert.equal(await page.locator('#chronicle .badge-list li').count(), 4);
     await page.evaluate(() => { window.qaScene = document.querySelector('#scene-qa-milestone'); });
+    // A command completion may legitimately refresh status after navigation. Observe idle polling
+    // only after the previously accepted commands and their follow-up refresh have settled.
+    await page.waitForFunction(async () => {
+      const {state} = await import('/state.js');
+      return state.pending.size === 0 && !state.refreshing;
+    });
     const pollCount = requests.filter(request => request.path === '/api/status').length;
     await page.locator('#refresh-community').click();
     await page.waitForTimeout(8500);
