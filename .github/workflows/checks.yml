@@ -64,18 +64,18 @@ jobs:
       - run: php bin/console lint:twig templates
       - name: Regular family workflows
         if: needs.plan.outputs.full != 'true'
-        run: php vendor/bin/phpunit --group regular ${{ needs.plan.outputs.dashboard_only == 'true' && '--filter DashboardTest' || '' }}
+        run: node ../scripts/phpunit.cjs ${{ needs.plan.outputs.dashboard_only == 'true' && '--filter DashboardTest' || '' }}
       - name: Extended tests (manual only)
         if: needs.plan.outputs.full == 'true'
-        run: php vendor/bin/phpunit
+        run: node ../scripts/phpunit.cjs --extended
       - name: Native disposable Windows process
         if: runner.os == 'Windows'
-        run: php vendor/bin/phpunit --filter Native --group regular
+        run: node ../scripts/phpunit.cjs --filter Native
         env:
           SLICE_WINDOWS_TEST: '1'
       - name: Extended native tests (manual only)
         if: runner.os == 'Windows' && needs.plan.outputs.full == 'true'
-        run: php vendor/bin/phpunit --filter Native
+        run: node ../scripts/phpunit.cjs --extended --filter Native
         env:
           SLICE_WINDOWS_TEST: '1'
       - name: Windows launcher and shortcut installer
@@ -120,9 +120,15 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: mkdir -p artifacts
       - run: npm run test:symfony-browser
+        if: needs.plan.outputs.full == 'true'
         env:
           SLICE_FRANKENPHP: /tmp/indy-frankenphp
       - run: npm run test:symfony-dashboard
+        if: needs.plan.outputs.full == 'true'
+        env:
+          SLICE_FRANKENPHP: /tmp/indy-frankenphp
+      - run: npm run test:ui
+        if: needs.plan.outputs.full != 'true'
         env:
           SLICE_FRANKENPHP: /tmp/indy-frankenphp
       - uses: actions/upload-artifact@v7.0.2
