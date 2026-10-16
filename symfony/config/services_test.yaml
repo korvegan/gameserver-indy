@@ -11,3 +11,6 @@ services:
   App\Integration\DiscordTransport:
     alias: App\Integration\DiscordWebhook
     public: true
+  App\WhatsApp\WhatsAppClient:
+    alias: App\WhatsApp\LocalWhatsAppClient
+    public: true

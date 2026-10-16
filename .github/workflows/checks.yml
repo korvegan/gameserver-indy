@@ -43,6 +43,8 @@ jobs:
         run: python tools/check_chronicle_compatibility.py
       - name: Steam and join information compatibility with Python baseline
         run: python tools/check_integration_compatibility.py
+      - name: WhatsApp readiness, sanitized logs and delivery claim compatibility
+        run: python tools/check_whatsapp_compatibility.py
       - name: Backup and restore compatibility with Python baseline
         run: python tools/check_backup_compatibility.py
       - name: Native disposable Windows process
