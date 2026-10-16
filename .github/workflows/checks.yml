@@ -60,7 +60,7 @@ jobs:
           tools: composer:v2
       - uses: actions/setup-node@v7.1.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: npm
       - run: composer install --no-interaction --prefer-dist --working-dir=symfony
       - name: Verified FrankenPHP binary
@@ -81,18 +81,19 @@ jobs:
           path: artifacts/symfony-*.png
           if-no-files-found: ignore
   test:
-    name: Backend (${{ matrix.os }})
+    name: Backend (${{ matrix.os }})${{ matrix.python == '3.15' && ' - Python 3.15' || '' }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.15']
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.0.0
         with:
-          python-version: '3.11'
+          python-version: '${{ matrix.python }}'
       - run: python -m unittest discover -s tests -v
       - name: Windows process integration
         if: runner.os == 'Windows'
@@ -118,7 +119,7 @@ jobs:
           python-version: '3.11'
       - uses: actions/setup-node@v7.1.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run check:js

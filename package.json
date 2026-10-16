@@ -4,6 +4,9 @@
   "type": "module",
   "private": true,
   "description": "Development checks for GameServer Indy",
+  "engines": {
+    "node": "^24.22.0"
+  },
   "scripts": {
     "check:js": "node tests/check-js.cjs",
     "test:browser": "node tests/run-browser-check.cjs",
