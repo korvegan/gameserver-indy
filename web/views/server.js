@@ -9,7 +9,9 @@ export function controls() {
   const status = state.snapshot?.status;
   const pending = state.pending.has(state.selectedServer);
   const locked = state.submitting || !state.available || pending;
-  const actionLocked = state.submitting || !state.catalogAvailable || !state.selectedServer;
+  const game = state.catalog.servers.find(profile => profile.id === state.selectedServer)?.game;
+  const supported = state.catalog.games.find(entry => entry.id === game)?.capabilities?.process_control?.state === 'supported';
+  const actionLocked = state.submitting || !state.catalogAvailable || !state.selectedServer || !supported;
   const recovery = status?.recovery_required;
   $('#server-select').disabled = state.submitting || !state.catalogAvailable;
   $('#profile-fields').disabled = state.submitting || !can('catalog.write');
@@ -18,7 +20,8 @@ export function controls() {
   $('#restart').disabled = actionLocked || recovery || !can('server.restart');
   $('#setup').disabled = locked || recovery || !can('server.setup') || !status?.installed || status.running || status.starting;
   for (const [id, permission] of [['start', 'server.start'], ['stop', 'server.stop'], ['restart', 'server.restart']]) {
-    $(`#${id}`).title = !can(permission) ? 'Deine Rolle erlaubt diese Aktion nicht.' : 'Als Auftrag annehmen; beim Ausführen wird der aktuelle Serverzustand geprüft.';
+    $(`#${id}`).title = !supported ? 'Für dieses Spiel ist noch kein Prozessadapter freigegeben.'
+      : !can(permission) ? 'Deine Rolle erlaubt diese Aktion nicht.' : 'Als Auftrag annehmen; beim Ausführen wird der aktuelle Serverzustand geprüft.';
   }
   $('#control-hint').textContent = !state.catalogAvailable ? 'Serverprofile werden geladen …'
     : recovery ? 'Eine Weltwiederherstellung ist offen. Start und Neustart benötigen zuerst den Rückweg unter Weltsicherungen.'

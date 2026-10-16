@@ -7,6 +7,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 final class GameCatalog
 {
+    public const CAPABILITIES = ['configuration','process_control','readiness','save','world_backup','update_detection','players','rcon','mods'];
     /** @var array<string, ConfigurationAdapter> */
     private array $adapters = [];
     private array $schemas = [];
@@ -48,6 +49,19 @@ final class GameCatalog
             $seen[$field->key] = true;
         }
         if (property_exists($schema, 'external_launcher') && !is_bool($schema->external_launcher)) { throw new \DomainException('Ungültige Starterfähigkeit.'); }
+        if (property_exists($schema,'capabilities')) {
+            if (!$schema->capabilities instanceof \stdClass || array_diff(array_keys(get_object_vars($schema->capabilities)),self::CAPABILITIES)) {
+                throw new \DomainException('Unbekannte Spielfähigkeit.');
+            }
+            foreach ($schema->capabilities as $capability) {
+                if (!$capability instanceof \stdClass || array_diff(array_keys(get_object_vars($capability)),['state','reason','method'])
+                    || !in_array($capability->state ?? null,['supported','unsupported','unknown'],true)
+                    || !is_string($capability->reason ?? null) || trim($capability->reason)==='' || mb_strlen($capability->reason)>600
+                    || (isset($capability->method) && (!is_string($capability->method) || !preg_match('/^[a-z0-9_-]{1,80}$/D',$capability->method)))) {
+                    throw new \DomainException('Ungültige Fähigkeitsbeschreibung.');
+                }
+            }
+        }
         if (!in_array($schema->connection->mode ?? 'server_browser', ['ip_query', 'server_browser'], true)) { throw new \DomainException('Ungültiger Beitrittsmodus.'); }
     }
     public function entries(array $additional = []): array
@@ -62,13 +76,15 @@ final class GameCatalog
         $result = [];
         foreach ($games as $id => $entry) {
             $hosted = isset($this->adapters[$id]); $capabilities = [];
-            foreach (['process_control', 'readiness', 'world_backup', 'update_detection', 'players', 'mods'] as $name) {
-                $capabilities[$name] = ['state' => 'unknown', 'reason' => 'In Symfony noch nicht für reale Instanzen freigegeben.'];
+            foreach (self::CAPABILITIES as $name) {
+                $capabilities[$name] = ['state' => 'unknown', 'reason' => 'Für dieses Spiel noch nicht eingerichtet oder geprüft.'];
             }
             $capabilities['configuration'] = ['state' => $hosted ? 'supported' : 'unsupported',
                 'reason' => $hosted ? 'Vorhandener Konfigurationsadapter; Schreiben benötigt bestätigten Prozesszustand.' : 'Kein Dedicated-Server-Adapter eingerichtet.'];
             if (!$hosted) { $capabilities['process_control'] = ['state' => 'unsupported', 'reason' => 'Kein Prozessadapter eingerichtet.']; }
-            else { $capabilities['update_detection'] = ['state' => 'supported', 'reason' => 'Lokales Steam-Appmanifest und anonymer SteamCMD-Branchvergleich; benötigt eingerichtetes SteamCMD.']; }
+            else {
+                foreach ($this->schemas[$id]->capabilities ?? new \stdClass() as $name=>$capability) { $capabilities[$name] = (array) $capability; }
+            }
             $result[] = [...$entry, 'server_adapter' => $hosted, 'capabilities' => $capabilities,
                 'schema' => $hosted ? $this->schemas[$id] : null];
         }
