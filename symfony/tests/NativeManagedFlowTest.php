@@ -43,8 +43,8 @@ final class NativeManagedFlowTest extends SliceTestCase
                 PrivateFiles::write($registry->configPath($profile), $games->adapter($profile->game)->encode($config, ''));
             }
             $lifecycle->open(); $request = 0;
-            $execute = function (string $id, string $operation) use (&$request, $service, $handler, $jobs): array {
-                $job = $service->submit($id, $operation, str_pad(dechex(++$request), 32, '0', STR_PAD_LEFT));
+            $execute = function (string $id, string $operation,?\stdClass $payload=null) use (&$request, $service, $handler, $jobs): array {
+                $job = $service->submit($id, $operation, str_pad(dechex(++$request), 32, '0', STR_PAD_LEFT),payload:$payload);
                 $handler(new ExecuteServerJob($job['id'])); $result = $jobs->get($job['id']);
                 self::assertSame('succeeded', $result['state'], $operation.' of own '.$id.': '.$result['message']);
                 return $result;
@@ -61,6 +61,14 @@ final class NativeManagedFlowTest extends SliceTestCase
             self::assertSame($b['pid'], $gateway->call('fixture-b', 'Status')['pid'], 'Same executable name in another installation survives');
             $firstDirectory = $paths->local($manifest->fixtures[0]->profile->server_directory);
             self::assertSame((string) $a['pid'], trim(PrivateFiles::read($firstDirectory.'/graceful-stop.txt')));
+            PrivateFiles::directory($firstDirectory.'/savegame'); PrivateFiles::write($firstDirectory.'/savegame/own-world.bin','own native world');
+            $worlds=$container->get(\App\Instance\Worlds::class); $owner=new Principal('local-owner','owner'); $world=$worlds->view($owner,'fixture-a')['current'];
+            $copy=$execute('fixture-a','world',(object)['action'=>'clone','name'=>'Eigene native Kopie','revision'=>$world['revision'],'confirmation'=>'WELTWECHSEL']);
+            $copyId=json_decode($copy['result'],true)['world_id'];
+            $execute('fixture-a','world',(object)['action'=>'switch','world_id'=>$copyId,'revision'=>$world['revision'],'confirmation'=>'WELTWECHSEL']);
+            $selected=$worlds->view($owner,'fixture-a')['current']; self::assertSame('own native world',PrivateFiles::read($selected['path'].'/own-world.bin'));
+            $execute('fixture-a','world',(object)['action'=>'switch','world_id'=>$world['id'],'revision'=>$selected['revision'],'confirmation'=>'WELTWECHSEL']);
+            self::assertSame($world['path'],$worlds->view($owner,'fixture-a')['current']['path']);
             $execute('fixture-aska', 'start'); $aska = $gateway->call('fixture-aska', 'Status');
             self::assertTrue($aska['running']); self::assertTrue($aska['launcher_running']);
             self::assertNull($aska['ready']); $execute('fixture-aska', 'stop');

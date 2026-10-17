@@ -1,12 +1,14 @@
 import {api} from '../api.js';
 import {$, element, notice} from '../dom.js';
 import {can, state} from '../state.js';
+import {bindWorlds,loadWorlds,resetWorlds} from './worlds.js';
 
 let request = 0, previewRequest = 0, run;
 const stamp = value => value ? new Date(value).toLocaleString('de-DE') : 'Nicht bestätigt';
 const size = value => `${(value / 1024 / 1024).toLocaleString('de-DE', {maximumFractionDigits: 1})} MiB`;
 
 export function resetBackups() {
+  resetWorlds();
   request++; previewRequest++;
   $('#backup-list').replaceChildren(); $('#backup-target').textContent = 'Weltziel wird geladen …';
   $('#backup-last').textContent = ''; $('#backup-progress').textContent = '';
@@ -50,6 +52,7 @@ async function restore(identifier, recovery = false) {
 
 export async function loadBackups() {
   if (!can('backups.manage') || state.view !== 'backups') return;
+  void loadWorlds();
   const generation = ++request, target = state.selectedServer, epoch = state.selectionEpoch, navigation = state.navigationEpoch;
   const current = () => generation === request && epoch === state.selectionEpoch && navigation === state.navigationEpoch && state.view === 'backups';
   try {
@@ -84,6 +87,7 @@ export async function loadBackups() {
 }
 
 export function bindBackups(runOperation) {
+  bindWorlds(runOperation);
   run = runOperation;
   $('#backup-refresh').addEventListener('click', loadBackups);
   $('#backup-create').addEventListener('click', () => run('backup'));

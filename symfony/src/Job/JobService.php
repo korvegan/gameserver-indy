@@ -27,7 +27,7 @@ final class JobService
     {
         $this->runtime->assertInitialized();
         if ($this->runtime->driver === 'managed') { $this->registry->get($serverId); } else { $this->runtime->server($serverId); }
-        if (!in_array($operation, ['start', 'stop', 'restart', 'config', 'setup', ...BackupOperations::ALL, ...IntegrationOperations::ALL], true) || !preg_match('/^[a-f0-9]{32}$/D', $requestId)) {
+        if (!in_array($operation, ['start', 'stop', 'restart', 'config', 'setup', 'world', ...BackupOperations::ALL, ...IntegrationOperations::ALL], true) || !preg_match('/^[a-f0-9]{32}$/D', $requestId)) {
             throw new \InvalidArgumentException('Befehl oder Anfragekennung ungültig.');
         }
         $actor ??= new Principal('local-owner', $this->runtime->role);
@@ -36,6 +36,8 @@ final class JobService
         if ($operation === 'config') {
             if (!$payload || !($payload->config ?? null) instanceof \stdClass || !is_string($payload->revision ?? null)
                 || !preg_match('/^[a-f0-9]{64}$/D', $payload->revision) || array_diff(array_keys(get_object_vars($payload)), ['config', 'revision'])) { throw new \InvalidArgumentException('Konfiguration und Dateistand erforderlich.'); }
+        } elseif ($operation === 'world') {
+            \App\Instance\Worlds::validate($payload);
         } elseif ($operation === 'community_discord') {
             \App\Community\DiscordPublication::validate($payload);
         } elseif ($operation === 'discord_card_create') {
@@ -80,7 +82,7 @@ final class JobService
     {
         if (in_array($operation, BackupOperations::ALL, true)) { return 'backups.manage'; }
         return match ($operation) { 'config' => 'config.write', 'setup' => 'server.setup', 'check_updates' => 'updates.check',
-            'community_discord' => 'community.export',
+            'world' => 'backups.manage', 'community_discord' => 'community.export',
             'refresh_connections' => 'connections.refresh', 'discord_send', 'discord_card_create', 'discord_card_update' => 'discord.write', default => 'server.'.$operation };
     }
 }

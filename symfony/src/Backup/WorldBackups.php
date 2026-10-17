@@ -143,11 +143,32 @@ final class WorldBackups
         } catch (OutcomeUnknown|AccessDeniedException $error) { throw $error; }
         catch (\Throwable $error) { throw new \DomainException('Server gestoppt, Weltsicherung fehlgeschlagen. Kein anschließender Neustart ausgeführt.', previous: $error); }
     }
-    private function create(string $id, callable $guard, string $reason = 'manual', bool $pinned = false, bool $prune = true): array
+    /** World selection also needs a checkpoint before an uninitialized empty world is left. */
+    public function worldCheckpoint(Principal $actor,string $id): array
+    {
+        return $this->mutation->reserved($actor,$id,'backups.manage',function(callable $guard) use ($id): array {
+            try { return $this->create($id,$guard,'before_world_change',true,true,true); }
+            finally { $this->phase($id,'idle'); }
+        });
+    }
+    public function copyWorld(string $id,string $backupId,string $destination,callable $guard): void
+    {
+        $this->identifier($backupId); $record=$this->metadata($id,$backupId); $archive=$this->path($id,$backupId.'.zip');
+        if (!$record->verified_at || !hash_equals($record->sha256,$this->files->digest($archive))) { throw new \DomainException('Weltkopie benötigt eine bestätigte Sicherung.'); }
+        $destination=$this->files->plain($destination); $this->files->native([dirname($destination)]);
+        if (file_exists($destination)) { throw new \DomainException('Das neue Weltziel existiert bereits.'); }
+        $unpacked=array_sum(array_map(fn($file)=>$file->size,$record->manifest->files));
+        $this->files->space(dirname($destination),$unpacked); $stage=$destination.'.stage';
+        try {
+            $guard(); $this->archives->inspect($archive,$record->manifest); $this->archives->stage($archive,$record->manifest,$stage); $guard();
+            if (!rename($stage.'/world',$destination)) { throw new \DomainException('Geprüfte Weltkopie konnte nicht übernommen werden.'); }
+        } finally { $this->files->removeTree($stage); }
+    }
+    private function create(string $id, callable $guard, string $reason = 'manual', bool $pinned = false, bool $prune = true, bool $allowEmpty = false): array
     {
         $this->guardPending($id); $status = $this->offline($id, $guard); $plan = $this->plans->resolve($id, $status);
-        $this->phase($id, 'Warte auf ruhende Weltdateien'); $first = $this->files->inventory($plan['world'], $plan['files']);
-        $this->clock->sleep(1); $this->offline($id, $guard); $inventory = $this->files->inventory($plan['world'], $plan['files']);
+        $this->phase($id, 'Warte auf ruhende Weltdateien'); $first = $this->files->inventory($plan['world'], $plan['files'],!$allowEmpty);
+        $this->clock->sleep(1); $this->offline($id, $guard); $inventory = $this->files->inventory($plan['world'], $plan['files'],!$allowEmpty);
         if ($first['signature'] !== $inventory['signature'] || $first['directories'] !== $inventory['directories']) { throw new \DomainException('Weltdateien ändern sich noch. Später erneut sichern.'); }
         $folder = $this->folder($id); PrivateFiles::directory($folder);
         $this->files->space($folder, $inventory['size'] * 2 + BackupFiles::MANIFEST_LIMIT);
@@ -156,9 +177,10 @@ final class WorldBackups
         catch (\Throwable) { $build = null; }
         $manifest = (object) ['schema' => 1, 'id' => $identifier, 'created_at' => $this->now(), 'binding' => $plan['binding'],
             'directories' => $inventory['directories'], 'files' => [], 'build' => $build];
+        if ($allowEmpty && count($inventory['entries'])===count($plan['files'])) { $manifest->empty_world=true; }
         try {
             $this->phase($id, 'Sichere Dateien', 0, count($inventory['entries'])); $guard(); $this->archives->create($partial, $inventory, $manifest);
-            $status = $this->offline($id, $guard); $after = $this->files->inventory($plan['world'], $plan['files']);
+            $status = $this->offline($id, $guard); $after = $this->files->inventory($plan['world'], $plan['files'],!$allowEmpty);
             if ($after['signature'] !== $inventory['signature'] || $after['directories'] !== $inventory['directories']
                 || !$this->plans->sameBinding($this->plans->resolve($id, $status)['binding'], $plan['binding'])) { throw new \DomainException('Welt oder Konfiguration während der Sicherung geändert.'); }
             $this->phase($id, 'Prüfe Archiv und Prüfsummen'); $this->archives->inspect($partial, $manifest); $guard();

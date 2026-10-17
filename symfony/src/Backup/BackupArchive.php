@@ -87,7 +87,7 @@ final class BackupArchive
             }
             sort($expectedNames); $actual = array_keys($sizes); sort($actual);
             if ($actual !== $expectedNames || !in_array('config/server', $expectedNames, true)
-                || !array_filter($expectedNames, fn ($name) => str_starts_with($name, 'world/'))) { throw new \DomainException('Das Sicherungsarchiv ist unvollständig.'); }
+                || !array_filter($expectedNames, fn ($name) => str_starts_with($name, 'world/')) && ($manifest->empty_world ?? false)!==true) { throw new \DomainException('Das Sicherungsarchiv ist unvollständig.'); }
         } finally { $zip->close(); }
     }
     /** Stream at most the declared size, checking hashes before any staged file is used. */
