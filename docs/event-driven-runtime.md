@@ -31,3 +31,17 @@ Der Planer schläft bis zur nächsten Wartungsfrist, Steam-/Netzwerkprüfung ode
 Die kurzen lokalen Prüfungen des vorhandenen Supervisor-Wächters betreffen ausschließlich dessen eigene Verwaltungsprozesse. Sie sind keine Spielstatus-/Netzwerkabfragen und bleiben zum Schutz vor verwaisten Workern erhalten.
 
 Windows-`FileSystemWatcher` meldete für `\\wsl.localhost\…` im Hosttest lediglich einen Fehler und anschließend keine Änderungen. Deshalb beobachtet ein kleiner nativer `inotify`-Helfer WSL-lokale Dateien direkt. Nur Windows-Laufwerke gehen an den Windows-Dateiwächter. Der Linux-Helfer enthält keine Spiellogik, blockiert im Kernel und endet ebenfalls bei Besitzer-EOF. Sein versionierter C-Quelltext wird einmal je Quellstand mit dem vorhandenen `cc` in die private Laufzeitablage gebaut; kein zusätzlicher Nachrichtendienst und keine Python-Laufzeit. Linux/WSL benötigt dafür einen C-Compiler. Ein Hosttest prüft beide Ereignisquellen gemeinsam über den tatsächlichen WSL-Pfad.
+
+## Liveoberfläche (#122)
+
+Die Oberfläche lädt einen Ausgangsstand und folgt danach einem gemeinsamen SSE-Kanal für Aufträge und erlaubte Änderungsarten. Statuswechsel aktualisieren die betreffende Übersicht, Logänderungen die sichtbare Konsole, Messpunkte die sichtbare Leistung und Gemeinschaftsänderungen einen Hinweis unter Erhalt der Leseposition. Es gibt keine Acht-Sekunden-Refreshschleife und keine Einzelabfragen wartender Aufträge. Ein kurzer Einmal-Timer fasst gleichzeitig eintreffende Änderungen zusammen.
+
+Der Server wartet auf lokale Ereignisse. Ein Protokoll-Heartbeat nach 15 Sekunden hält die Verbindung und Rechteprüfung lebendig; dabei wird nur der dauerhafte Auftragsstand abgeglichen, kein Spielprozess oder Netzwerkdienst abgefragt. Nach höchstens fünf Minuten wird die Verbindung erneuert. Ausgangsstand, Cursor und Auftragsrevisionen schließen Wiederverbindungslücken. Auch ein Abschluss hinter dem neuen Cursor löst den zuvor wartenden UI-Auftrag. Ausgeblendete Tabs schließen ihren Kanal; beim Wiederanzeigen wird abgeglichen.
+
+WhatsApp fragt nur während einer offenen QR-/Bestätigungseinrichtung weiter nach. Eine verbundene oder gestoppte Einrichtung besitzt keinen regelmäßigen UI-Timer. Start/Stopp/Neustart bleiben unabhängig vom angezeigten Status als Aufträge bedienbar.
+
+Technische Grundlagen: [Symfony Messenger 7.4](https://symfony.com/doc/7.4/messenger.html), [Windows FileSystemWatcher](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher), [WMI-Ereignisse](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/register-wmievent).
+
+Lograuschen wird vor dem Parser je Profil über ein einmaliges 250-ms-Fenster gebündelt; die sichtbare Konsole lädt bei fortlaufenden Änderungen höchstens ungefähr einmal pro Sekunde nach. Ohne neue Ereignisse läuft kein solcher Timer. Wenn ein lange ausgeblendeter Tab noch einen Auftrag außerhalb des jüngsten Verlaufs kennt, liest er dessen Ergebnis beim Wiederverbinden einmal gezielt nach; daraus entsteht keine Pollschleife.
+
+Livekanäle belegen PHP-Threads. Die Zahl gleichzeitiger Kanäle ist deshalb auf die konfigurierte Threadzahl minus zwei begrenzt. Bei den vorhandenen sechs Threads stehen höchstens vier Livekanäle offen; zusätzliche Tabs erhalten einen Hinweis und versuchen es später erneut. Normale API-Aufrufe und Bedienbefehle behalten Kapazität. Ein isolierter Überlastnachweis mit sieben zusätzlichen Kanälen prüft diese Grenze ohne Spielaktionen.

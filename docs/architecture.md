@@ -23,6 +23,12 @@ Der Supervisor hält eine Laufzeitkennung und startet eigene Worker, Beobachter,
 Planer und Webserver. Native Aktionen prüfen den vollständigen EXE-Pfad und die
 Prozessidentität; sie suchen nicht bloß nach einem Prozessnamen.
 
+Der Ereignisweg lautet: native Datei-/Prozessänderung → spielbezogener Parser →
+dauerhaftes SQLite-Ereignis → gezielter Metadatenauftrag → Liveanzeige über SSE.
+Lokale Weckhinweise ersetzen die schnellen Auftrags-/Statuspolls. Der Planer wartet
+auf konkrete Fristen oder Änderungen. Verbleibende Mess- und Abgleichintervalle,
+Startbindung und Deduplizierung stehen in [event-driven-runtime.md](event-driven-runtime.md).
+
 Code wird als unveränderliches Release aus dem geprüften Git-Commit installiert.
 Die aktuelle Datenablage enthält Profile, SQLite-Datenbanken, Freigaben und Schlüssel
 und bleibt bei Releasewechseln dieselbe. Ein Rückweg verwendet ein vorheriges

@@ -2,7 +2,7 @@
 
 `docs/dashboard-design.md`: Spiele links, rechts Spielkopfzeile und sechs Tabs. Zustand in `web/state.js`; `web/views/workspace.js` hängt vorhandene Ansichten einmal in feste Hülle.
 
-- Tabs/Statuspolls erzeugen Formulare und Chronik nicht neu. Entwürfe erhalten. Besitzerkonfiguration nur bei Bedarf laden.
+- Tabs/Liveereignisse erzeugen Formulare und Chronik nicht neu. Entwürfe erhalten. Besitzerkonfiguration nur bei Bedarf laden. Ein SSE-Kanal, keine parallelen Status-/Auftragspolls; Wiederverbindung gleicht wartende Aufträge auch dann ab, wenn ihr Abschluss hinter dem neuen Cursor liegt.
 - Auswahl pro Browser; Aktionen mit Profil-ID. Alte Antworten durch Auswahlgeneration, Anfrageziel und passende Protokollquelle verwerfen. Auswahl während Poll/Auftrag bedienbar halten; auch defekte Konfiguration darf Wechsel nicht sperren.
 - Navigation beim Wechsel zu Gemeinschaft/Spiele positionsstabil halten; früher ausgeblendeter Selektor ließ sie springen.
 - Start/Stopp/Neustart bei unbekanntem Status als Aufträge annehmen. Annahme, Ausführung und Prozessstatus trennen. Persistenter Sitzungsschlüssel übersteht Verwaltungsneustart.

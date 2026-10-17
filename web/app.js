@@ -3,7 +3,7 @@ import {$, notice} from './dom.js';
 import {can, replaceSelection, state} from './state.js';
 import {bindForms, clearConfig, populateConfig} from './forms.js';
 import {bindNavigation, navigate} from './navigation.js';
-import {acceptJob, mergeJobs, renderJobs, watchJob} from './jobs.js';
+import {acceptJob, mergeJobs, renderJobs, watchJob, syncJobs} from './jobs.js';
 import {controls, renderCatalog, renderEvents, renderStatus} from './views/server.js';
 import {loadLogs, renderLogs, toggleLogsPause, resetLogFilters, clearLogs} from './views/logs.js';
 import {loadGames} from './views/catalog.js';
@@ -23,6 +23,38 @@ import {bindChallenges, loadChallenges} from './views/challenges.js';
 import {bindCommunityDiscord, loadCommunityDiscord} from './views/community-discord.js';
 
 let statusRequest = 0, configRequest = 0, controller;
+const liveChanges = new Map();
+let liveTimer, liveBusy = false;
+function scheduleChanges() {
+  if (!liveChanges.size || liveTimer !== undefined || liveBusy || document.hidden || state.refreshing) return;
+  const onlyLogs = [...liveChanges.values()].every(change => change.topic === 'logs');
+  liveTimer = setTimeout(flushChanges, onlyLogs ? 1000 : 75);
+}
+function changed(change) {
+  window.dispatchEvent(new CustomEvent('indy:change', {detail: change}));
+  liveChanges.set(`${change.topic}:${change.server_id || ''}`, change);
+  scheduleChanges();
+}
+async function flushChanges() {
+  liveTimer = undefined;
+  if (document.hidden || state.refreshing) return;
+  const changes = [...liveChanges.values()]; liveChanges.clear(); liveBusy = true;
+  try {
+    const global = changes.some(change => ['snapshot', 'settings'].includes(change.topic));
+    const selected = changes.filter(change => !change.server_id || change.server_id === state.selectedServer);
+    if (global) await refreshCatalog();
+    if (global || selected.some(change => change.topic === 'status')) await refresh({includeJobs: false});
+    else {
+      const tasks = [];
+      if (changes.some(change => change.topic === 'status')) tasks.push(refreshFleet());
+      if (selected.some(change => change.topic === 'performance') && state.view === 'overview') tasks.push(loadPerformance());
+      if (selected.some(change => change.topic === 'logs') && state.view === 'logs' && can('logs.read')) tasks.push(loadLogs());
+      await Promise.all(tasks);
+    }
+    if (state.view === 'whatsapp' && selected.some(change => ['snapshot','status','settings'].includes(change.topic))) await loadWhatsApp();
+  } catch (error) { notice(error.message, true); }
+  finally { liveBusy = false; scheduleChanges(); }
+}
 const jobContexts = new Map(), requestContexts = new Map();
 onSessionExpired(async () => {
   const session = await api('/api/session');
@@ -57,7 +89,7 @@ async function refreshCatalog() {
   state.catalogAvailable = true; renderCatalog(catalog); controls();
 }
 
-async function refresh() {
+async function refresh({includeJobs = true} = {}) {
   if (!state.selectedServer) return;
   const generation = ++statusRequest, epoch = state.selectionEpoch, target = state.selectedServer;
   controller?.abort(); controller = new AbortController();
@@ -70,12 +102,13 @@ async function refresh() {
     state.available = true; renderStatus(data);
     $('#status-updated').textContent = `Zuletzt geladen: ${new Date().toLocaleTimeString('de-DE')}`;
     if (data.config_error) notice(data.config_error, true);
-    const tasks = [(async () => {
+    const tasks = [];
+    if (includeJobs) tasks.push((async () => {
       const {jobs} = await api('/api/jobs', undefined, target, signal);
       if (!current()) return;
       mergeJobs(jobs); renderJobs();
       for (const job of jobs) watchJob(job, controls, finishJob);
-    })()];
+    })());
     if (can('config.read') && ['overview', 'logs'].includes(state.view)) tasks.push((async () => {
       const {events} = await api('/api/events', undefined, target, signal);
       if (current()) renderEvents(events);
@@ -102,7 +135,7 @@ async function refresh() {
     $('#process-note').textContent = 'Windows-/WSL-Verbindung prüfen.';
     notice(error.message, true);
   } finally {
-    if (current()) { state.refreshing = false; controls(); }
+    if (current()) { state.refreshing = false; controls(); scheduleChanges(); }
   }
 }
 
@@ -163,7 +196,7 @@ async function finishJob(job) {
   }
   const label = state.catalog.servers.find(profile => profile.id === job.server_id)?.label || job.server_id;
   if (state.selectedServer === job.server_id && job.result?.update) renderUpdate(job.result.update);
-  if (state.selectedServer === job.server_id) await refresh();
+  if (state.selectedServer === job.server_id) await refresh({includeJobs: false});
   const selected = state.selectedServer === job.server_id;
   const warning = job.result?.warning;
   notice(`${selected ? '' : `${label}: `}${job.message}${warning ? ` Hinweis: ${warning}` : ''}`, job.state !== 'succeeded' || Boolean(warning));
@@ -261,7 +294,7 @@ for (const operation of ['stop', 'restart']) $(`#${operation}`).addEventListener
 });
 $('#refresh-community').addEventListener('click', loadCommunity);
 window.addEventListener('hashchange', () => { if (isCommunityHash()) go('community'); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !['games', 'community'].includes(state.view)) refresh(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleChanges(); });
 
 (async () => {
   try {
@@ -273,12 +306,11 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ![
     if (state.apiVersion >= 2) {
       const {connectJobStream} = await import('./job-stream.js');
       connectJobStream({
-        snapshot: jobs => { mergeJobs(jobs); renderJobs(); for (const job of jobs) watchJob(job, controls, finishJob); },
-        job: job => acceptJob(job, controls, finishJob), controls,
+        snapshot: jobs => syncJobs(jobs, controls, finishJob),
+        job: job => acceptJob(job, controls, finishJob), controls, change: changed,
       });
     }
     if (isCommunityHash()) await go('community');
   } catch (error) { notice(error.message, true); }
   controls();
-  setInterval(() => { if (!document.hidden && !state.submitting && !state.refreshing && !['games', 'community'].includes(state.view)) refresh(); }, 8000);
 })();

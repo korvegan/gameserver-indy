@@ -3,7 +3,7 @@ import {$, element, notice} from '../dom.js';
 import {state} from '../state.js';
 
 let data, groups = [], groupsLoaded = false, busy = false, loading = false;
-let generation = 0, draftRevision = 0, settingsRevision = 0, qrURL, draftGroup;
+let generation = 0, draftRevision = 0, settingsRevision = 0, qrURL, draftGroup, linkingTimer;
 const labels = {NOT_INSTALLED: 'Dienst noch nicht eingerichtet', UNAVAILABLE: 'Dienst nicht erreichbar',
   STOPPED: 'Noch nicht verknüpft', STARTING: 'Verbindung wird vorbereitet', SCAN_QR_CODE: 'QR-Code mit dem Handy scannen',
   WORKING: 'WhatsApp verbunden', FAILED: 'Verknüpfung prüfen', PASSKEY_REQUIRED: 'Bestätigung auf dem Handy erforderlich',
@@ -81,6 +81,7 @@ function render() {
 }
 
 export async function loadWhatsApp(refreshGroups = false) {
+  clearTimeout(linkingTimer);
   if (!local() || state.view !== 'whatsapp' || busy) return;
   const request = ++generation, epoch = state.navigationEpoch;
   const current = () => request === generation && epoch === state.navigationEpoch && state.view === 'whatsapp';
@@ -104,7 +105,14 @@ export async function loadWhatsApp(refreshGroups = false) {
       clearQR(); qrURL = URL.createObjectURL(blob); $('#wa-qr').src = qrURL; $('#wa-qr').hidden = false;
     }
   } catch (error) { if (current()) notice(error.message, true); }
-  finally { if (request === generation) { loading = false; controls(); } }
+  finally {
+    if (request === generation) {
+      loading = false; controls();
+      if (current() && !document.hidden && !state.whatsappDirty && ['STARTING','SCAN_QR_CODE','PASSKEY_REQUIRED','PASSKEY_CONFIRMATION_REQUIRED'].includes(data?.state)) {
+        linkingTimer = setTimeout(() => loadWhatsApp(), 10000);
+      }
+    }
+  }
 }
 
 async function act(path, body = {}, completed) {
@@ -150,8 +158,9 @@ export function bindWhatsApp() {
       if (revision === draftRevision) state.whatsappDirty = false;
     });
   });
-  setInterval(() => {
-    if (!document.hidden && state.view === 'whatsapp' && !busy && !loading && !state.whatsappDirty) loadWhatsApp();
-    if (state.view !== 'whatsapp') clearQR();
-  }, 10000);
+  window.addEventListener('indy:navigate', event => { if (event.detail !== 'whatsapp') { clearTimeout(linkingTimer); clearQR(); } });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { clearTimeout(linkingTimer); clearQR(); }
+    else if (state.view === 'whatsapp') loadWhatsApp();
+  });
 }

@@ -16,7 +16,13 @@ Leistungsverlauf: `docs/performance.md`. Prozesszähler im vorhandenen nativen A
 
 ## Aufträge und Beobachtung
 
-`ProcessObservation` ist veraltbare Lesesicht; Aktionen prüfen frisch. Jede Cache-Schreibgeneration erhält Kennung, auch bei gleichen Daten derselben Sekunde. Externer Starter sperrt Konfigurationsschreiben.
+Ereignisarchitektur: `docs/event-driven-runtime.md`. Keine Acht-Sekunden-Statuspolls oder pro Auftrag laufenden Browserabfragen wieder einführen. Aufträge bleiben in SQLite; Weckhinweise nach äußerem Commit, Empfänger vor dem Lesen anmelden. Topic-Filter verhindern, dass Lograuschen Worker/Planer weckt. SSE initial und nach Wiederverbindung mit Snapshot abgleichen; ausgeblendete Tabs pausieren.
+
+Windows-`FileSystemWatcher` auf `\\wsl.localhost\…` gab im Hosttest nur Fehler und keine Logänderungen. WSL-Dateien deshalb mit dem versionierten `inotify`-Helfer beobachten (`cc` einmal je Quellstand), Windows-Laufwerke nativ. Beide Quellen und Besitzer-EOF sind isoliert geprüft. Parser-Cursor bindet an Prozessstart; kopierte UTC-Startköpfe reproduzieren dieselben Ereignisschlüssel. Letztes Logende nach bekanntem Prozessstopp noch mit gespeicherter Identität lesen; dabei keine Bereitschaft neu bestätigen. Fehlende Logkonfiguration betrifft nur das Profil, nicht die ganze Verwaltung.
+
+Bewusste verbleibende Fristen: aktive Messung/Startprüfung 30 s, langsamer Abgleich gestoppter Profile 300 s (eingeschränkte Ereignisquelle 60 s), leerer Auftragsworker höchstens 60 s bis zum Sicherheitsabgleich. Terminplaner wartet auf echte Fälligkeiten. Kurze Wächterprüfungen betreffen nur eigene Verwaltungsprozesse.
+
+`ProcessObservation` ist eine Lesesicht mit begrenzter Gültigkeit passend zum Abgleichfenster; Aktionen prüfen frisch. Jede Cache-Schreibgeneration erhält Kennung, auch bei gleichen Daten derselben Sekunde. Externer Starter sperrt Konfigurationsschreiben.
 
 Steuerungsjobs je Profil FIFO/exklusiv, Metadaten eigener Worker. DBAL-Schreibfehler dürfen Messengerzustellung nicht verlieren; echter Worker zeigte Problem, das direkter Handleraufruf verdeckte. Beanspruchte Aufträge nur abgleichen, nicht erneut ausführen. Persistierte Revision verbindet Annahme/Snapshot/SSE; nach Snapshot Status neu laden, weil enthaltener Abschluss hinter Cursor liegen kann. Beim Verwaltungsende keine wartenden Aufträge mehr beginnen.
 Wartung: `docs/maintenance.md`. Ein Plan wartet auf ausdrückliche Besitzerfreigabe, dann Vorlauf und vorhandene FIFO. Abbruch nur vor Jobannahme; neuer Verwaltungslauf oder entzogenes Recht verwirft wartende Pläne. Laufende Spielerzahl ohne geprüfte Quelle bleibt unbekannt; nur eindeutig gestoppter Server samt Starter belegt null. Direkte Besitzer-Steuerknöpfe bleiben unabhängig vom Status bedienbar.

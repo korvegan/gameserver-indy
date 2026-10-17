@@ -81,6 +81,10 @@ Zugriffsschlüssel oder privaten Laufzeitordner über CI-Läufe hinweg cachen.
   zwei Spiele, wesentliche Tabs, Entwürfe, Rechte sowie Desktop/Mobil.
 - Nur bei konkretem Bedarf: `npm run test:php -- --extended --filter <Fall>` oder
   `npm run test:symfony-dashboard` für die ausführlichen Simulationen.
+- Architektur-Abnahme des Livekanals: `npm run test:symfony-dashboard -- --events`.
+  Prüft echte Leerlaufabrufe, Auftragsabschluss und Wiederverbindung gegen die
+  isolierte Fixture. Dieser zeitabhängige Nachweis ist ein gezielter
+  manueller Lauf und verlängert nicht jeden regulären UI-Lauf.
 
 `SLICE_PHP` und `SLICE_FRANKENPHP` wählen lokal vorhandene Werkzeuge; normale
 Installationen verwenden `php`/`frankenphp` aus PATH. Der PHPUnit-Helfer zeigt

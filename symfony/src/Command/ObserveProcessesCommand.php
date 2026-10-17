@@ -41,20 +41,21 @@ final class ObserveProcessesCommand extends Command implements SignalableCommand
                 foreach ($ids as $id) {
                     if ($this->stopping) { return Command::SUCCESS; }
                     if (($due[$id] ?? 0) <= $now) {
-                        $this->observation->refresh($id, 360); $logPending[$id] = true;
+                        $this->observation->refresh($id, 360); $logPending[$id] = 0;
                         $status = $this->observation->view($id);
                         // Active servers need performance samples. Stopped profiles only have a slow safety reconciliation.
                         $due[$id] = microtime(true)+((($status['running'] ?? false) || ($status['starting'] ?? false)) ? 30 : ($degraded ? 60 : 300));
                     }
-                    if (isset($logPending[$id])) {
+                    if (isset($logPending[$id]) && $logPending[$id] <= microtime(true)) {
                         while ($this->logs->ingest($id, $this->observation->view($id))) { if ($this->stopping) { return Command::SUCCESS; } }
                         unset($logPending[$id]); $this->signals->publish('logs', $id);
                     }
                 }
                 $due = array_intersect_key($due, array_flip($ids));
+                $logPending = array_intersect_key($logPending, array_flip($ids));
                 $this->eventJobs->enqueue();
                 if ($input->getOption('once')) { return Command::SUCCESS; }
-                $next = min([...array_values($due), $nativeRetry > microtime(true) ? $nativeRetry : microtime(true)+300]);
+                $next = min([...array_values($due), ...array_values($logPending), $nativeRetry > microtime(true) ? $nativeRetry : microtime(true)+300]);
                 $delay = max(0, $next-microtime(true)); $read = array_filter([$listener[0], ...array_values($this->native->streams())], 'is_resource'); $write = $except = [];
                 if (!$read) { $this->signals->wait($listener, min(60, $delay)); continue; }
                 @stream_select($read, $write, $except, (int)$delay, (int)(($delay-(int)$delay)*1000000));
@@ -67,7 +68,7 @@ final class ObserveProcessesCommand extends Command implements SignalableCommand
                                 $sourceStates[$event['source']] = $event['kind'] === 'rescan' || ($event['degraded'] ?? true);
                                 $degraded = count($sourceStates)<count($this->native->streams()) || in_array(true,$sourceStates,true); $due = [];
                             } elseif (in_array($id, $ids, true)) {
-                                if ($event['kind'] === 'log') { $logPending[$id] = true; }
+                                if ($event['kind'] === 'log') { $logPending[$id] ??= microtime(true)+.25; }
                                 else { $due[$id] = 0; if ($event['kind'] === 'config') { $rebuild = true; } }
                             }
                         }

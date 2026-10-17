@@ -31,7 +31,19 @@ final class SliceController extends AbstractController
         private readonly JobReconciler $reconciler, private readonly AccessPolicy $policy,
         private readonly SessionKeys $keys, private readonly ListenerIdentity $identity,
         private readonly InstanceRegistry $registry, private readonly ProcessObservation $observation,
-        private readonly \App\Dashboard\ServerOverview $overview) {}
+        private readonly \App\Dashboard\ServerOverview $overview, private readonly \App\Runtime\RuntimeSignals $signals,
+        private readonly \App\Runtime\RuntimeSettings $settings) {}
+
+    private function streamLease(): ?\Symfony\Component\Lock\LockInterface
+    {
+        $threads = is_file($this->runtime->directory.'/runtime.local.json') ? $this->settings->read()['threads'] : 6;
+        $factory = new \Symfony\Component\Lock\LockFactory(new \Symfony\Component\Lock\Store\FlockStore($this->runtime->directory.'/locks'));
+        for ($slot=0; $slot<max(1,$threads-2); ++$slot) {
+            $lease = $factory->createLock('live-stream:'.$slot);
+            if ($lease->acquire()) { return $lease; }
+        }
+        return null;
+    }
 
     private function principal(): Principal
     {
@@ -120,10 +132,15 @@ final class SliceController extends AbstractController
         $after = (int) $cursor;
         $scope = $request->attributes->get('_indy_scope');
         return new EventStreamResponse(function () use ($after, $principal, $request, $scope): iterable {
-            $deadline = microtime(true) + 10;
-            $heartbeat = 0.0;
-            $reconcileAt = 0.0;
-            while (!connection_aborted() && microtime(true) < $deadline) {
+            $lease = $this->streamLease();
+            if ($lease === null) {
+                yield new ServerEvent('Liveplatz belegt · weitere Dashboard-Tabs schließen.', type:'capacity'); return;
+            }
+            $listener = $this->signals->listen();
+            // In-process CLI requests can inspect the initial events; real HTTP keeps one live channel.
+            $deadline = microtime(true) + (PHP_SAPI === 'cli' ? .05 : 300);
+            $heartbeat = 0.0; $notifications = [['topic'=>'snapshot','server_id'=>null]]; $readJobs = true;
+            try { while (!connection_aborted() && microtime(true) < $deadline) {
                 try {
                     [$current, $currentScope] = $this->identity->resolve($request);
                     $this->policy->require($principal, 'jobs.read');
@@ -132,23 +149,32 @@ final class SliceController extends AbstractController
                 catch (AccessDeniedException) {
                     yield new ServerEvent('Freigabe geändert. Bitte neu laden.', type: 'access-revoked'); return;
                 }
-                if (microtime(true) >= $reconcileAt) {
+                if (microtime(true) >= $heartbeat) {
                     $this->reconciler->reconcile();
-                    $reconcileAt = microtime(true) + 1;
+                    yield new ServerEvent('', comment: 'heartbeat');
+                    $heartbeat = microtime(true)+15; $readJobs = true;
                 }
-                foreach ($this->jobs->events($after) as $event) {
+                do {
+                $events = $readJobs ? $this->jobs->events($after) : [];
+                foreach ($events as $event) {
                     $after = (int) $event['sequence'];
                     $job = json_decode($event['payload'], true, flags: JSON_THROW_ON_ERROR);
                     if ($this->policy->visible($principal, $job)) {
                         yield new ServerEvent(json_encode(JobRepository::public($job), JSON_THROW_ON_ERROR), type: 'job', id: (string) $after);
                     }
                 }
-                if (microtime(true) > $heartbeat) {
-                    yield new ServerEvent('', comment: 'heartbeat');
-                    $heartbeat = microtime(true) + 2;
+                } while (count($events) === 100);
+                foreach ($notifications as $change) {
+                    $topic = $change['topic']; $id = $change['server_id'] ?? null;
+                    if (in_array($topic, ['jobs','access','game-event'], true)) { continue; }
+                    if ($id !== null && !$principal->allows('status.read', $id)) { continue; }
+                    if ($topic === 'logs' && !$principal->allows('logs.read', $id)) { continue; }
+                    if ($topic === 'community' && !$principal->allows('community.read')) { continue; }
+                    yield new ServerEvent(json_encode($change, JSON_THROW_ON_ERROR), type:'change');
                 }
-                usleep(100000);
-            }
+                $notifications = $this->signals->wait($listener, max(0,min($heartbeat,$deadline)-microtime(true)));
+                $readJobs = in_array('jobs', array_column($notifications, 'topic'), true);
+            } } finally { $this->signals->close($listener); $lease->release(); }
         });
     }
 }

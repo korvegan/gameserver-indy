@@ -44,9 +44,9 @@ const {setTimeout: delay} = require('node:timers/promises');
       try { if ((await fetch(origin+'/api/session')).ok) break; } catch {}
       await delay(100);
     }
-    if(process.argv.includes('--smoke')){
+    if(process.argv.includes('--smoke') || process.argv.includes('--events')){
       await privateAccess();
-      for(const script of ['tests/browser-core.cjs','tests/browser-workspace-access.cjs']){
+      for(const script of process.argv.includes('--events') ? ['tests/browser-events.cjs'] : ['tests/browser-core.cjs','tests/browser-workspace-access.cjs']){
         const child=spawn(process.execPath,[script],{cwd:project,stdio:'inherit',env:{...process.env,INDY_BROWSER_ORIGIN:origin,INDY_BROWSER_FAMILY_ORIGIN:privateOrigin}});
         const [code]=await once(child,'exit');assert.equal(code,0,script);
       }

@@ -6,6 +6,7 @@ Stand: 17.10.2026. Stack und Prüfwahl: `docs/tech-stack.md`, `docs/testing.md`;
 - Node-Version: `.node-version`. Vorhandene npm-Befehle und `gh` bevorzugen. PR-Texte über Dateien mit echten Zeilenumbrüchen übergeben.
 - `npm run test:php` prüft `regular`, bei Fehlern mit Diagnostik; `npm run test:ui` kompakte Familien-/Serverzentralenabläufe. Weitere Tests nach betroffenem Verhalten auswählen, native Änderungen mit isolierten Windows-Stellvertretern.
 - Generische reguläre PHP-Tests laufen auf Linux, Windows zusätzlich für den nativen Ablauf. Erweiterte Fälle sind manuell. Keine archivierten Python-App-Tests oder Sprachvergleiche aktivieren.
+- Live-/Leerlaufarchitektur gezielt mit `npm run test:symfony-dashboard -- --events` prüfen; den zeitbasierten Nachweis nicht in jede gewöhnliche UI-Prüfung hängen. Linux-Dateiereignisbrücke benötigt vorhandenes `cc`; beide OS-Quellen besitzen eigene isolierte Tests.
 - Gemessene Composer-Installation: etwa 3 s Linux/9 s Windows; Chromium-Setup etwa 23 s. Aktuell kein zusätzliches Image/Cache-System gerechtfertigt. Neue Entscheidungen brauchen Messbefunde.
 - Playwright benötigt zum Lockfile passende Browser: bei fehlender Revision `npx playwright install chromium`. Keine alten Cachepfade fest verdrahten. `js_repl` war nicht verfügbar; versionierte Browserläufe verwenden.
 - Fixtures belegen eigene Ports/Datenordner. Keine produktiven Listener übernehmen. Caddy-Admin ausschalten und XDG-Pfade in die eigenen Testdaten legen.
