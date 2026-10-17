@@ -80,7 +80,12 @@ final class WorldBackupsTest extends SliceTestCase
         PrivateFiles::write($copied['path'].'/world0.ksd','test changes'); self::assertSame("world one\0\xff",PrivateFiles::read($this->world.'/world0.ksd'));
         $new=$run(['action'=>'new','name'=>'Neue Kampagne']); $run(['action'=>'switch','world_id'=>$new['world_id']]);
         self::assertSame([],array_values(array_diff(scandir($worlds->view($this->owner(),'fixture')['current']['path']),['.','..'])));
-        $run(['action'=>'switch','world_id'=>$original['id']]); self::assertSame($original['path'],$worlds->view($this->owner(),'fixture')['current']['path']);
+        $leftEmpty=$run(['action'=>'switch','world_id'=>$original['id']]); self::assertSame($original['path'],$worlds->view($this->owner(),'fixture')['current']['path']);
+        $run(['action'=>'switch','world_id'=>$new['world_id']]); $emptyPath=$worlds->view($this->owner(),'fixture')['current']['path'];
+        PrivateFiles::write($emptyPath.'/own-new-world','own later game state');
+        $restored=$this->restore($leftEmpty['backup_id']); self::assertFileDoesNotExist($emptyPath.'/own-new-world');
+        $this->restore($restored['before_backup_id']); self::assertSame('own later game state',PrivateFiles::read($emptyPath.'/own-new-world'));
+        $run(['action'=>'switch','world_id'=>$original['id']]);
         self::assertSame("world one\0\xff",PrivateFiles::read($this->world.'/world0.ksd'));
         self::assertNotEmpty(array_filter($this->backups()->view($this->owner(),'fixture')['backups'],fn($row)=>$row['pinned']));
     }

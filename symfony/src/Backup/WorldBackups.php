@@ -242,7 +242,7 @@ final class WorldBackups
         if (!hash_equals($preview['token'], $payload->token)) { throw new \DomainException('Wiederherstellungsziel geändert. Vorschau erneut laden.'); }
         $this->verify($id, $payload->backup_id, $guard);
         if (!hash_equals($payload->token, $this->plans->token($this->plans->resolve($id, $status)))) { throw new \DomainException('Wiederherstellungsziel geändert. Vorschau erneut laden.'); }
-        $before = $recovery ? $payload->backup_id : $this->create($id, $guard, 'before_restore', true, false)['backup_id'];
+        $before = $recovery ? $payload->backup_id : $this->create($id, $guard, 'before_restore', true, false, true)['backup_id'];
         $guard();
         if (!$recovery) { PrivateFiles::write($this->path($id, 'restore-pending.json'), PrivateFiles::json((object) ['before' => $before, 'binding' => $preview['target']])); }
         try { $this->install($id, $payload->backup_id, $guard); }
@@ -279,7 +279,7 @@ final class WorldBackups
             if (is_dir($plan['world'])) { if (!rename($plan['world'], $old)) { throw new \DomainException('Alte Welt nicht verschiebbar.'); } $moved = true; }
             if (!rename($stage.'/world', $plan['world'])) { throw new \DomainException('Vorbereitete Welt nicht übernehmbar.'); }
             foreach ($plan['files'] as $name => $path) { $guard(); PrivateFiles::write($this->files->plain($path), PrivateFiles::read($stage.'/'.$name, BackupFiles::CONFIG_LIMIT)); }
-            $this->offline($id, $guard); $inventory = $this->files->inventory($plan['world'], $plan['files']);
+            $this->offline($id, $guard); $inventory = $this->files->inventory($plan['world'], $plan['files'],($record->manifest->empty_world ?? false)!==true);
             $expected = []; foreach ($record->manifest->files as $file) { $expected[$file->name] = $file->sha256; }
             $actual = []; foreach ($inventory['signature'] as $name => $signature) { $actual[$name] = $signature[5]; }
             ksort($expected); ksort($actual);
