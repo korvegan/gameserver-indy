@@ -16,6 +16,7 @@ import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
 import {initWorkspace, markWorkspaceUnknown, refreshFleet, renderWorkspace} from './views/workspace.js';
 import {bindPerformance, clearPerformance, loadPerformance} from './views/performance.js';
 import {bindDiscordCard, clearDiscordCard, loadDiscordCard} from './views/discord-card.js';
+import {bindMembers, loadMembers} from './views/members.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map(), requestContexts = new Map();
@@ -134,7 +135,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'settings') await loadConfig();
   if (next === 'logs' && can('logs.read')) await loadLogs();
   if (next === 'games') await loadGames(target => selectServer(target, true));
-  if (next === 'community') await loadCommunity();
+  if (next === 'community') { await loadCommunity(); if ($('#community-members').open) await loadMembers(); }
   if (next === 'access') await loadAccess();
   if (next === 'backups') await loadBackups();
   if (next === 'whatsapp') await loadWhatsApp();
@@ -220,7 +221,7 @@ async function mutate(path, body = {}) {
 initWorkspace(selectServer, go);
 bindNavigation(go); bindForms(mutate); bindConnections(refresh, job => acceptJob(job, controls, finishJob)); bindCommunity(); bindAccess(); bindBackups(runOperation);
 bindDiscordCard(job => acceptJob(job, controls, finishJob));
-bindWhatsApp(); bindPerformance();
+bindWhatsApp(); bindPerformance(); bindMembers();
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;

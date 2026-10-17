@@ -26,7 +26,7 @@ export async function openMoment(event) {
   opening?.();
   const generation = ++openRequest, epoch = state.navigationEpoch;
   try {
-    const options = await api('/api/community/options');
+    const [options, profiles] = await Promise.all([api('/api/community/options'),api('/api/community/members')]);
     if (generation !== openRequest || epoch !== state.navigationEpoch || state.view !== 'community') return;
     editing = event; eventId = event?.id || `moment-${crypto.randomUUID()}`;
     $('#moment-form').reset(); clearPreview(); imageRequest++; processing = false;
@@ -39,7 +39,13 @@ export async function openMoment(event) {
     $('#moment-campaigns').replaceChildren(...options.campaigns.map(item => Object.assign(element('option'), {value: item.label})));
     for (const [id, value] of Object.entries({title: event?.title || '', description: event?.description || '',
       campaign: event?.campaign_label || event?.campaign_id || '', badge: event?.badge_label || event?.badge_id || '',
-      members: event?.member_ids.map(id => event.member_names?.[id] || id).join('\n') || ''})) $(`#moment-${id}`).value = value;
+      members: event?.member_ids.filter(id => !profiles.members.some(member=>member.id===id)).map(id => event.member_names?.[id] || id).join('\n') || ''})) $(`#moment-${id}`).value = value;
+    const participants = $('#moment-participants'); participants.replaceChildren();
+    for (const member of profiles.members.filter(member => member.enabled || event?.member_ids.includes(member.id))) {
+      const label = element('label',undefined,'checkbox-label');
+      const input = element('input'); input.type = 'checkbox'; input.value = member.id; input.checked = event?.member_ids.includes(member.id) || false;
+      label.append(input,document.createTextNode(event?.member_names?.[member.id] || member.name)); participants.append(label);
+    }
     const date = event?.occurred_at ? new Date(event.occurred_at) : event ? null : new Date();
     $('#moment-date').value = date && !Number.isNaN(date.getTime()) ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
     $('#moment-editor-title').textContent = event ? 'Einen Moment korrigieren' : 'Einen Moment festhalten';
@@ -90,6 +96,7 @@ async function submit(remove = false) {
     else Object.assign(body, {title: $('#moment-title').value, description: $('#moment-description').value,
       game_id: $('#moment-game').value, instance_id: $('#moment-instance').value, campaign: $('#moment-campaign').value,
       members: $('#moment-members').value.split('\n').map(name => name.trim()).filter(Boolean), badge: $('#moment-badge').value,
+      participant_ids: [...document.querySelectorAll('#moment-participants input:checked')].map(input=>input.value),
       occurred_at: date ? new Date(date).toISOString() : '', image, clear_image: $('#moment-clear-image').checked});
     const result = await api('/api/community', body);
     state.communityDirty = false; editor().close(); clearPreview();

@@ -13,7 +13,7 @@ final class CommunityLedger
     {
         $event = clone $event;
         $allowed = ['id', 'revision', 'title', 'description', 'member_ids', 'badge_id', 'source', 'occurred_at', 'game_id', 'instance_id',
-            'campaign_id', 'mod_profile_id', 'member_names', 'campaign_label', 'badge_label', 'actor_id', 'correction_reason', 'removed', 'media_id'];
+            'campaign_id', 'mod_profile_id', 'member_names', 'campaign_label', 'badge_label', 'actor_id', 'author_member_id', 'author_name', 'correction_reason', 'removed', 'media_id'];
         if (array_diff(array_keys(get_object_vars($event)), $allowed) || !GameCatalog::identifier($event->game_id ?? null)) { throw new \InvalidArgumentException('Unbekannte Felder oder fehlendes Spiel im Gemeinschaftsereignis.'); }
         foreach (['instance_id', 'campaign_id', 'mod_profile_id'] as $key) {
             if (($event->{$key} ?? null) !== null && !GameCatalog::identifier($event->{$key})) { throw new \InvalidArgumentException('Ungültiger Ereigniskontext.'); }
@@ -32,6 +32,8 @@ final class CommunityLedger
             if (property_exists($event, $key) && (!is_string($event->{$key}) || mb_strlen($event->{$key}) > $limit || !mb_check_encoding($event->{$key}, 'UTF-8'))) { throw new \InvalidArgumentException('Ungültige Chronikmetadaten.'); }
         }
         ChronicleValues::text($event->title ?? '', 160, true);
+        if (isset($event->author_member_id) && !GameCatalog::identifier($event->author_member_id)
+            || isset($event->author_name) && (!is_string($event->author_name) || mb_strlen($event->author_name)>80)) { throw new \InvalidArgumentException('Ungültiger Autor.'); }
         $names = $event->member_names ?? new \stdClass();
         if (!$names instanceof \stdClass || array_diff(array_keys(get_object_vars($names)), $members)
             || array_filter(get_object_vars($names), fn ($name) => !is_string($name) || mb_strlen($name) < 1 || mb_strlen($name) > 80)

@@ -35,6 +35,14 @@ services:
   App\Integration\DiscordWebhook:
     arguments:
       $client: '@indy.discord_http'
+  indy.steam_openid_http:
+    class: Symfony\Contracts\HttpClient\HttpClientInterface
+    factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+    autowire: false
+    autoconfigure: false
+  App\Community\SteamIdentity:
+    arguments:
+      $client: '@indy.steam_openid_http'
   App\WhatsApp\WhatsAppClient:
     alias: App\WhatsApp\LocalWhatsAppClient
   indy.whatsapp_http:
