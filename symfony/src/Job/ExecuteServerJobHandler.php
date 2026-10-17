@@ -27,7 +27,8 @@ final class ExecuteServerJobHandler
         private readonly ServerControl $control, private readonly AccessPolicy $policy,
         private readonly RuntimeLifecycle $lifecycle, private readonly WorkerClaim $claim,
         private readonly InstanceConfiguration $configuration, private readonly WorldBackups $backups,
-        private readonly ?IntegrationOperations $integrations = null,private readonly ?\App\Instance\Worlds $worlds = null) {}
+        private readonly ?IntegrationOperations $integrations = null,private readonly ?\App\Instance\Worlds $worlds = null,
+        private readonly ?\App\Integration\UpdateSessions $updateSessions = null,private readonly ?\App\Integration\UpdateAssistant $updateAssistant = null) {}
 
     public function __invoke(ExecuteServerJob $message): void
     {
@@ -64,6 +65,10 @@ final class ExecuteServerJobHandler
                     $actor = Principal::fromClaim($job['actor']);
                     $this->policy->require($actor, JobService::permission($job['operation']), $serverId);
                     $result = $this->claim->run($job, function () use ($job, $actor, $serverId): ?array {
+                        $this->updateSessions?->guard($serverId,$job['operation']);
+                        if (in_array($job['operation'],['update_prepare','update_finish','update_abort'],true)) {
+                            return ($this->updateAssistant ?? throw new \LogicException('Update-Assistent fehlt.'))->execute($actor,$serverId,$job['operation'],PrivateFiles::object($job['payload']));
+                        }
                         if (IntegrationOperations::is($job['operation'])) { return ($this->integrations ?? throw new \LogicException('Integrationsdienst fehlt.'))->execute($job, $actor); }
                         if ($job['operation'] === 'config') {
                             $payload = PrivateFiles::object($job['payload']);

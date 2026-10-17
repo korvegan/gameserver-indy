@@ -64,6 +64,28 @@ final class WorldBackupsTest extends SliceTestCase
     }
     protected function tearDown(): void { Clock::set(new NativeClock()); parent::tearDown(); }
     #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testGuidedUpdatePinsBackupBlocksStartAndRequiresExplicitConfigDiffReview(): void
+    {
+        $this->fixture(); $c=static::getContainer(); $assistant=$c->get(\App\Integration\UpdateAssistant::class); $install=dirname($this->world);
+        PrivateFiles::directory($install.'/steamapps'); $manifest=$install.'/steamapps/appmanifest_2278520.acf';
+        $acf=fn($build)=>'"AppState" {"appid" "2278520" "installdir" "own-install" "buildid" "'.$build.'" "StateFlags" "4"}'; PrivateFiles::write($manifest,$acf('100'));
+        $request=1000; $run=function(string $operation,?\stdClass $payload=null,string $expected='succeeded') use ($c,&$request): array {
+            $job=$c->get(JobService::class)->submit('fixture',$operation,str_pad(dechex(++$request),32,'0',STR_PAD_LEFT),$this->owner(),$payload);
+            $c->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id'])); $result=$c->get(JobRepository::class)->get($job['id']);
+            self::assertSame($expected,$result['state'],$result['message']); return $result;
+        };
+        $view=$assistant->view($this->owner(),'fixture'); $run('update_prepare',(object)['revision'=>$view['configuration_revision']]);
+        $view=$assistant->view($this->owner(),'fixture'); self::assertSame('waiting_steam',$view['session']['state']);
+        self::assertStringNotContainsString('synthetic-private-world-password',json_encode($view)); $run('start',expected:'failed');
+        $config=PrivateFiles::object(PrivateFiles::read($install.'/enshrouded_server.json')); $config->new_steam_option=true;
+        PrivateFiles::write($install.'/enshrouded_server.json',PrivateFiles::json($config)); PrivateFiles::write($manifest,$acf('200'));
+        $view=$assistant->view($this->owner(),'fixture'); self::assertContains('new_steam_option',$view['diff']['added']);
+        $finish=(object)['session_id'=>$view['session']['id'],'acknowledge_changes'=>false,'review_revision'=>$view['diff']['revision']];
+        $run('update_finish',$finish,'failed'); $finish->acknowledge_changes=true; $run('update_finish',$finish);
+        self::assertSame('checked',$assistant->view($this->owner(),'fixture')['session']['state']);
+        self::assertSame("world one\0\xff",PrivateFiles::read($this->world.'/world0.ksd')); self::assertTrue(PrivateFiles::object(PrivateFiles::read($install.'/enshrouded_server.json'))->new_steam_option);
+    }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testWorldCopyNewCampaignAndSwitchPreserveOriginalAndAllowLeavingEmptyWorld(): void
     {
         $this->fixture(); $c=static::getContainer(); $worlds=$c->get(\App\Instance\Worlds::class); $original=$worlds->view($this->owner(),'fixture')['current'];
