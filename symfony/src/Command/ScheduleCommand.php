@@ -16,7 +16,7 @@ final class ScheduleCommand extends Command implements SignalableCommandInterfac
 {
     private bool $stopping=false;
     public function __construct(private readonly RuntimeLifecycle $lifecycle,private readonly MetadataScheduler $metadata,private readonly WhatsApp $whatsapp,
-        private readonly \App\Runtime\SliceRuntime $runtime,private readonly \App\Community\Challenges $challenges) { parent::__construct(); }
+        private readonly \App\Runtime\SliceRuntime $runtime,private readonly \App\Community\Challenges $challenges,private readonly \App\Runtime\MaintenancePlans $maintenance) { parent::__construct(); }
     public function getSubscribedSignals(): array { return defined('SIGTERM') ? [SIGTERM,SIGINT] : []; }
     public function handleSignal(int $signal,int|false $previousExitCode=0): int|false { $this->stopping=true; return false; }
     protected function execute(InputInterface $input,OutputInterface $output): int
@@ -31,6 +31,7 @@ final class ScheduleCommand extends Command implements SignalableCommandInterfac
             try { $this->metadata->tick(); } catch (\Throwable) { $output->writeln('Metadatenplaner konnte diesen Schritt nicht abschließen.'); }
             try { $this->whatsapp->tick(); } catch (\Throwable) { $output->writeln('WhatsApp-Planerschritt fehlgeschlagen; kein erneuter unklarer Versand.'); }
             try { $this->challenges->reconcile(); } catch (\Throwable) { $output->writeln('Sammelziel-Abschluss noch nicht in der Chronik bestätigt.'); }
+            try { $this->maintenance->tick(); } catch (\Throwable) { $output->writeln('Wartungsplan wartet weiterhin auf Auftragsannahme.'); }
             $next=microtime(true)+15;
             while (!$this->stopping && microtime(true)<$next) usleep(100000);
           }
