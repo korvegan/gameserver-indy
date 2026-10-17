@@ -13,7 +13,8 @@ final class CommunityLedger
     {
         $event = clone $event;
         $allowed = ['id', 'revision', 'title', 'description', 'member_ids', 'badge_id', 'source', 'occurred_at', 'game_id', 'instance_id',
-            'campaign_id', 'mod_profile_id', 'member_names', 'campaign_label', 'badge_label', 'actor_id', 'author_member_id', 'author_name', 'correction_reason', 'removed', 'media_id'];
+            'campaign_id', 'mod_profile_id', 'member_names', 'campaign_label', 'badge_label', 'actor_id', 'author_member_id', 'author_name', 'correction_reason', 'removed', 'media_id',
+            'challenge_id', 'rule_version', 'definition', 'evidence', 'observed_at'];
         if (array_diff(array_keys(get_object_vars($event)), $allowed) || !GameCatalog::identifier($event->game_id ?? null)) { throw new \InvalidArgumentException('Unbekannte Felder oder fehlendes Spiel im Gemeinschaftsereignis.'); }
         foreach (['instance_id', 'campaign_id', 'mod_profile_id'] as $key) {
             if (($event->{$key} ?? null) !== null && !GameCatalog::identifier($event->{$key})) { throw new \InvalidArgumentException('Ungültiger Ereigniskontext.'); }

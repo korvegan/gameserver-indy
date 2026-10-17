@@ -10,11 +10,11 @@ use App\Game\GameCatalog;
 final class ChronicleWriter
 {
     public function __construct(private readonly AccessPolicy $policy, private readonly ChronicleReader $reader, private readonly CommunityLedger $ledger,
-        private readonly MemberProfiles $profiles) {}
+        private readonly MemberProfiles $profiles,private readonly Challenges $challenges) {}
     public function save(Principal $actor, \stdClass $body): array
     {
         $this->policy->require($actor, 'community.write');
-        if (array_diff(array_keys(get_object_vars($body)), ['id', 'revision', 'title', 'description', 'game_id', 'instance_id', 'campaign', 'members', 'participant_ids', 'badge', 'occurred_at', 'reason', 'remove', 'image', 'clear_image'])
+        if (array_diff(array_keys(get_object_vars($body)), ['id', 'revision', 'title', 'description', 'game_id', 'instance_id', 'campaign', 'campaign_roster_id', 'members', 'participant_ids', 'badge', 'occurred_at', 'reason', 'remove', 'image', 'clear_image'])
             || !GameCatalog::identifier($body->id ?? null) || !is_int($body->revision ?? null)) { throw new \InvalidArgumentException('Ungültiger Chronikbeitrag.'); }
         foreach (['remove', 'clear_image'] as $key) { if (property_exists($body, $key) && !is_bool($body->{$key})) { throw new \InvalidArgumentException('Ungültige Auswahl zum Entfernen.'); } }
         $previous = null;
@@ -24,6 +24,7 @@ final class ChronicleWriter
             if ($previous === null) { throw new \DomainException('Ereignisrevisionen müssen lückenlos aufeinander folgen.'); }
         }
         if ($previous !== null && $previous['source'] !== 'manual') { throw new \DomainException('Importierte Nachweise können hier nicht manuell überschrieben werden.'); }
+        if (isset($previous['challenge_id'])) { throw new \DomainException('Abgeschlossene Sammelziele unter Herausforderungen mit Begründung zurückziehen.'); }
         $reason = ChronicleValues::text($body->reason ?? '', 300, $previous !== null);
         if ($body->remove ?? false) {
             if ($previous === null) { throw new \InvalidArgumentException('Nur vorhandene Momente können entfernt werden.'); }
@@ -37,6 +38,12 @@ final class ChronicleWriter
         if ($instance !== null && !is_string($instance)) { throw new \InvalidArgumentException('Ungültige Serverzuordnung.'); }
         $this->policy->require($actor, 'community.write', $instance);
         if ($previous !== null && ($game !== $previous['game_id'] || $instance !== ($previous['instance_id'] ?? null))) { throw new \DomainException('Spiel und Serverzuordnung bleiben bei Korrekturen erhalten.'); }
+        $roster=null;
+        if (($body->campaign_roster_id ?? '')!=='') {
+            if (!is_string($body->campaign_roster_id)) { throw new \InvalidArgumentException('Feste Kampagne auswählen.'); }
+            $roster=$this->challenges->campaign($actor,$body->campaign_roster_id);
+            if ($roster['game_id']!==$game || $roster['instance_id']!==$instance) { throw new \DomainException('Feste Kampagne, Spiel und Serverzuordnung müssen übereinstimmen.'); }
+        }
         if (!is_array($body->members ?? null) || !array_is_list($body->members) || count($body->members) > 16
             || !is_array($body->participant_ids ?? []) || !array_is_list($body->participant_ids ?? [])) { throw new \InvalidArgumentException('Bitte 1 bis 16 Beteiligte angeben.'); }
         $previousNames = []; $names = []; $ids=$body->participant_ids ?? [];
@@ -44,6 +51,7 @@ final class ChronicleWriter
         foreach ($ids as $id) {
             if (!is_string($id)) { throw new \InvalidArgumentException('Ungültige Mitglieder-ID.'); }
             if ($previous!==null && in_array($id,$previous['member_ids'],true)) { $names[$id]=$previous['member_names']->{$id} ?? $id; }
+            elseif ($roster!==null && isset($roster['member_names'][$id])) { $names[$id]=$roster['member_names'][$id]; }
             else { $names=[...$names,...$this->profiles->selected([$id])]; }
         }
         foreach ($previous['member_ids'] ?? [] as $member) { $previousNames[ChronicleValues::normalized($previous['member_names']->{$member} ?? $member)] = $member; }
@@ -55,8 +63,12 @@ final class ChronicleWriter
         $occurred = ChronicleValues::occurred(ChronicleValues::text($body->occurred_at ?? '', 80));
         $campaign = ChronicleValues::text($body->campaign ?? '', 100); $badge = ChronicleValues::text($body->badge ?? '', 80, true);
         $campaignId = $campaign !== '' ? ChronicleValues::nameId('campaign-', $campaign) : null; $badgeId = ChronicleValues::nameId('badge-', $badge);
+        if ($roster!==null) {
+            if (array_diff(array_keys($names),$roster['member_ids'])) { throw new \DomainException('Beteiligte müssen zum festen Mitgliederkreis dieser Kampagne gehören.'); }
+            $campaign=$roster['name']; $campaignId=$roster['id'];
+        }
         if ($previous !== null) {
-            if ($campaign === (($previous['campaign_label'] ?? '') ?: ($previous['campaign_id'] ?? ''))) { $campaignId = $previous['campaign_id'] ?? null; }
+            if ($roster===null && $campaign === (($previous['campaign_label'] ?? '') ?: ($previous['campaign_id'] ?? ''))) { $campaignId = $previous['campaign_id'] ?? null; }
             if ($badge === (($previous['badge_label'] ?? '') ?: $previous['badge_id'])) { $badgeId = $previous['badge_id']; }
         }
         $event = (object) ['id' => $body->id, 'revision' => $body->revision, 'game_id' => $game, 'instance_id' => $instance,
