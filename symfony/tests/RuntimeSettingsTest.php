@@ -60,7 +60,7 @@ final class RuntimeSettingsTest extends TestCase
         if (PHP_OS_FAMILY !== 'Linux') { self::markTestSkipped('Linux /proc owner identity.'); }
         $runtime=$this->runtime(); $runtime->initialize();
         $db=\Doctrine\DBAL\DriverManager::getConnection(['driver'=>'pdo_sqlite','path'=>$this->directory.'/slice.sqlite']);
-        $jobs=new JobRepository($db,$runtime); $jobs->initialize(); $lifecycle=new RuntimeLifecycle($runtime,$jobs);
+        $jobs=new JobRepository($db,$runtime,new \App\Runtime\RuntimeSignals($runtime)); $jobs->initialize(); $lifecycle=new RuntimeLifecycle($runtime,$jobs);
         $identity=LinuxProcess::identity(getmypid()); self::assertNotNull($identity);
         $owner=$identity+['guard'=>$identity]; $epoch=$lifecycle->open($owner); self::assertSame($epoch,$lifecycle->epoch());
         foreach (['owner','guard'] as $target) {
