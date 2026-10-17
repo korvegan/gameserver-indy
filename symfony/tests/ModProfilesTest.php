@@ -29,4 +29,12 @@ final class ModProfilesTest extends SliceTestCase
         self::assertNotNull($profiles->view($owner,'enshrouded')['profiles'][1]['withdrawn_at']);
         self::assertSame('1.0',json_decode($original,true)['items'][0]['version']);
     }
+    public function testRevisionHistoryRemainsReadableAboveOneMiB(): void
+    {
+        static::bootKernel(); $this->ledger(); $c=static::getContainer(); $owner=new Principal('local-owner','owner');
+        \App\Storage\PrivateFiles::directory($this->directory.'/data');
+        \App\Storage\PrivateFiles::write($this->directory.'/data/mod-profiles.json',json_encode(['version'=>1,'games'=>[],
+            'fixture_history_padding'=>str_repeat('x',1100000)],JSON_THROW_ON_ERROR));
+        self::assertSame([],$c->get(ModProfiles::class)->view($owner,'enshrouded')['profiles']);
+    }
 }

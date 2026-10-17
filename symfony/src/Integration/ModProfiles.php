@@ -12,12 +12,13 @@ use Symfony\Component\Lock\Store\FlockStore;
 /** Immutable reference manifests; no access to player files and no download authority. */
 final class ModProfiles
 {
+    private const MAX_BYTES=33554432;
     public function __construct(private readonly SliceRuntime $runtime,private readonly ModCatalog $catalog,private readonly AccessPolicy $policy) {}
     private function path(): string { return $this->runtime->directory.'/data/mod-profiles.json'; }
     private function read(): array
     {
         $this->runtime->assertInitialized();
-        return is_file($this->path()) ? json_decode(PrivateFiles::read($this->path()),true,flags:JSON_THROW_ON_ERROR) : ['version'=>1,'games'=>[]];
+        return is_file($this->path()) ? json_decode(PrivateFiles::read($this->path(),self::MAX_BYTES),true,flags:JSON_THROW_ON_ERROR) : ['version'=>1,'games'=>[]];
     }
     private function change(Principal $actor,string $game,callable $callback): array
     {
@@ -25,7 +26,9 @@ final class ModProfiles
         $lock=(new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('mod-profiles'); $lock->acquire(true);
         try {
             $data=$this->read(); $rows=$data['games'][$game] ?? []; $result=$callback($rows); $data['games'][$game]=$rows;
-            PrivateFiles::directory(dirname($this->path())); PrivateFiles::write($this->path(),json_encode($data,JSON_THROW_ON_ERROR)); return $result;
+            $bytes=json_encode($data,JSON_THROW_ON_ERROR);
+            if (strlen($bytes)>self::MAX_BYTES) { throw new \DomainException('Modprofil-Historie erreicht 32 MiB. Bestehende Revisionen bleiben lesbar; keine neue Änderung gespeichert.'); }
+            PrivateFiles::directory(dirname($this->path())); PrivateFiles::write($this->path(),$bytes); return $result;
         } finally { $lock->release(); }
     }
     public function view(Principal $actor,string $game): array
