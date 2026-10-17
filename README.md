@@ -26,10 +26,16 @@ Discord/WhatsApp, Sicherungen und die Sturmklingen-Chronik.
 - [Architektur und Erweiterung](docs/architecture.md)
 - [Serverzentrale und Bildquellen](docs/dashboard-design.md)
 - [Familienzugriff](docs/family-access.md)
+- [Hostbetrieb und noch nötige persönliche Abnahme](docs/host-operation.md)
 - [Weltsicherungen](docs/world-backups.md)
+- [Getrennte Welten und Testkopien](docs/world-management.md)
+- [Wartung mit Vorlauf](docs/maintenance.md)
+- [Geführter Steam-Updateablauf](docs/update-assistant.md)
+- [Modquellen und gemeinsame Profile](docs/mods.md)
 - [Beitrittsinformationen](docs/connection-info.md)
 - [Chronik und Wandteppich](docs/chronicle.md)
 - [Kleine, gezielte Prüfungen](docs/testing.md)
+- [Gesamter Umsetzungsstand vom 17.10.2026](docs/backlog-status-2026-10-17.md)
 
 Regulär: `npm run test:php` und bei UI-Änderungen `npm run test:ui`.
 PHP, Composer und bei Browserprüfungen Node/Playwright werden als

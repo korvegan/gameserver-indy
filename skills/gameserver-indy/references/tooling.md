@@ -14,3 +14,4 @@ Stand: 17.10.2026. Stack und Prüfwahl: `docs/tech-stack.md`, `docs/testing.md`;
 - Für Skill-Änderungen `skill-creator` verwenden. Neue Plugins nur bei konkreter fehlender Fähigkeit. GitHub, Browser, PowerShell und HTTP genügen derzeit.
 
 Review jedes PRs und CI seines endgültigen Commits gemäß `AGENTS.md`. Frühere Audit-Testzahlen sind kein heutiger Prüfauftrag.
+Während Fixture- oder Releasehelfer den Checkout kopieren, keine Dateien/Branches/Stashes verändern. Ein solcher Wechsel verursachte eine unvollständige Browserfixture und eine unnötige Wiederholung. Erst Abschluss abwarten; unabhängige Recherche oder lesende Bestandsaufnahme kann parallel laufen. Commit, Push-Abschluss und PR-Erstellung bleiben abhängig und sequenziell.

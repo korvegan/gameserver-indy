@@ -139,7 +139,7 @@
     </section>
     <section id="access" class="view" hidden>
       <div class="page-heading"><div><p class="eyebrow">PERSÖNLICH UND PRIVAT</p><h1>Familienzugang.</h1><p class="subtitle">Du entscheidest, wer welche Server sehen und starten darf.</p></div><button id="access-refresh" class="button secondary">↻ Freigaben neu laden</button></div>
-      <p class="inline-info">Familienbediener können freigegebene Server ansehen und starten. Stoppen und Neustarten bleiben gesperrt, solange keine verlässliche Prüfung der Spielerbelegung eingerichtet ist.</p>
+      <p class="inline-info">Die Rolle Familie erlaubt Ansehen und Start freigegebener Server. Besitzer dürfen auch stoppen und neu starten. Die persönliche Freigabe legt Rolle und Server fest.</p>
       <section class="panel"><h2 class="section-title">Private Verbindung</h2><p id="family-state" role="status">Einrichtung wird geladen …</p><a id="family-address" class="path" target="_blank" rel="noopener" hidden></a>
         <form id="family-settings"><fieldset class="form-grid"><label class="check-row wide"><input id="family-enabled" type="checkbox"> Privaten Familienzugang aktivieren</label><label>Tailscale-Gerätename<input id="family-hostname" placeholder="rechner.tailnet.ts.net" maxlength="253"></label><label>Lokaler Familienport<input id="family-port" type="number" min="1024" max="65535" value="8767" required></label><p class="field-help wide">HTTPS wird über Tailscale Serve eingerichtet. Namen und Port nach Änderungen durch Neustart der Verwaltung übernehmen. Das beendet keine Spielserver.</p><div class="wide"><button class="button primary" type="submit">Verbindung speichern</button></div></fieldset></form>
       </section>
