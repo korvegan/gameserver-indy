@@ -41,6 +41,13 @@ final class GameLogEventsTest extends SliceTestCase
         PrivateFiles::write($path, "Current UTC date: 2024.01.01 10:00:00\n[Session] 'HostOnline' (up)!\n[Session] 'HostOnline' (down)!\n");
         $logs->ingest('fixture', $status); self::assertCount(2, $events->recent('fixture'));
         self::assertSame('session.closed', $events->pending()[0]['type']);
+        PrivateFiles::write($path, "Current UTC date: 2024.01.01 10:00:00\n[Session] 'HostOnline' (up)!\n[Session] 'HostOnline' (down)!\n");
+        $logs->ingest('fixture', $status); self::assertCount(2, $events->recent('fixture'), 'A full historical copy is deduplicated.');
+        PrivateFiles::write($path, "[Session] 'HostOnline' (up)!\n");
+        $logs->ingest('fixture', $status); self::assertCount(3, $events->recent('fixture'), 'A headerless continuation keeps its verified start binding.');
+        file_put_contents($path, "[Session] 'HostOnline' (down)!\n", FILE_APPEND);
+        $logs->ingest('fixture', ['known'=>true, 'running'=>false, 'processes'=>[]]);
+        self::assertCount(4, $events->recent('fixture'), 'Final session closure remains readable after the process exits.');
         self::assertStringNotContainsString('synthetic-password', json_encode($db->fetchAllAssociative('SELECT * FROM runtime_events')));
     }
     #[Group('regular')]

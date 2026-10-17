@@ -20,7 +20,6 @@ final class GameLogIngestor
     public function ingest(string $id, array $status): bool
     {
         $identity = Readiness::identity($status);
-        if (!$identity) { return false; }
         $profile = $this->registry->get($id);
         $parser = match ($profile->game) { 'enshrouded'=>$this->enshrouded, 'aska'=>$this->aska, default=>null };
         if (!$parser || !($path = $this->source->path($id)) || !is_file($path)) { return false; }
@@ -30,13 +29,19 @@ final class GameLogIngestor
         try {
             $folder = $this->runtime->directory.'/data/log-cursors'; PrivateFiles::directory($folder); $cursorPath = $folder.'/'.$id.'.json';
             try { $cursor = json_decode(PrivateFiles::read($cursorPath), true, flags:JSON_THROW_ON_ERROR); } catch (\Throwable) { $cursor = []; }
+            $stopped = $identity === null && ($status['known'] ?? false) && ($status['running'] ?? null) === false;
+            if ($stopped && isset($cursor['process'])) {
+                try { $identity = [$cursor['process'], \App\Community\ChronicleTime::parse(explode(':', $cursor['process'], 2)[1])]; }
+                catch (\Throwable) { return false; }
+            }
+            if (!$identity) { return false; }
             $file = @fopen($path, 'rb'); if (!$file) { return false; }
             $stat = fstat($file); $offset = $cursor['offset'] ?? 0; $fileKey = hash('sha256', $path.':'.$stat['dev'].':'.$stat['ino']);
             fseek($file, max(0, $offset-64)); $anchor = hash('sha256', $offset ? fread($file, min(64, $offset)) : '');
             if (($cursor['process'] ?? null) !== $identity[0] || ($cursor['file'] ?? null) !== $fileKey || $offset>$stat['size']
                 || ($cursor['anchor'] ?? null) !== $anchor) {
                 $sameProcess = ($cursor['process'] ?? null) === $identity[0];
-                $cursor = ['context'=>$sameProcess ? array_intersect_key($cursor['context'] ?? [], array_flip(['last_type','transition'])) : []]; $offset = 0;
+                $cursor = ['context'=>$sameProcess ? ($cursor['context'] ?? []) : []]; $offset = 0;
             }
             $context = $cursor['context'] ?? []; fseek($file, $offset); $bytes = fread($file, 524288);
             $end = strrpos($bytes, "\n");
@@ -46,7 +51,7 @@ final class GameLogIngestor
                 if ($type !== null && ($context['last_type'] ?? null) !== $type) {
                     $context['transition'] = ($context['transition'] ?? 0)+1;
                     $key = $identity[0].':'.$context['transition'].':'.$type;
-                    $this->events->append($id, $key, $type);
+                    if (!$stopped || $type !== 'session.ready') { $this->events->append($id, $key, $type); }
                     $context['last_type'] = $type;
                 }
                 $offset += strlen($line)+1;
