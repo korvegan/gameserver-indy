@@ -18,7 +18,8 @@ final class ObserveProcessesCommand extends Command implements SignalableCommand
 {
     private bool $stopping = false;
     public function __construct(private readonly SliceRuntime $runtime, private readonly InstanceRegistry $registry,
-        private readonly ProcessObservation $observation, private readonly RuntimeLifecycle $lifecycle) { parent::__construct(); }
+        private readonly ProcessObservation $observation, private readonly RuntimeLifecycle $lifecycle,
+        private readonly \App\Log\GameLogIngestor $logs, private readonly \App\Log\GameEventJobs $eventJobs) { parent::__construct(); }
     protected function configure(): void { $this->addOption('once', null, InputOption::VALUE_NONE); }
     public function getSubscribedSignals(): array { return defined('SIGTERM') ? [SIGTERM, SIGINT] : []; }
     public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false { $this->stopping = true; return false; }
@@ -33,7 +34,11 @@ final class ObserveProcessesCommand extends Command implements SignalableCommand
                 try { if ($this->lifecycle->epoch() !== $epoch) { return Command::SUCCESS; } }
                 catch (\DomainException) { return Command::SUCCESS; }
                 $this->observation->refresh($id);
+                while ($this->logs->ingest($id, $this->observation->view($id))) {
+                    if ($this->stopping) { return Command::SUCCESS; }
+                }
             }
+            $this->eventJobs->enqueue();
             if ($input->getOption('once')) { return Command::SUCCESS; }
             while (!$this->stopping && microtime(true) < $next) { usleep(100000); }
         } while (!$this->stopping);

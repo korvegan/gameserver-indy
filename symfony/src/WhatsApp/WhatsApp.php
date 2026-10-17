@@ -126,14 +126,14 @@ final class WhatsApp
         });
     }
     /** Only an explicit single-supervisor tick may send automatic notifications. */
-    public function tick(): void
+    public function tick(?string $serverId = null): void
     {
         $actor = new Principal('local-owner','owner'); $guard = $this->fence($actor); $settings = $this->settings();
         if (!$settings->enabled || !$this->client->configured()) { return; }
         $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('whatsapp-poll'); if (!$lock->acquire()) { return; }
         try {
             foreach ($this->registry->settings()->servers as $profile) {
-                $guard(); if (!in_array($profile->id,$settings->server_ids,true)) { continue; }
+                $guard(); if ($serverId !== null && $profile->id !== $serverId || !in_array($profile->id,$settings->server_ids,true)) { continue; }
                 try { $this->send($actor,$profile->id,$settings->revision,true); } catch (\Throwable) { /* Durable state/preview retain the outcome. */ }
             }
         } finally { $lock->release(); }
