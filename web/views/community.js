@@ -3,6 +3,7 @@ import {$, element, notice} from '../dom.js';
 import {can, state} from '../state.js';
 import {bindMomentForm, openMoment} from './chronicle-form.js';
 import {bindStory, cancelStoryFocus, focusScene, loadStory} from './story.js';
+import {openCommunityPublishing} from './community-discord.js';
 
 let request = 0, detailRequest = 0, nextCursor, token, currentDetail;
 let filters = {}, events = new Map(), labels = new Map();
@@ -119,6 +120,10 @@ export async function showDetail(id, updateHash = true) {
       element('p', `Erfasst / korrigiert: ${new Date(event.recorded_at).toLocaleString('de-DE')} · Version ${event.revision}`, 'muted'), awards(event));
     if (event.media_id) body.append(image(event));
     if (event.author_name) body.append(element('p',`Festgehalten von ${event.author_name} · Beteiligte siehe Auszeichnungen`,'muted'));
+    if (can('community.export')) {
+      const publish = element('button','In Discord teilen','button secondary'); publish.type = 'button';
+      publish.addEventListener('click',()=>openCommunityPublishing(event)); body.append(publish);
+    }
     const link = element('a', 'Dauerhafter Link zu diesem Moment', 'path'); link.href = `#moment-${event.id}`; body.append(link);
     if (!event.removed) {
       const replay = element('button', 'Moment noch einmal feiern', 'button secondary');

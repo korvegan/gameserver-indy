@@ -18,6 +18,7 @@ import {bindPerformance, clearPerformance, loadPerformance} from './views/perfor
 import {bindDiscordCard, clearDiscordCard, loadDiscordCard} from './views/discord-card.js';
 import {bindMembers, loadMembers} from './views/members.js';
 import {bindChallenges, loadChallenges} from './views/challenges.js';
+import {bindCommunityDiscord, loadCommunityDiscord} from './views/community-discord.js';
 
 let statusRequest = 0, configRequest = 0, controller;
 const jobContexts = new Map(), requestContexts = new Map();
@@ -136,7 +137,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'settings') await loadConfig();
   if (next === 'logs' && can('logs.read')) await loadLogs();
   if (next === 'games') await loadGames(target => selectServer(target, true));
-  if (next === 'community') { await loadCommunity(); if ($('#community-members').open) await loadMembers(); await loadChallenges(); }
+  if (next === 'community') { await loadCommunity(); if ($('#community-members').open) await loadMembers(); await loadChallenges(); await loadCommunityDiscord(); }
   if (next === 'access') await loadAccess();
   if (next === 'backups') await loadBackups();
   if (next === 'whatsapp') await loadWhatsApp();
@@ -145,6 +146,7 @@ async function go(next, {keepNotice = false} = {}) {
 }
 
 async function finishJob(job) {
+  if (job.operation === 'community_discord') await loadCommunityDiscord();
   const context = jobContexts.get(job.id) || requestContexts.get(job.request_id); jobContexts.delete(job.id); requestContexts.delete(job.request_id);
   if (job.state === 'succeeded' && context?.mutation && context.target === state.selectedServer && context.selectionEpoch === state.selectionEpoch) {
     if (['/api/config', '/api/setup'].includes(context.mutation) && context.formRevision === state.formRevision) {
@@ -223,6 +225,7 @@ initWorkspace(selectServer, go);
 bindNavigation(go); bindForms(mutate); bindConnections(refresh, job => acceptJob(job, controls, finishJob)); bindCommunity(); bindAccess(); bindBackups(runOperation);
 bindDiscordCard(job => acceptJob(job, controls, finishJob));
 bindWhatsApp(); bindPerformance(); bindMembers(); bindChallenges(()=>loadCommunity());
+bindCommunityDiscord(job=>acceptJob(job,controls,finishJob));
 $('#check-updates').addEventListener('click', async () => {
   const target = state.selectedServer;
   if (state.submitting || state.pending.has(`updates:${target}`)) return;

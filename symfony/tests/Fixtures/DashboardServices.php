@@ -62,6 +62,7 @@ final class DashboardServices implements \App\Runtime\ProcessGateway, \App\Integ
     // Synthetic transport receipt; no network I/O in this test service.
     public function send(string $destination,string $text): string { return '90001'; }
     public function edit(string $url,string $messageId,string $message): string { return $messageId; }
+    public function card(string $url,array $payload,?string $jpeg=null,?string $messageId=null): string { return $messageId ?? '90002'; }
     public function logout(): void { PrivateFiles::write($this->root.'/whatsapp-state','STOPPED'); }
 
     public function seed(\App\Kernel $kernel): void

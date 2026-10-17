@@ -19,19 +19,31 @@ final class DiscordWebhook implements DiscordTransport
         return $message;
     }
     public function send(string $url, string $message): string
-    { return $this->request('POST', $url, $message); }
+    { return $this->request('POST', $url, ['content'=>self::message($message)]); }
     public function edit(string $url, string $messageId, string $message): string
     {
         if (!preg_match('/^[0-9]{1,30}$/D', $messageId)) { throw new \InvalidArgumentException('Ungültige Nachrichtenkennung.'); }
-        return $this->request('PATCH', $url, $message, $messageId);
+        return $this->request('PATCH', $url, ['content'=>self::message($message)], $messageId);
     }
-    private function request(string $method, string $url, string $message, ?string $messageId = null): string
+    public function card(string $url,array $payload,?string $jpeg=null,?string $messageId=null): string
+    {
+        if ($messageId!==null && !preg_match('/^[0-9]{1,30}$/D',$messageId)) { throw new \InvalidArgumentException('Ungültige Nachrichtenkennung.'); }
+        if ($jpeg!==null) { \App\Community\ChronicleValues::jpeg($jpeg); }
+        return $this->request($messageId===null ? 'POST' : 'PATCH',$url,$payload,$messageId,$jpeg);
+    }
+    private function request(string $method, string $url, array $payload, ?string $messageId = null,?string $jpeg=null): string
     {
         if (!self::valid($url)) { throw new \InvalidArgumentException('Bitte eine gültige Discord-Webhook-URL verwenden.'); }
-        $message = self::message($message); $response = null;
+        $payload['allowed_mentions']=['parse'=>[]]; $response = null;
         try {
-            $response = $this->client->request($method, $url.($messageId === null ? '?wait=true' : '/messages/'.$messageId), ['json' => ['content' => $message, 'allowed_mentions' => ['parse' => []]],
-                'headers' => ['User-Agent' => 'GameServerIndy/0.3'], 'max_redirects' => 0, 'timeout' => 12, 'max_duration' => 12, 'buffer' => false]);
+            $options=['json'=>$payload,'headers'=>['User-Agent'=>'GameServerIndy/0.3'],'max_redirects'=>0,'timeout'=>12,'max_duration'=>12,'buffer'=>false];
+            if ($jpeg!==null) {
+                $boundary='indy-'.bin2hex(random_bytes(16));
+                $options['body']='--'.$boundary."\r\nContent-Disposition: form-data; name=\"payload_json\"\r\nContent-Type: application/json\r\n\r\n".json_encode($payload,JSON_THROW_ON_ERROR)
+                    ."\r\n--".$boundary."\r\nContent-Disposition: form-data; name=\"files[0]\"; filename=\"preview.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".$jpeg."\r\n--".$boundary."--\r\n";
+                unset($options['json']); $options['headers']['Content-Type']='multipart/form-data; boundary='.$boundary;
+            }
+            $response = $this->client->request($method, $url.($messageId === null ? '?wait=true' : '/messages/'.$messageId),$options);
             $status = $response->getStatusCode();
             if ($status === 429) {
                 $retry = $response->getHeaders(false)['retry-after'][0] ?? 60;
