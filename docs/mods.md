@@ -13,3 +13,15 @@ Recherche am 17.10.2026:
 - [RaftModding Modpacks](https://www.raftmodding.com/mods/modpacks): Profilfunktionen werden aktuell als deaktiviert ausgewiesen. [Loader 2.8.0](https://www.raftmodding.com/launcher/2.8.0) beschreibt Änderungen am Netzwerk und Dedicated-Unterstützung. Ein verfügbarer Modlink belegt keine funktionierende Vierergruppe.
 
 Nächste Abnahme: konkretes Spiel und Modpaket auswählen, Versionen und Loader prüfen, an einer Weltkopie und mit vier eigenen Clients testen. Bis dahin keine automatische Installation oder kompatiblen Modmanager-Import behaupten.
+
+## Profilrevision für die Gruppe
+
+Im selben Spielbereich unter **Gemeinsame Modprofile** wählt ein Besitzer die gespeicherten Modstände und gibt Profilname, Spielbuild und Loader an. Jede Moddatei benötigt exakte Version, Datei-/Revisionskennung, SHA-256 und Loader. Alle angegebenen Abhängigkeiten müssen mit ausgewählt werden; pro Mod ist ein Dateistand vorgesehen. Ein optionaler Client-Mod ist als solcher gekennzeichnet und keine Serveranforderung.
+
+Die freigegebene Revision ist ein unveränderlicher Schnappschuss: spätere Katalogänderungen verändern sie nicht. Eine neue Freigabe erzeugt die nächste Revision. Vergleich mit der vorherigen Revision nennt hinzugefügte, entfernte und geänderte Quellenidentitäten, Spielbuild und Loader. Zurückziehen verhindert weitere Exporte dieser Revision, ändert aber keine Dateien auf Spielerrechnern.
+
+Mitspieler laden ein kleines JSON-Manifest herunter und beziehen Dateien über die ursprünglichen Modseiten mit ihren eigenen Zugängen. Es wird kein funktionierender Workshop-/Modmanager-Import vorgetäuscht. Der SHA-256 jeder Moddatei kann lokal mit `Get-FileHash -Algorithm SHA256 <Datei>` geprüft werden. Dateien, persönliche Einstellungen und Spielstände werden nicht übertragen oder verändert. Der Profil-Inhaltshash bezeichnet die kanonischen JSON-Daten, nicht die Bytes der eingerückten Exportdatei.
+
+**Eigene Versionen und Hashes geprüft** bzw. **Bei mir abweichend** speichert ausschließlich die eigene manuelle Rückmeldung mit Profilhash und Prüfzeit. Ohne Rückmeldung bleibt der lokale Stand unbekannt, nach 24 Stunden erscheint sie als älter. Sie bestätigt weder eine automatische Inventur noch einen erfolgreichen Spielbeitritt. Andere Spieler sehen keine fremden Geräteinformationen oder persönlichen Zugänge; die Gruppe sieht nur die Zahl aktueller manueller Bestätigungen.
+
+Es gibt derzeit keinen lokalen Installationsagenten und keine eingehende Fernwartung. Ein verifizierter Import-/Installationsweg erfordert zuerst ein konkret ausgewähltes Spiel, dessen Loader sowie eine Abnahme mit vier echten Clients.
