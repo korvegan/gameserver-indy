@@ -67,4 +67,18 @@ final class MemberProfilesTest extends SliceTestCase
         $this->expectException(\DomainException::class);
         $steam->complete($owner,'local-owner','http://127.0.0.1:18865','state='.$state['state'],'wrong-browser');
     }
+    public function testMemberCanBeRetiredAfterPersonalAccessWasRevoked(): void
+    {
+        static::bootKernel(); $this->ledger(); $container=static::getContainer(); $owner=new Principal('local-owner','owner');
+        $access=$container->get(AccessStore::class); $profiles=$container->get(MemberProfiles::class);
+        $value=['login'=>'own-retired@example.test','name'=>'Retired','role'=>'viewer','server_ids'=>[],'enabled'=>true];
+        $grant=$access->saveUser($owner,$value,[]);
+        $profile=(object)['name'=>'Own member','principals'=>[$grant['id']],'role'=>'writer','enabled'=>true];
+        $member=$profiles->save($owner,$profile);
+        $access->saveUser($owner,[...$value,'id'=>$grant['id'],'revision'=>1,'enabled'=>false],[]);
+        $profile->id=$member['member_id']; $profile->enabled=false;
+        $profiles->save($owner,$profile);
+        self::assertFalse($profiles->view($owner)['members'][0]['enabled']);
+        self::assertFalse($profiles->view($owner)['accounts'][1]['enabled']);
+    }
 }

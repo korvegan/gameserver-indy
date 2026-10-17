@@ -6,7 +6,10 @@ function form(member) {
   editing = member; dirty = false;
   $('#member-name').value = member?.name || '';
   $('#member-role').value = member?.role || 'writer'; $('#member-enabled').checked = member?.enabled ?? true;
-  for (const option of $('#member-accounts').options) option.selected = member?.principals.includes(option.value) || false;
+  for (const option of $('#member-accounts').options) {
+    option.selected = member?.principals.includes(option.value) || false;
+    option.disabled = option.dataset.enabled === 'false' && !option.selected;
+  }
   $('#member-form-title').textContent = member ? 'Mitgliederprofil bearbeiten' : 'Mitglied freigeben';
 }
 export async function loadMembers() {
@@ -32,7 +35,9 @@ export async function loadMembers() {
       $('#link-steam').hidden = Boolean(data.own.steam_id); $('#unlink-steam').hidden = !data.own.steam_id;
     }
     if (!dirty) {
-      const accounts = $('#member-accounts'); accounts.replaceChildren(...data.accounts.map(account=>Object.assign(element('option',account.name),{value:account.id})));
+      const accounts = $('#member-accounts'); accounts.replaceChildren(...data.accounts.map(account=>{
+        const option = Object.assign(element('option',account.name),{value:account.id}); option.dataset.enabled = String(account.enabled); return option;
+      }));
       form(editing);
     }
   } catch (error) { if (own === generation) $('#community-member-list').textContent = error.message; }

@@ -44,8 +44,8 @@ final class MemberProfiles
         $rows=array_values(array_filter($this->read(),fn($member)=>$owner || $member['enabled']));
         $own=$this->own($actor); $accounts=[];
         if ($owner) {
-            $accounts[]=['id'=>'local-owner','name'=>'Besitzer an diesem PC'];
-            foreach ($this->access->view()['users'] as $user) { if ($user['enabled']) { $accounts[]=['id'=>$user['id'],'name'=>$user['name']]; } }
+            $accounts[]=['id'=>'local-owner','name'=>'Besitzer an diesem PC','enabled'=>true];
+            foreach ($this->access->view()['users'] as $user) { $accounts[]=['id'=>$user['id'],'name'=>$user['name'].($user['enabled'] ? '' : ' · Zugang gesperrt'),'enabled'=>$user['enabled']]; }
         }
         return ['members'=>array_map(function($member) use ($owner,$own) {
             unset($member['link_generation']);
@@ -64,15 +64,16 @@ final class MemberProfiles
             || !is_bool($value->enabled ?? null)) { throw new \InvalidArgumentException('Name, persönliche Freigaben und Gemeinschaftsrolle wählen.'); }
         $name=ChronicleValues::text($value->name ?? '',80,true); $known=['local-owner'];
         foreach ($this->access->view()['users'] as $user) { if ($user['enabled']) { $known[]=$user['id']; } }
-        if (array_filter($value->principals,fn($id)=>!is_string($id) || !in_array($id,$known,true))
-            || count(array_unique($value->principals))!==count($value->principals)) { throw new \InvalidArgumentException('Nur bestehende freigegebene Identitäten zuordnen.'); }
-        return $this->change(function(array &$rows) use ($value,$name): array {
+        if (array_filter($value->principals,fn($id)=>!is_string($id)) || count(array_unique($value->principals))!==count($value->principals)) { throw new \InvalidArgumentException('Persönliche Identitäten eindeutig wählen.'); }
+        return $this->change(function(array &$rows) use ($value,$name,$known): array {
             $id=$value->id ?? null; $index=null;
             foreach ($rows as $i=>$member) {
                 if ($member['id']===$id) { $index=$i; continue; }
                 if (array_intersect($value->principals,$member['principals'])) { throw new \DomainException('Eine persönliche Identität gehört bereits zu einem Mitglied.'); }
             }
             if ($id!==null && $index===null) { throw new \InvalidArgumentException('Unbekanntes Mitglied.'); }
+            $allowed=[...$known,...($index!==null ? $rows[$index]['principals'] : [])];
+            if (array_diff($value->principals,$allowed)) { throw new \InvalidArgumentException('Neue Zuordnungen benötigen freigegebene Identitäten. Bisherige entzogene Zugänge dürfen erhalten bleiben.'); }
             $id ??= 'member-'.bin2hex(random_bytes(16));
             $member=[...($index!==null ? $rows[$index] : ['link_generation'=>bin2hex(random_bytes(16))]),'id'=>$id,'name'=>$name,'principals'=>$value->principals,'role'=>$value->role,'enabled'=>$value->enabled];
             if ($index===null) { $rows[]=$member; } else { $rows[$index]=$member; }
