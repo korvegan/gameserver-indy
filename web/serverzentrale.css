@@ -1190,3 +1190,6 @@ main {
     font-size: 7px;
   }
 }
+.mod-catalog { min-width: 0; overflow-wrap: anywhere; }
+.mod-catalog small { display: block; }
+.mod-catalog input, .mod-catalog select { min-width: 0; max-width: 100%; }

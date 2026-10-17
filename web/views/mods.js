@@ -12,13 +12,14 @@ const select = (form, name, label, values) => {
   wrap.append(field); form.append(wrap); return field;
 };
 export function modSection(game) {
-  const root = element('details'), title = element('summary', 'Modquellen und feste Modstände'); root.append(title);
+  const root = element('details', undefined, 'mod-catalog'), title = element('summary', 'Modquellen und feste Modstände'); root.append(title);
   root.addEventListener('toggle', () => { if (root.open && !root.dataset.loaded) { root.dataset.loaded = '1'; load(); } });
   async function load() {
     try {
       const data = await api(`/api/mods/${encodeURIComponent(game.id)}`);
       if (!root.isConnected || state.view !== 'games') return;
       root.replaceChildren(title);
+      let edit;
       root.append(element('p', 'Original-Downloads bleiben beim jeweiligen Spieler. Hier werden Quellen und Versionen manuell gepflegt; keine Installation.', 'muted'));
       for (const source of data.sources) {
         const line = element('p', `${source.label}: ${data.bindings[source.id] || 'Noch nicht zugeordnet'}`);
@@ -28,6 +29,12 @@ export function modSection(game) {
         const row = element('p'), link = element('a', item.name); link.href = item.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
         row.append(link, document.createTextNode(` · ${item.source} · ${item.version || 'Version offen'} · ${item.target} · ${item.loader || 'Loader offen'}`));
         row.append(element('small', `Datei: ${item.file_id || 'offen'} · SHA-256: ${item.sha256 || 'offen'} · Abrufbarkeit ungeprüft · ${item.id}`)); root.append(row);
+        row.append(element('small', `Ladefolge: ${item.order} · Abhängigkeiten: ${item.dependencies.join(', ') || 'Keine angegeben'}`));
+        if (item.notes) row.append(element('small', item.notes));
+        if (state.principal?.permissions.includes('catalog.write')) {
+          const button = element('button', 'Bearbeiten', 'button secondary'); button.type = 'button'; row.append(button);
+          button.addEventListener('click', () => edit(item));
+        }
       }
       if (!state.principal?.permissions.includes('catalog.write')) return;
       const sourceForm = element('form', undefined, 'settings-grid'); sourceForm.dataset.modSource = game.id;
@@ -48,6 +55,10 @@ export function modSection(game) {
       input(form, 'notes', 'Gemeinsame Hinweise (keine Passwörter oder persönlichen Einstellungen)');
       form.append(element('button', 'Modstand speichern', 'button secondary')); root.append(form);
       form.addEventListener('submit', event => { event.preventDefault(); save(form, {action:'item'}); });
+      edit = item => {
+        for (const name of ['source','url','name','version','file_id','sha256','loader','target','order','notes']) form.elements.namedItem(name).value = item[name] ?? '';
+        form.elements.namedItem('dependencies').value = item.dependencies.join(', '); form.scrollIntoView({block:'nearest'});
+      };
     } catch (error) { notice(error.message, true); delete root.dataset.loaded; }
   }
   async function save(form, fields) {
