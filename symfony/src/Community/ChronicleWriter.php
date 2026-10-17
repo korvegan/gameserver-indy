@@ -39,6 +39,9 @@ final class ChronicleWriter
         $this->policy->require($actor, 'community.write', $instance);
         if ($previous !== null && ($game !== $previous['game_id'] || $instance !== ($previous['instance_id'] ?? null))) { throw new \DomainException('Spiel und Serverzuordnung bleiben bei Korrekturen erhalten.'); }
         $roster=null;
+        if (!property_exists($body,'campaign_roster_id') && isset($previous['campaign_id']) && $this->challenges->isFixed($previous['campaign_id'])) {
+            $roster=$this->challenges->campaign($actor,$previous['campaign_id']);
+        }
         if (($body->campaign_roster_id ?? '')!=='') {
             if (!is_string($body->campaign_roster_id)) { throw new \InvalidArgumentException('Feste Kampagne auswählen.'); }
             $roster=$this->challenges->campaign($actor,$body->campaign_roster_id);
@@ -68,7 +71,8 @@ final class ChronicleWriter
             $campaign=$roster['name']; $campaignId=$roster['id'];
         }
         if ($previous !== null) {
-            if ($roster===null && $campaign === (($previous['campaign_label'] ?? '') ?: ($previous['campaign_id'] ?? ''))) { $campaignId = $previous['campaign_id'] ?? null; }
+            if ($roster===null && $campaign === (($previous['campaign_label'] ?? '') ?: ($previous['campaign_id'] ?? ''))
+                && !$this->challenges->isFixed($previous['campaign_id'] ?? '')) { $campaignId = $previous['campaign_id'] ?? null; }
             if ($badge === (($previous['badge_label'] ?? '') ?: $previous['badge_id'])) { $badgeId = $previous['badge_id']; }
         }
         $event = (object) ['id' => $body->id, 'revision' => $body->revision, 'game_id' => $game, 'instance_id' => $instance,

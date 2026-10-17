@@ -54,6 +54,7 @@ final class Challenges
         foreach ($this->read()['campaigns'] as $row) { if ($row['id']===$id) { $this->allowed($actor,$row); return $row; } }
         throw new \InvalidArgumentException('Unbekannte feste Kampagne.');
     }
+    public function isFixed(string $id): bool { return in_array($id,array_column($this->read()['campaigns'],'id'),true); }
     public function createCampaign(Principal $actor,\stdClass $body): array
     {
         $this->policy->require($actor,'access.manage');

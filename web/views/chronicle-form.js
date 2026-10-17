@@ -40,12 +40,12 @@ export async function openMoment(event) {
     $('#moment-roster').replaceChildren(Object.assign(element('option','Freie Kampagnenangabe'),{value:''}),...rosters.map(roster=>Object.assign(element('option',roster.name),{value:roster.id})));
     $('#moment-roster').value = rosters.some(roster=>roster.id===event?.campaign_id) ? event.campaign_id : '';
     $('#moment-campaigns').replaceChildren(...options.campaigns.map(item => Object.assign(element('option'), {value: item.label})));
-    for (const [id, value] of Object.entries({title: event?.title || '', description: event?.description || '',
-      campaign: event?.campaign_label || event?.campaign_id || '', badge: event?.badge_label || event?.badge_id || '',
-      members: event?.member_ids.filter(id => !profiles.members.some(member=>member.id===id)).map(id => event.member_names?.[id] || id).join('\n') || ''})) $(`#moment-${id}`).value = value;
-    const participants = $('#moment-participants'); participants.replaceChildren();
     const known = new Map(profiles.members.map(member=>[member.id,member]));
     for (const roster of rosters) for (const id of roster.member_ids) if (!known.has(id)) known.set(id,{id,name:roster.member_names[id],enabled:false});
+    for (const [id, value] of Object.entries({title: event?.title || '', description: event?.description || '',
+      campaign: event?.campaign_label || event?.campaign_id || '', badge: event?.badge_label || event?.badge_id || '',
+      members: event?.member_ids.filter(id => !known.has(id)).map(id => event.member_names?.[id] || id).join('\n') || ''})) $(`#moment-${id}`).value = value;
+    const participants = $('#moment-participants'); participants.replaceChildren();
     for (const member of known.values()) {
       const label = element('label',undefined,'checkbox-label');
       const input = element('input'); input.type = 'checkbox'; input.value = member.id; input.checked = event?.member_ids.includes(member.id) || false;
