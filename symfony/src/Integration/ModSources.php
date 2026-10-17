@@ -24,8 +24,12 @@ final class ModSources
                 if (!in_array($value['state'] ?? null, ['supported', 'unsupported', 'unknown'], true) || !is_string($value['reason'] ?? null) || $value['reason'] === '') { throw new \DomainException('Unvollständige Fähigkeit der Modquelle.'); }
                 $public[$name] = ['state' => $value['state'], 'reason' => $value['reason']];
             }
-            $result[] = ['id' => $id, 'capabilities' => $public];
+            $result[] = ['id' => $id, 'label'=>$source->label(), 'capabilities' => $public,
+                'steps'=>['metadata'=>'manual','link_import'=>'supported','authentication'=>'individual_provider',
+                    'download'=>'original_page','versions'=>'manual_pin','dependencies'=>'manual','profile_import'=>'unavailable','redistribution'=>'references_only']];
         }
         return $result;
     }
+    public function source(string $id): ModSource
+    { return $this->sources[$id] ?? throw new \InvalidArgumentException('Unbekannte Modquelle.'); }
 }

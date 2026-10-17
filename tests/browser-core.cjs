@@ -97,6 +97,21 @@ const fs=require('node:fs/promises');
     for(const view of ['games','community','access']) {
       await page.locator(`.sidebar [data-view="${view}"]`).click();
       assert.equal(await page.locator('#server-context').isVisible(),true);
+      if(view==='games') {
+        const raft=page.locator('#game-catalog article').filter({has:page.getByRole('heading',{name:'Raft',exact:true})});
+        await raft.locator('summary').click();
+        const source=raft.locator('[data-mod-source="raft"]'); await source.locator('[name="source"]').selectOption('raftmodding');
+        await source.locator('[name="game_key"]').fill('raft'); await source.getByRole('button').click();
+        const mod=raft.locator('[data-mod-item="raft"]'); await mod.locator('[name="url"]').fill('https://www.raftmodding.com/mods/own-fixture');
+        await mod.locator('[name="name"]').fill('Eigener Test-Mod'); await mod.getByRole('button').click();
+        await raft.getByRole('link',{name:'Eigener Test-Mod'}).waitFor();
+        await raft.getByRole('button',{name:'Bearbeiten',exact:true}).click();
+        await mod.locator('[name="sha256"]').fill('a'.repeat(64)); await mod.locator('[name="notes"]').fill('Gemeinsame Hinweise');
+        await mod.locator('[name="order"]').fill('2'); await mod.getByRole('button').click();
+        await raft.getByText('Gemeinsame Hinweise',{exact:true}).waitFor();
+        await page.setViewportSize({width:390,height:1000}); assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+        await page.setViewportSize({width:1440,height:1000});
+      }
       await page.locator('#server-context').click();
       assert.equal(await page.locator('#world-list').isVisible(),true);
     }

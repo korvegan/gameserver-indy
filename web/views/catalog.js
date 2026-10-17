@@ -1,6 +1,7 @@
 import {api} from '../api.js';
 import {$, element, notice} from '../dom.js';
 import {state} from '../state.js';
+import {modSection} from './mods.js';
 
 let request = 0;
 export async function loadGames(openServer) {
@@ -24,6 +25,7 @@ export async function loadGames(openServer) {
         features.append(row);
       }
       card.append(features);
+      card.append(modSection(game));
       for (const instance of instances) {
         const button = element('button', `${instance.label} öffnen`, 'button secondary');
         button.addEventListener('click', () => openServer(instance.id)); card.append(button);

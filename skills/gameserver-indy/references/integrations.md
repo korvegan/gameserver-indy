@@ -1,5 +1,7 @@
 # Adressen und Benachrichtigungen
 
+Modquellen: `docs/mods.md`, pro Spiel auch ohne Dedicated-Instanz. Vier Quellenadapter normalisieren Originalseiten, keine allgemeinen Downloads/Installation. Nexus-Keys bleiben beim Spieler; RaftModding-Profile derzeit eingeschränkt. Quellen-/Dateikennung nicht durch Modnamen ersetzen. Persönliche Downloadlinks nicht teilen; echte Mehrspieler-Abnahme braucht ein ausgewähltes Paket.
+
 Gemeinschafts-Discord: `docs/community-discord.md`. Eigener Webhook, explizite Ereignis-/Medienfreigabe; kleine vorhandene JPEG-Vorschau direkt als Anhang, private Szenenlinks bleiben zugangsgeschützt. Metadatenauftrag speichert Ereignisrevision und Nachrichten-ID. Unklare erste Veröffentlichung nicht wiederholen; bekannte ID nur bearbeiten. Keine echten Gruppenmeldungen beim Deployment anlegen.
 
 Anleitungen: `docs/connection-info.md`, `docs/steam-updates.md`, `docs/whatsapp.md`.
