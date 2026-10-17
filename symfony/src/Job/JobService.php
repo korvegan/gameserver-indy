@@ -36,6 +36,8 @@ final class JobService
         if ($operation === 'config') {
             if (!$payload || !($payload->config ?? null) instanceof \stdClass || !is_string($payload->revision ?? null)
                 || !preg_match('/^[a-f0-9]{64}$/D', $payload->revision) || array_diff(array_keys(get_object_vars($payload)), ['config', 'revision'])) { throw new \InvalidArgumentException('Konfiguration und Dateistand erforderlich.'); }
+        } elseif ($operation === 'community_discord') {
+            \App\Community\DiscordPublication::validate($payload);
         } elseif ($operation === 'discord_card_create') {
             if ($payload === null || array_diff(array_keys(get_object_vars($payload)),['replace','generation']) || !is_bool($payload->replace ?? null)
                 || !is_string($payload->generation ?? null) || !preg_match('/^(?:new|[a-f0-9]{32})$/D',$payload->generation)) { throw new \InvalidArgumentException('Kartenstand und ausdrückliche Ersatzauswahl erforderlich.'); }
@@ -78,6 +80,7 @@ final class JobService
     {
         if (in_array($operation, BackupOperations::ALL, true)) { return 'backups.manage'; }
         return match ($operation) { 'config' => 'config.write', 'setup' => 'server.setup', 'check_updates' => 'updates.check',
+            'community_discord' => 'community.export',
             'refresh_connections' => 'connections.refresh', 'discord_send', 'discord_card_create', 'discord_card_update' => 'discord.write', default => 'server.'.$operation };
     }
 }

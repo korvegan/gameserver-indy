@@ -1,5 +1,7 @@
 # Adressen und Benachrichtigungen
 
+Gemeinschafts-Discord: `docs/community-discord.md`. Eigener Webhook, explizite Ereignis-/Medienfreigabe; kleine vorhandene JPEG-Vorschau direkt als Anhang, private Szenenlinks bleiben zugangsgeschützt. Metadatenauftrag speichert Ereignisrevision und Nachrichten-ID. Unklare erste Veröffentlichung nicht wiederholen; bekannte ID nur bearbeiten. Keine echten Gruppenmeldungen beim Deployment anlegen.
+
 Anleitungen: `docs/connection-info.md`, `docs/steam-updates.md`, `docs/whatsapp.md`.
 
 Öffentliche Domain `sturmklingen.dedyn.io`, Enshrouded Query-Port `15637`. `indy-dyndns.timer` im Projekt `indy-infrastructure` pflegt DNS alle fünf Minuten. Adressen vom Windows-Host, nicht WSL ermitteln. DNS/IP beweisen keine Routerfreigabe/Spielbereitschaft. Enshrouded: bestätigte IP/Domain-plus-Port-Suche; ASKA bisher Servername.

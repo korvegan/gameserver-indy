@@ -18,6 +18,9 @@ final class Discord
         $this->db->executeStatement('CREATE TABLE IF NOT EXISTS discord_status_cards (server_id TEXT PRIMARY KEY, webhook_hash TEXT NOT NULL,
             remote_id TEXT, revision TEXT NOT NULL, state TEXT NOT NULL, enabled INTEGER NOT NULL, attempted_at INTEGER NOT NULL,
             updated_at INTEGER, next_try INTEGER NOT NULL, error TEXT, generation TEXT NOT NULL)');
+        $this->db->executeStatement('CREATE TABLE IF NOT EXISTS community_discord_messages (event_id TEXT PRIMARY KEY, webhook_hash TEXT NOT NULL,
+            remote_id TEXT, revision INTEGER NOT NULL, state TEXT NOT NULL, media INTEGER NOT NULL, template_version INTEGER NOT NULL,
+            requested_by TEXT NOT NULL, attempted_at INTEGER NOT NULL, next_try INTEGER NOT NULL, error TEXT)');
     }
     private function configuration(): array
     {

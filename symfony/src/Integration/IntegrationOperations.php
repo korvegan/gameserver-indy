@@ -10,10 +10,10 @@ use App\Storage\PrivateFiles;
 
 final class IntegrationOperations
 {
-    public const ALL = ['check_updates', 'refresh_connections', 'discord_send', 'discord_card_create', 'discord_card_update'];
+    public const ALL = ['check_updates', 'refresh_connections', 'discord_send', 'discord_card_create', 'discord_card_update', 'community_discord'];
     public function __construct(private readonly SteamUpdates $updates, private readonly Connections $connections,
         private readonly Discord $discord, private readonly RuntimeLifecycle $lifecycle, private readonly AccessPolicy $policy,
-        private readonly DiscordStatusCard $cards) {}
+        private readonly DiscordStatusCard $cards,private readonly \App\Community\DiscordPublication $community) {}
     public static function is(string $operation): bool { return in_array($operation, self::ALL, true); }
     public static function predicate(string $lane): string
     {
@@ -31,6 +31,7 @@ final class IntegrationOperations
             'discord_send' => $this->discord->send($job['id'], PrivateFiles::object($job['payload'])->message, $guard),
             'discord_card_create' => $this->cards->execute($job['server_id'],true,PrivateFiles::object($job['payload'])->replace,$guard,PrivateFiles::object($job['payload'])->generation),
             'discord_card_update' => $this->cards->execute($job['server_id'],false,false,$guard),
+            'community_discord' => $this->community->execute($actor,PrivateFiles::object($job['payload']),$guard),
             default => throw new \InvalidArgumentException('Unbekannte Integration.'),
         };
     }

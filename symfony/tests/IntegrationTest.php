@@ -36,6 +36,63 @@ use Symfony\Component\Lock\Store\FlockStore;
 final class IntegrationTest extends SliceTestCase
 {
     #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testCommunityCardPublishesFourMembersWithAttachmentAndEditsSameMessage(): void
+    {
+        $calls=[]; $jpeg=hex2bin('ffd8ffc00011080001000103011100021100031100ffda0008010100003f0000ffd9');
+        $transport=$this->createMock(DiscordTransport::class);
+        $transport->expects(self::exactly(2))->method('card')->willReturnCallback(function($url,$payload,$image,$remote) use (&$calls,$jpeg) {
+            self::assertSame('https://discord.com/api/webhooks/456/community',$url); self::assertSame($jpeg,$image);
+            self::assertSame('attachment://preview.jpg',$payload['embeds'][0]['image']['url']);
+            self::assertStringContainsString('Person Vier',$payload['embeds'][0]['fields'][1]['value']);
+            self::assertSame('https://own.test.ts.net/#scene-own-community-card',$payload['embeds'][0]['url']);
+            self::assertSame($calls ? '65432' : null,$remote); $calls[]=$payload; return '65432';
+        });
+        $this->boot(discord:$transport); $container=static::getContainer(); $container->get(\App\Community\PlatformDatabase::class)->initialize();
+        $owner=new Principal('local-owner','owner');
+        $container->get(AccessStore::class)->configure($owner,['enabled'=>true,'hostname'=>'own.test.ts.net','port'=>18877]);
+        $publisher=$container->get(\App\Community\DiscordPublication::class);
+        $publisher->configure($owner,(object)['webhook_url'=>'https://discord.com/api/webhooks/456/community','allow_media'=>true]);
+        $writer=$container->get(\App\Community\ChronicleWriter::class);
+        $event=(object)['id'=>'own-community-card','revision'=>1,'game_id'=>'enshrouded','title'=>'Unser Winter','badge'=>'Zusammen',
+            'members'=>['Person Eins','Person Zwei','Person Drei','Person Vier'],'image'=>base64_encode($jpeg)];
+        $writer->save($owner,$event); $settings=$publisher->view($owner);
+        $payload=(object)['kind'=>'event','event_id'=>$event->id,'revision'=>1,'media'=>true,'replace'=>false,
+            'destination_revision'=>$settings['destination_revision'],'generation'=>'new'];
+        $job=$container->get(JobService::class)->submit('fixture','community_discord',str_repeat('e',32),$owner,$payload);
+        $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id']));
+        self::assertSame('succeeded',$container->get(JobRepository::class)->get($job['id'])['state']);
+        $publisher->execute($owner,$payload,static function() {}); self::assertCount(1,$calls);
+        $event->revision=2; $event->reason='Titel präzisiert'; $event->title='Unser erster Winter'; $writer->save($owner,$event);
+        $payload->revision=2; $payload->generation=$publisher->generation($event->id); $publisher->execute($owner,$payload,static function() {});
+        self::assertCount(2,$calls); self::assertSame('Unser erster Winter',$calls[1]['embeds'][0]['title']);
+        $view=$publisher->view($owner); self::assertSame('sent',$view['publications'][0]['state']); self::assertSame('65432',$view['publications'][0]['remote_id']);
+        self::assertStringNotContainsString('/api/webhooks/',json_encode($view));
+        self::assertSame(1,$container->get(\App\Community\ChronicleReader::class)->page($owner)['total']);
+    }
+    public function testCommunitySummaryRemainsAddressableBeyondRecentPublicationHistory(): void
+    {
+        $this->boot(); $container=static::getContainer(); $container->get(\App\Community\PlatformDatabase::class)->initialize();
+        $db=$container->get(\Doctrine\DBAL\Connection::class);
+        foreach (array_merge(['community-summary'],array_map(static fn($i)=>'moment-'.$i,range(1,30))) as $i=>$id) {
+            $db->insert('community_discord_messages',['event_id'=>$id,'remote_id'=>(string)(70000+$i),'revision'=>1,'state'=>'sent','media'=>0,
+                'template_version'=>1,'requested_by'=>'local-owner','attempted_at'=>$i,'next_try'=>0,'error'=>null,'webhook_hash'=>'fixture']);
+        }
+        $publisher=$container->get(\App\Community\DiscordPublication::class); $view=$publisher->view(new Principal('local-owner','owner'));
+        $summary=array_values(array_filter($view['publications'],static fn($row)=>$row['event_id']==='community-summary'));
+        self::assertCount(1,$summary); self::assertSame($publisher->generation('community-summary'),$summary[0]['generation']);
+    }
+    public function testCommunityCardHttpMultipartUsesFixedAttachmentAndNoMentions(): void
+    {
+        $jpeg=hex2bin('ffd8ffc00011080001000103011100021100031100ffda0008010100003f0000ffd9');
+        $transport=new DiscordWebhook(new MockHttpClient(function($method,$url,$options) use ($jpeg) {
+            self::assertSame('POST',$method); self::assertStringContainsString('name="payload_json"',$options['body']);
+            self::assertStringContainsString('name="files[0]"; filename="preview.jpg"',$options['body']);
+            self::assertStringContainsString('"allowed_mentions":{"parse":[]}',$options['body']); self::assertStringContainsString($jpeg,$options['body']);
+            return new MockResponse('{"id":"65432"}');
+        }));
+        self::assertSame('65432',$transport->card('https://discord.com/api/webhooks/456/community',['embeds'=>[['title'=>'Own card']]],$jpeg));
+    }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testStatusCardCreatesOnceThenEditsSameMessageAcrossPollingAndReconstruction(): void
     {
         $messages=[];
