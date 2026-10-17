@@ -38,6 +38,10 @@ final class JobService
                 || !preg_match('/^[a-f0-9]{64}$/D', $payload->revision) || array_diff(array_keys(get_object_vars($payload)), ['config', 'revision'])) { throw new \InvalidArgumentException('Konfiguration und Dateistand erforderlich.'); }
         } elseif (in_array($operation,['update_prepare','update_finish','update_abort'],true)) {
             \App\Integration\UpdateAssistant::validate($operation,$payload);
+        } elseif ($operation === 'game_event') {
+            if ($payload === null || array_keys(get_object_vars($payload)) !== ['event_sequence'] || !is_int($payload->event_sequence) || $payload->event_sequence < 1) {
+                throw new \InvalidArgumentException('Gespeichertes Spielereignis erforderlich.');
+            }
         } elseif ($operation === 'world') {
             \App\Instance\Worlds::validate($payload);
         } elseif ($operation === 'community_discord') {
@@ -84,7 +88,7 @@ final class JobService
     {
         if (in_array($operation, BackupOperations::ALL, true)) { return 'backups.manage'; }
         return match ($operation) { 'config' => 'config.write', 'setup' => 'server.setup', 'check_updates' => 'updates.check',
-            'world','update_prepare','update_finish','update_abort' => 'backups.manage', 'community_discord' => 'community.export',
+            'world','update_prepare','update_finish','update_abort' => 'backups.manage', 'community_discord' => 'community.export', 'game_event'=>'discord.write',
             'refresh_connections' => 'connections.refresh', 'discord_send', 'discord_card_create', 'discord_card_update' => 'discord.write', default => 'server.'.$operation };
     }
 }

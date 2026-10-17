@@ -8,7 +8,8 @@ use App\Log\LogText;
 final class TechnicalEvents
 {
     public function __construct(private readonly InstanceRegistry $registry,private readonly JobRepository $jobs,
-        private readonly \App\Game\GameCatalog $games,private readonly \App\Integration\ManagerSettings $settings) {}
+        private readonly \App\Game\GameCatalog $games,private readonly \App\Integration\ManagerSettings $settings,
+        private readonly \App\Runtime\RuntimeEvents $runtimeEvents) {}
     public function read(string $id): array
     {
         $path = $this->registry->dataPath($id).'/events.jsonl'; $events = []; $values = null;
@@ -24,6 +25,8 @@ final class TechnicalEvents
             }
         }
         foreach ($this->jobs->recent([$id]) as $job) { $events[] = ['time'=>$job['updated_at'],'message'=>$job['message']]; }
+        foreach ($this->runtimeEvents->recent($id) as $event) { $events[] = ['time'=>$event['created_at'],
+            'message'=>$event['type'] === 'session.ready' ? 'Spielprotokoll: Sitzung bereit.' : 'Spielprotokoll: Sitzung geschlossen.']; }
         usort($events,fn($a,$b)=>strcmp($b['time'],$a['time'])); return array_slice($events,0,30);
     }
 }

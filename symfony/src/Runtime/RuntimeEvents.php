@@ -31,6 +31,12 @@ final class RuntimeEvents
         $this->ready();
         return $this->db->fetchAllAssociative('SELECT * FROM runtime_events WHERE handled=0 ORDER BY sequence LIMIT 100');
     }
+    public function get(int $sequence): array
+    {
+        $this->ready();
+        return $this->db->fetchAssociative('SELECT * FROM runtime_events WHERE sequence=?', [$sequence])
+            ?: throw new \InvalidArgumentException('Spielereignis nicht gefunden.');
+    }
     public function acknowledge(int $sequence): void
     {
         $this->ready(); $this->db->update('runtime_events', ['handled'=>1], ['sequence'=>$sequence]);

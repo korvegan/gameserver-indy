@@ -10,10 +10,11 @@ use App\Storage\PrivateFiles;
 
 final class IntegrationOperations
 {
-    public const ALL = ['check_updates', 'refresh_connections', 'discord_send', 'discord_card_create', 'discord_card_update', 'community_discord'];
+    public const ALL = ['check_updates', 'refresh_connections', 'discord_send', 'discord_card_create', 'discord_card_update', 'community_discord', 'game_event'];
     public function __construct(private readonly SteamUpdates $updates, private readonly Connections $connections,
         private readonly Discord $discord, private readonly RuntimeLifecycle $lifecycle, private readonly AccessPolicy $policy,
-        private readonly DiscordStatusCard $cards,private readonly \App\Community\DiscordPublication $community) {}
+        private readonly DiscordStatusCard $cards,private readonly \App\Community\DiscordPublication $community,
+        private readonly \App\Log\GameEventReaction $gameEvents) {}
     public static function is(string $operation): bool { return in_array($operation, self::ALL, true); }
     public static function predicate(string $lane): string
     {
@@ -26,6 +27,7 @@ final class IntegrationOperations
         $guard = function () use ($job, $actor): void { $this->lifecycle->requireClaim($job); $this->policy->require($actor, JobService::permission($job['operation']), $job['server_id']); };
         $guard();
         return match ($job['operation']) {
+            'game_event' => $this->gameEvents->execute($job['server_id'], PrivateFiles::object($job['payload'])->event_sequence, $guard),
             'check_updates' => $this->updates->check($job['server_id']),
             'refresh_connections' => $this->connections->refresh(),
             'discord_send' => $this->discord->send($job['id'], PrivateFiles::object($job['payload'])->message, $guard),
