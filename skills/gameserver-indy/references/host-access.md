@@ -14,3 +14,5 @@ Anleitung: `docs/family-access.md`. WSL-Distribution `Indy`, Linux-/Windows-Benu
 - WSL `mirrored`; Docker-Caddy auf `0.0.0.0:443` verursachte Tailscale-Bindkonflikte. Linux-/Windows-Listener gemeinsam betrachten; fremden Gateway nicht still entfernen.
 
 Aufnahme 15.10.2026: i9-12900KF, etwa 96 GB RAM, RTX 3080/10 GB, vier Spieler inkl. Host, Spielclient und Server teilen PC. Native Windows-Prozesse unterliegen nicht WSL 32 GB/12 vCPU. Gemessener Upload 10,6 Mbit/s. AC-Schlaf/Ruhezustand/Monitor-Timeout waren deaktiviert; heutige Werte bei Bedarf lesen, keine Dauerbetriebsgarantie ableiten.
+
+Stand 17.10.2026: `docs/host-operation.md`. AC-Bildschirmtimer nach Export des bestehenden Energieplans auf 900 s gesetzt und zurückgelesen; Standby bleibt aus, keine Kern-/Prioritäts-/Betriebssystemumstellung. Rückweg gleicher Plan: `powercfg /change monitor-timeout-ac 0`; vollständige private `.pow` unter `%LOCALAPPDATA%\GameServerIndy\maintenance`. Startaufgabe weiterhin Besitzer-SID, Password/Boot/IgnoreNew/PT0S, letzter Code 0. Kein Kaltstartnachweis daraus ableiten. GPU-Leerlaufwert ist kein PC-Gesamtverbrauch. Echte Kaltstart-/ASKA-/Viererabnahme bleibt offen.
