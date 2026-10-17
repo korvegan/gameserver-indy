@@ -8,6 +8,7 @@ Leistungsverlauf: `docs/performance.md`. Prozesszähler im vorhandenen nativen A
 - Controllersperre, PID/Startidentität/Laufkennung erhalten. Nur nachgewiesenen eigenen Supervisor geordnet beenden, keine breite Prozessnamen-/Spielprozessgruppe.
 - SIGKILL-Review reproduzierte verwaiste Verwaltungsprozesse; vorhandenen unabhängigen Wächter/Lease erhalten. Laufkennung erst nach Ende eigener Kinder freigeben.
 - Rückweg: vorheriges PHP-Release mit **demselben aktuellen StateDirectory**, kein veralteter Datenbankrollback. Gemeinsame Daten lesend validieren, keine stillen Standardprofile/leere Zugriffsdatenbank erzeugen.
+- Frische `slice:init`-Fixtures hatten fehlende spätere Metadatentabellen der Bestandsdaten verdeckt: erster HTTP-Erfolg, danach Planerabsturz. Supervisor ergänzt optionale Tabellen vor Kindstart additiv unter Controllersperre; Betriebsfixture enthält den alten Tabellenstand. Releasebereitschaft nach kurzer Stabilitätsphase erneut prüfen. Für Originaldaten niemals pauschal `slice:init` ausführen.
 - Launcher-/Pfadänderungen über Shortcut-Installer, private RuntimeExecutable/StateDirectory erhalten. HTTP, Supervisor-cwd und Launcherzeiger gemeinsam prüfen.
 - Beim letzten Wechsel lief der aufrufende Windows-Launcher-Harness in ein Timeout, obwohl neues Dashboard gesund war. Aufrufertimeout allein beweist keinen Startfehler; tatsächliche Bereitschaft vor Rückweg prüfen.
 - Kommagetrennten Server-Header tokenweise erkennen: Windows kombinierte FrankenPHP-/App-Marker. Port-/Tokenprüfung erhalten.

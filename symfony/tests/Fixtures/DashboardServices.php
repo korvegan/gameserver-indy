@@ -92,6 +92,10 @@ final class DashboardServices implements \App\Runtime\ProcessGateway, \App\Integ
         foreach (['enshrouded','aska'] as $id) { $container->get(ProcessObservation::class)->refresh($id); }
         $container->get(\App\Community\ChronicleWriter::class)->save(new Principal('local-owner','owner'),(object) [
             'id'=>'qa-milestone','revision'=>1,'game_id'=>'raft','title'=>'Gemeinsamer Testmoment','members'=>['Test Eins','Test Zwei'],'badge'=>'Gemeinsam','occurred_at'=>'']);
+        // The real host predates these features. A fresh slice:init alone hid that upgrade gap.
+        $database = $container->get(\Doctrine\DBAL\Connection::class);
+        $database->executeStatement('DROP TABLE discord_status_cards');
+        $database->executeStatement('DROP TABLE community_discord_messages');
     }
 }
 

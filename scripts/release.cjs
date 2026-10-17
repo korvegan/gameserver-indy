@@ -136,6 +136,12 @@ function hostOperations(source, configFile, checkpoint) {
       }, 'Aktiviertes Release wurde nicht bereit.');
       const after = await snapshot();
       if (JSON.stringify(after) !== JSON.stringify(baseline)) throw Error('Spielprozesse, Konfiguration oder Sitzung haben sich geändert.');
+      // HTTP can be ready just before a background child's first step fails.
+      await sleep(1500);
+      const stable = await get('/api/session');
+      if (stable.driver !== 'managed' || !owned(code) || json(configFile).ProjectDirectory !== code) {
+        throw Error('Verwaltung hat die kurze Startstabilitätsprüfung nicht bestanden.');
+      }
       fs.writeFileSync(path.join(checkpoint, 'verification.json'), JSON.stringify({code, state, preserved: true}) + '\n', {mode: 0o600});
     }
   };

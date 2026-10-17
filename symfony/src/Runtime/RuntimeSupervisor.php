@@ -42,6 +42,9 @@ final class RuntimeSupervisor
             }
             if ($this->stopping) return;
             $guard = new RuntimeGuard($this->runtime->directory,$listeners);
+            // Existing installations predate optional metadata tables. Upgrade additively
+            // under the exclusive controller lease, before any worker/scheduler can use them.
+            $this->discord->initialize(); $this->whatsapp->initialize();
             $epoch = $this->lifecycle->open($guard->owner); $opened = true;
             $this->discord->reconcile(); $this->whatsapp->reconcile(); $this->community->reconcile();
             $folder = $this->runtime->directory.'/runtime'; PrivateFiles::directory($folder); PrivateFiles::directory($folder.'/logs');
