@@ -135,7 +135,7 @@ export async function showDetail(id, updateHash = true) {
         historyList.append(row);
       } body.append(historyList);
     }
-    $('#edit-moment').hidden = !can('community.write') || event.source !== 'manual' || Boolean(event.removed);
+    $('#edit-moment').hidden = !can('community.write') || event.source !== 'manual' || Boolean(event.removed) || Boolean(event.challenge_id);
     if (updateHash) history.replaceState(null, '', '#moment-' + id);
     if (!$('#moment-detail').open) $('#moment-detail').showModal();
   } catch (error) { if (generation === detailRequest && state.view === 'community') notice(error.message, true); }

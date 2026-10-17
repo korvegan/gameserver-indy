@@ -2,7 +2,7 @@ import {api} from '../api.js';
 import {$, element, notice} from '../dom.js';
 import {can, state} from '../state.js';
 
-let editing, eventId, image, preview, imageRequest = 0, openRequest = 0, processing = false, saving = false, saved, opening;
+let editing, eventId, image, preview, imageRequest = 0, openRequest = 0, processing = false, saving = false, saved, opening, rosters = [];
 const editor = () => $('#moment-editor');
 
 function instances(selected = '') {
@@ -26,7 +26,8 @@ export async function openMoment(event) {
   opening?.();
   const generation = ++openRequest, epoch = state.navigationEpoch;
   try {
-    const [options, profiles] = await Promise.all([api('/api/community/options'),api('/api/community/members')]);
+    const [options, profiles, goals] = await Promise.all([api('/api/community/options'),api('/api/community/members'),api('/api/community/challenges')]);
+    rosters = goals.campaigns;
     if (generation !== openRequest || epoch !== state.navigationEpoch || state.view !== 'community') return;
     editing = event; eventId = event?.id || `moment-${crypto.randomUUID()}`;
     $('#moment-form').reset(); clearPreview(); imageRequest++; processing = false;
@@ -36,14 +37,21 @@ export async function openMoment(event) {
     select.value = event?.game_id || state.catalog.servers.find(item => item.id === state.selectedServer)?.game || options.games[0]?.id;
     select.disabled = Boolean(event); instances(event?.instance_id || (!event ? state.selectedServer : ''));
     $('#moment-instance').disabled = Boolean(event);
+    $('#moment-roster').replaceChildren(Object.assign(element('option','Freie Kampagnenangabe'),{value:''}),...rosters.map(roster=>Object.assign(element('option',roster.name),{value:roster.id})));
+    $('#moment-roster').value = rosters.some(roster=>roster.id===event?.campaign_id) ? event.campaign_id : '';
     $('#moment-campaigns').replaceChildren(...options.campaigns.map(item => Object.assign(element('option'), {value: item.label})));
+    const known = new Map(profiles.members.map(member=>[member.id,member]));
+    for (const roster of rosters) for (const id of roster.member_ids) if (!known.has(id)) known.set(id,{id,name:roster.member_names[id],enabled:false});
     for (const [id, value] of Object.entries({title: event?.title || '', description: event?.description || '',
       campaign: event?.campaign_label || event?.campaign_id || '', badge: event?.badge_label || event?.badge_id || '',
-      members: event?.member_ids.filter(id => !profiles.members.some(member=>member.id===id)).map(id => event.member_names?.[id] || id).join('\n') || ''})) $(`#moment-${id}`).value = value;
+      members: event?.member_ids.filter(id => !known.has(id)).map(id => event.member_names?.[id] || id).join('\n') || ''})) $(`#moment-${id}`).value = value;
     const participants = $('#moment-participants'); participants.replaceChildren();
-    for (const member of profiles.members.filter(member => member.enabled || event?.member_ids.includes(member.id))) {
+    for (const member of known.values()) {
       const label = element('label',undefined,'checkbox-label');
       const input = element('input'); input.type = 'checkbox'; input.value = member.id; input.checked = event?.member_ids.includes(member.id) || false;
+      input.dataset.available = String(member.enabled || event?.member_ids.includes(member.id) || false);
+      const roster = rosters.find(row=>row.id === $('#moment-roster').value);
+      input.disabled = roster ? !roster.member_ids.includes(member.id) : input.dataset.available !== 'true';
       label.append(input,document.createTextNode(event?.member_names?.[member.id] || member.name)); participants.append(label);
     }
     const date = event?.occurred_at ? new Date(event.occurred_at) : event ? null : new Date();
@@ -95,6 +103,7 @@ async function submit(remove = false) {
     if (remove) body.remove = true;
     else Object.assign(body, {title: $('#moment-title').value, description: $('#moment-description').value,
       game_id: $('#moment-game').value, instance_id: $('#moment-instance').value, campaign: $('#moment-campaign').value,
+      campaign_roster_id: $('#moment-roster').value,
       members: $('#moment-members').value.split('\n').map(name => name.trim()).filter(Boolean), badge: $('#moment-badge').value,
       participant_ids: [...document.querySelectorAll('#moment-participants input:checked')].map(input=>input.value),
       occurred_at: date ? new Date(date).toISOString() : '', image, clear_image: $('#moment-clear-image').checked});
@@ -110,6 +119,13 @@ export function bindMomentForm(onSaved, onOpening) {
   saved = onSaved; opening = onOpening;
   $('#new-moment').addEventListener('click', () => openMoment());
   $('#moment-game').addEventListener('change', () => instances());
+  $('#moment-roster').addEventListener('change',()=>{
+    const roster = rosters.find(row=>row.id === $('#moment-roster').value);
+    if (!roster) { for (const input of document.querySelectorAll('#moment-participants input')) input.disabled = input.dataset.available !== 'true'; return; }
+    if (editing && (editing.game_id !== roster.game_id || (editing.instance_id || null) !== roster.instance_id)) { $('#moment-roster').value = ''; notice('Spiel und Serverzuordnung bleiben bei Korrekturen erhalten.',true); return; }
+    $('#moment-game').value = roster.game_id; instances(roster.instance_id || ''); $('#moment-campaign').value = roster.name;
+    for (const input of document.querySelectorAll('#moment-participants input')) { input.disabled = !roster.member_ids.includes(input.value); if (input.disabled) input.checked = false; }
+  });
   $('#moment-form').addEventListener('input', () => { state.communityDirty = true; });
   $('#moment-form').addEventListener('submit', event => { event.preventDefault(); submit(); });
   $('#moment-clear-image').addEventListener('change', () => {
