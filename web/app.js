@@ -13,6 +13,7 @@ import {bindConnections, renderConnection} from './views/connection.js';
 import {bindAccess, discardAccessDrafts, loadAccess} from './views/access.js';
 import {bindBackups, loadBackups, resetBackups} from './views/backups.js';
 import {bindMaintenance,loadMaintenance,resetMaintenance} from './views/maintenance.js';
+import {bindUpdateAssistant,loadUpdateAssistant,resetUpdateAssistant} from './views/update-assistant.js';
 import {bindWhatsApp, loadWhatsApp} from './views/whatsapp.js';
 import {initWorkspace, markWorkspaceUnknown, refreshFleet, renderWorkspace} from './views/workspace.js';
 import {bindPerformance, clearPerformance, loadPerformance} from './views/performance.js';
@@ -81,6 +82,7 @@ async function refresh() {
     })());
     tasks.push(refreshFleet());
     tasks.push(loadMaintenance());
+    if (state.view === 'updates') tasks.push(loadUpdateAssistant());
     if (state.view === 'overview') tasks.push(loadPerformance());
     if (state.view === 'discord') tasks.push(loadDiscordCard());
     if (state.view === 'logs' && can('logs.read')) tasks.push(loadLogs());
@@ -122,6 +124,7 @@ async function selectServer(target, openOverview = false) {
   renderConnection();
   resetBackups();
   resetMaintenance();
+  resetUpdateAssistant();
   if (openOverview) await go('overview');
   await refresh(); return true;
 }
@@ -143,6 +146,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (next === 'community') { await loadCommunity(); if ($('#community-members').open) await loadMembers(); await loadChallenges(); await loadCommunityDiscord(); }
   if (next === 'access') await loadAccess();
   if (next === 'backups') await loadBackups();
+  if (next === 'updates') await loadUpdateAssistant();
   if (next === 'whatsapp') await loadWhatsApp();
   if (next === 'overview') await loadPerformance();
   if (next === 'discord') await loadDiscordCard();
@@ -227,6 +231,7 @@ async function mutate(path, body = {}) {
 initWorkspace(selectServer, go);
 bindNavigation(go); bindForms(mutate); bindConnections(refresh, job => acceptJob(job, controls, finishJob)); bindCommunity(); bindAccess(); bindBackups(runOperation);
 bindMaintenance();
+bindUpdateAssistant(runOperation);
 bindDiscordCard(job => acceptJob(job, controls, finishJob));
 bindWhatsApp(); bindPerformance(); bindMembers(); bindChallenges(()=>loadCommunity());
 bindCommunityDiscord(job=>acceptJob(job,controls,finishJob));

@@ -32,6 +32,7 @@ export function initWorkspace(selectServer, go) {
   $('#logs').append($('#events').closest('section'));
   $('#workspace-job-state').after($('#job-live-state'));
   $('#updates').append($('#updates-heading').closest('section'));
+  $('#updates').append($('#update-assistant'));
   const technical = element('details', undefined, 'network-details');
   technical.dataset.permission = 'config.read';
   technical.append(element('summary', 'Installation und technische Angaben'), $('#install-path').closest('section'));
