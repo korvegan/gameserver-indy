@@ -24,6 +24,7 @@ final class GameLogEventsTest extends SliceTestCase
         $directory = $this->directory.'/own-install'; PrivateFiles::directory($directory.'/logs');
         $container->get(InstanceRegistry::class)->register(new Principal('local-owner','owner'),
             (object)['id'=>'fixture','game'=>'enshrouded','label'=>'Fixture','server_directory'=>$directory]);
+        self::assertFalse($container->get(GameLogIngestor::class)->ingest('fixture', ['known'=>true,'running'=>false,'processes'=>[]]), 'A new profile without configuration has no parseable log yet.');
         PrivateFiles::write($directory.'/enshrouded_server.json', PrivateFiles::json((new EnshroudedConfiguration())->initial()));
         $path = $directory.'/logs/enshrouded_server.log';
         $status = ['known'=>true,'running'=>true,'processes'=>[['pid'=>42,'started'=>'2024-01-01T10:00:00Z']]];

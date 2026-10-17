@@ -22,7 +22,8 @@ final class GameLogIngestor
         $identity = Readiness::identity($status);
         $profile = $this->registry->get($id);
         $parser = match ($profile->game) { 'enshrouded'=>$this->enshrouded, 'aska'=>$this->aska, default=>null };
-        if (!$parser || !($path = $this->source->path($id)) || !is_file($path)) { return false; }
+        try { $path = $this->source->path($id); } catch (\Throwable) { return false; }
+        if (!$parser || !$path || !is_file($path)) { return false; }
         $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('log-cursor:'.$id);
         if (!$lock->acquire()) { return false; }
         $file = null;
