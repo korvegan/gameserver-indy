@@ -7,6 +7,7 @@ use App\Storage\PrivateFiles;
 /** Local wake-up hints. SQLite/files remain authoritative; a missed hint is recoverable. */
 final class RuntimeSignals
 {
+    private const TOPICS = ['jobs'=>1,'status'=>2,'performance'=>4,'logs'=>8,'settings'=>16,'access'=>32,'community'=>64,'game-event'=>128];
     public function __construct(private readonly SliceRuntime $runtime) {}
     private function directory(): string
     {
@@ -15,10 +16,11 @@ final class RuntimeSignals
         return $path;
     }
     /** Subscribe before reading durable state, so a concurrent commit cannot slip between read and wait. */
-    public function listen(): array
+    public function listen(array $topics = []): array
     {
         if (PHP_OS_FAMILY !== 'Linux') { return [null, null]; }
-        $path = $this->directory().'/'.getmypid().'-'.bin2hex(random_bytes(6)).'.sock';
+        $mask = 0; foreach ($topics ?: array_keys(self::TOPICS) as $topic) { $mask |= self::TOPICS[$topic] ?? 0; }
+        $path = $this->directory().'/'.getmypid().'-'.bin2hex(random_bytes(4)).'-'.dechex($mask).'.sock';
         $socket = @stream_socket_server('udg://'.$path, $errno, $error, STREAM_SERVER_BIND);
         if ($socket === false) { throw new \RuntimeException('Lokaler Ereignisempfänger nicht verfügbar.'); }
         chmod($path, 0600); stream_set_blocking($socket, false);
@@ -30,6 +32,8 @@ final class RuntimeSignals
         $bytes = json_encode(['topic'=>$topic, 'server_id'=>$serverId], JSON_THROW_ON_ERROR);
         try { $directory = $this->directory(); } catch (\Throwable) { return; } // A hint cannot fail an already committed command.
         foreach (glob($directory.'/*.sock') ?: [] as $path) {
+            preg_match('/-([a-f0-9]+)\.sock$/D', $path, $match);
+            if (!(hexdec($match[1] ?? '0') & (self::TOPICS[$topic] ?? 0))) { continue; }
             $socket = @stream_socket_client('udg://'.$path, $errno, $error, 0, STREAM_CLIENT_CONNECT);
             if ($socket === false) { @unlink($path); continue; }
             stream_set_blocking($socket, false); @fwrite($socket, $bytes); fclose($socket);

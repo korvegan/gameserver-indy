@@ -37,7 +37,18 @@ final class DiscordStatusCard
     public function due(): array
     {
         return $this->db->fetchFirstColumn("SELECT server_id FROM discord_status_cards WHERE enabled=1 AND remote_id IS NOT NULL
-            AND state IN ('active','updating','retry') AND attempted_at<=? AND next_try<=?",[time()-60,time()]);
+            AND state IN ('active','updating','retry') AND attempted_at<=? AND next_try<=?
+            AND (state='retry' OR revision='' OR updated_at<=?)",[time()-60,time(),time()-300]);
+    }
+    public function nextDue(): int
+    {
+        $next = $this->db->fetchOne("SELECT MIN(MAX(attempted_at+60,next_try,CASE WHEN state='retry' OR revision='' THEN 0 ELSE updated_at+300 END)) FROM discord_status_cards WHERE enabled=1
+            AND remote_id IS NOT NULL AND state IN ('active','updating','retry')");
+        return $next === null || $next === false ? time()+900 : (int)$next;
+    }
+    public function invalidate(?string $id): void
+    {
+        $this->db->executeStatement("UPDATE discord_status_cards SET revision='' WHERE enabled=1 AND state='active'".($id === null ? '' : ' AND server_id=?'), $id === null ? [] : [$id]);
     }
     public function execute(string $id,bool $create,bool $replace,callable $guard,?string $generation=null): array
     {

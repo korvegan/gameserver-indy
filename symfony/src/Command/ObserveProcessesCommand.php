@@ -19,29 +19,67 @@ final class ObserveProcessesCommand extends Command implements SignalableCommand
     private bool $stopping = false;
     public function __construct(private readonly SliceRuntime $runtime, private readonly InstanceRegistry $registry,
         private readonly ProcessObservation $observation, private readonly RuntimeLifecycle $lifecycle,
-        private readonly \App\Log\GameLogIngestor $logs, private readonly \App\Log\GameEventJobs $eventJobs) { parent::__construct(); }
+        private readonly \App\Log\GameLogIngestor $logs, private readonly \App\Log\GameEventJobs $eventJobs,
+        private readonly \App\Runtime\NativeEventSource $native, private readonly \App\Runtime\RuntimeSignals $signals) { parent::__construct(); }
     protected function configure(): void { $this->addOption('once', null, InputOption::VALUE_NONE); }
     public function getSubscribedSignals(): array { return defined('SIGTERM') ? [SIGTERM, SIGINT] : []; }
     public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false { $this->stopping = true; return false; }
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if ($this->runtime->driver !== 'managed') { $output->writeln('<error>Nur für den ausdrücklich aktivierten nativen Profilmodus.</error>'); return Command::FAILURE; }
-        $epoch = $this->lifecycle->epoch();
-        do {
-            $next = microtime(true) + 8;
-            foreach (array_keys($this->registry->executionLabels()) as $id) {
-                if ($this->stopping) { return Command::SUCCESS; }
+        $epoch = $this->lifecycle->epoch(); $listener = $this->signals->listen(['jobs','status','settings','game-event']);
+        $due = []; $logPending = []; $degraded = true; $nativeRetry = 0; $rebuild = !$input->getOption('once');
+        try {
+            do {
                 try { if ($this->lifecycle->epoch() !== $epoch) { return Command::SUCCESS; } }
                 catch (\DomainException) { return Command::SUCCESS; }
-                $this->observation->refresh($id);
-                while ($this->logs->ingest($id, $this->observation->view($id))) {
-                    if ($this->stopping) { return Command::SUCCESS; }
+                $ids = array_keys($this->registry->executionLabels()); $now = microtime(true);
+                if ($rebuild || ($this->native->stream() === null && $now >= $nativeRetry && !$input->getOption('once'))) {
+                    try { $this->native->start(); } catch (\Throwable) { $this->native->close(); $output->writeln('Native Ereignisquelle nicht verfügbar; langsamer Statusabgleich bleibt aktiv.'); }
+                    $degraded = true; $nativeRetry = $now+300; $rebuild = false;
                 }
-            }
-            $this->eventJobs->enqueue();
-            if ($input->getOption('once')) { return Command::SUCCESS; }
-            while (!$this->stopping && microtime(true) < $next) { usleep(100000); }
-        } while (!$this->stopping);
-        return Command::SUCCESS;
+                foreach ($ids as $id) {
+                    if ($this->stopping) { return Command::SUCCESS; }
+                    if (($due[$id] ?? 0) <= $now) {
+                        $this->observation->refresh($id, 360); $logPending[$id] = true;
+                        $status = $this->observation->view($id);
+                        // Active servers need performance samples. Stopped profiles only have a slow safety reconciliation.
+                        $due[$id] = microtime(true)+((($status['running'] ?? false) || ($status['starting'] ?? false)) ? 30 : ($degraded ? 60 : 300));
+                    }
+                    if (isset($logPending[$id])) {
+                        while ($this->logs->ingest($id, $this->observation->view($id))) { if ($this->stopping) { return Command::SUCCESS; } }
+                        unset($logPending[$id]); $this->signals->publish('logs', $id);
+                    }
+                }
+                $due = array_intersect_key($due, array_flip($ids));
+                $this->eventJobs->enqueue();
+                if ($input->getOption('once')) { return Command::SUCCESS; }
+                $next = min([...array_values($due), $nativeRetry > microtime(true) ? $nativeRetry : microtime(true)+300]);
+                $delay = max(0, $next-microtime(true)); $read = array_filter([$listener[0], $this->native->stream()], 'is_resource'); $write = $except = [];
+                if (!$read) { $this->signals->wait($listener, min(60, $delay)); continue; }
+                @stream_select($read, $write, $except, (int)$delay, (int)(($delay-(int)$delay)*1000000));
+                if ($this->stopping) { break; }
+                if (in_array($this->native->stream(), $read, true)) {
+                    try {
+                        foreach ($this->native->read() as $event) {
+                            $id = $event['server_id'] ?? null;
+                            if ($event['kind'] === 'ready' || $event['kind'] === 'rescan') {
+                                $degraded = $event['kind'] === 'rescan' || ($event['degraded'] ?? true); $due = [];
+                            } elseif (in_array($id, $ids, true)) {
+                                if ($event['kind'] === 'log') { $logPending[$id] = true; }
+                                else { $due[$id] = 0; if ($event['kind'] === 'config') { $rebuild = true; } }
+                            }
+                        }
+                    } catch (\Throwable) { $this->native->close(); $degraded = true; $due = []; $nativeRetry = microtime(true)+300; }
+                }
+                foreach ($this->signals->wait($listener, 0) as $event) {
+                    if ($event['topic'] === 'settings') { $rebuild = true; $due = []; }
+                    if ($event['topic'] === 'status' && in_array($event['server_id'], $ids, true)) {
+                        $due[$event['server_id']] = 0;
+                    }
+                }
+            } while (!$this->stopping);
+            return Command::SUCCESS;
+        } finally { $this->native->close(); $this->signals->close($listener); }
     }
 }

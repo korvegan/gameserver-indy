@@ -78,4 +78,13 @@ final class MaintenancePlans
             }); } catch (\DomainException) { /* Busy target stays pending; other profiles continue. */ }
         }
     }
+    public function nextDue(): int
+    {
+        $next = $this->clock->now()->getTimestamp()+900;
+        foreach ($this->registry->settings()->servers as $profile) {
+            $plan = $this->read($profile->id);
+            if (($plan['state'] ?? null) === 'countdown') { $next = min($next, (int)$plan['execute_at']); }
+        }
+        return max($this->clock->now()->getTimestamp()+1, $next);
+    }
 }
