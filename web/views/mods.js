@@ -1,6 +1,7 @@
 import {api} from '../api.js';
 import {element, notice} from '../dom.js';
 import {state} from '../state.js';
+import {profilesSection} from './mod-profiles.js';
 
 const input = (form, name, label, value = '') => {
   const wrap = element('label', label), field = element('input'); field.name = name; field.value = value;
@@ -36,6 +37,7 @@ export function modSection(game) {
           button.addEventListener('click', () => edit(item));
         }
       }
+      root.append(await profilesSection(game, data));
       if (!state.principal?.permissions.includes('catalog.write')) return;
       const sourceForm = element('form', undefined, 'settings-grid'); sourceForm.dataset.modSource = game.id;
       const source = select(sourceForm, 'source', 'Quelle', data.sources.map(row => [row.id, row.label]));

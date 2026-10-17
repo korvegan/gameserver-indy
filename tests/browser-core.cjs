@@ -107,8 +107,16 @@ const fs=require('node:fs/promises');
         await raft.getByRole('link',{name:'Eigener Test-Mod'}).waitFor();
         await raft.getByRole('button',{name:'Bearbeiten',exact:true}).click();
         await mod.locator('[name="sha256"]').fill('a'.repeat(64)); await mod.locator('[name="notes"]').fill('Gemeinsame Hinweise');
+        await mod.locator('[name="version"]').fill('1.0'); await mod.locator('[name="file_id"]').fill('own-file-1'); await mod.locator('[name="loader"]').fill('RML 2.8.0');
         await mod.locator('[name="order"]').fill('2'); await mod.getByRole('button').click();
         await raft.getByText('Gemeinsame Hinweise',{exact:true}).waitFor();
+        const publish=raft.locator('[data-mod-publish="raft"]');
+        await publish.locator('[name="name"]').fill('Eigener Gruppenstand'); await publish.locator('[name="game_version"]').fill('own-fixture-1');
+        await publish.locator('[name="loader"]').fill('RML 2.8.0'); await publish.getByRole('checkbox',{name:'Eigener Test-Mod · 1.0 · own-file-1',exact:true}).check();
+        await publish.getByRole('button').click();
+        const profile=raft.locator('[data-mod-profile]'); await profile.getByRole('heading',{name:'Eigener Gruppenstand · Revision 1'}).waitFor();
+        await profile.getByRole('button',{name:'Eigene Versionen und Hashes geprüft'}).click();
+        await profile.getByText('Deine Rückmeldung: manuell abgeglichen',{exact:true}).waitFor();
         await page.setViewportSize({width:390,height:1000}); assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
         await page.setViewportSize({width:1440,height:1000});
       }
