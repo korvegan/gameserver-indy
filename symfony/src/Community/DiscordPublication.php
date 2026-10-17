@@ -32,10 +32,11 @@ final class DiscordPublication
     {
         $this->policy->require($actor,'community.export'); $config=$this->configuration();
         $rows=$this->db->fetchAllAssociative('SELECT event_id,remote_id,revision,state,media,template_version,attempted_at,next_try,error FROM community_discord_messages ORDER BY attempted_at DESC LIMIT 30');
-        if ($eventId!==null) {
-            if (!GameCatalog::identifier($eventId)) { throw new \InvalidArgumentException('Ungültige Ereignis-ID.'); }
-            $row=$this->db->fetchAssociative('SELECT event_id,remote_id,revision,state,media,template_version,attempted_at,next_try,error FROM community_discord_messages WHERE event_id=?',[$eventId]);
-            if ($row && !in_array($eventId,array_column($rows,'event_id'),true)) { $rows[]=$row; }
+        if ($eventId!==null && !GameCatalog::identifier($eventId)) { throw new \InvalidArgumentException('Ungültige Ereignis-ID.'); }
+        foreach (array_unique(array_filter(['community-summary',$eventId])) as $id) {
+            if (in_array($id,array_column($rows,'event_id'),true)) { continue; }
+            $row=$this->db->fetchAssociative('SELECT event_id,remote_id,revision,state,media,template_version,attempted_at,next_try,error FROM community_discord_messages WHERE event_id=?',[$id]);
+            if ($row) { $rows[]=$row; }
         }
         foreach ($rows as &$row) { $row['generation']=$this->generation($row['event_id']); }
         return ['configured'=>$config['url']!=='' && $config['origin']!==null,'allow_media'=>$config['media'],'private_origin_configured'=>$config['origin']!==null,

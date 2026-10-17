@@ -69,6 +69,18 @@ final class IntegrationTest extends SliceTestCase
         self::assertStringNotContainsString('/api/webhooks/',json_encode($view));
         self::assertSame(1,$container->get(\App\Community\ChronicleReader::class)->page($owner)['total']);
     }
+    public function testCommunitySummaryRemainsAddressableBeyondRecentPublicationHistory(): void
+    {
+        $this->boot(); $container=static::getContainer(); $container->get(\App\Community\PlatformDatabase::class)->initialize();
+        $db=$container->get(\Doctrine\DBAL\Connection::class);
+        foreach (array_merge(['community-summary'],array_map(static fn($i)=>'moment-'.$i,range(1,30))) as $i=>$id) {
+            $db->insert('community_discord_messages',['event_id'=>$id,'remote_id'=>(string)(70000+$i),'revision'=>1,'state'=>'sent','media'=>0,
+                'template_version'=>1,'requested_by'=>'local-owner','attempted_at'=>$i,'next_try'=>0,'error'=>null,'webhook_hash'=>'fixture']);
+        }
+        $publisher=$container->get(\App\Community\DiscordPublication::class); $view=$publisher->view(new Principal('local-owner','owner'));
+        $summary=array_values(array_filter($view['publications'],static fn($row)=>$row['event_id']==='community-summary'));
+        self::assertCount(1,$summary); self::assertSame($publisher->generation('community-summary'),$summary[0]['generation']);
+    }
     public function testCommunityCardHttpMultipartUsesFixedAttachmentAndNoMentions(): void
     {
         $jpeg=hex2bin('ffd8ffc00011080001000103011100021100031100ffda0008010100003f0000ffd9');
