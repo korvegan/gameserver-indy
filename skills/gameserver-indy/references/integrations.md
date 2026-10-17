@@ -8,6 +8,8 @@ Statuspolls lesen Caches; Netz-/Steamabfragen als Metadatenjobs. Wiederholungen/
 
 Discord eigener HTTP-Client ohne URL-Logger: Review fand vollständige Webhooks im allgemeinen Symfony-Logger. ASKA-Starter sendet bereits nach `The session is now open!`, keine doppelte Dashboardmeldung. Keine echten Nachrichten/Webhooks als Test.
 
+Statuskarte: `docs/discord-status-card.md`. Erster Versand nur ausdrücklich; unklarer POST wird nicht erneut gesendet. Automatische Metadatenjobs bearbeiten ausschließlich bekannte Nachrichten-IDs, beachten `Retry-After` und sperren entfernte/geänderte Webhooks. Auch PATCH muss `allowed_mentions.parse=[]` setzen. Die Karte bleibt standardmäßig aus; nach Deployment keine echte Karte als Test anlegen.
+
 WhatsApp auf Nutzerwunsch kostenlos über lokalen WAHA/GOWS mit persönlich gescanntem QR verknüpft. Desktop-App ist separates Gerät, kein Automatisierungsadapter. Sitzungsdaten privat. QR-/Konto-/Gruppenaktionen auch für entfernte Besitzer sperren. Gruppenwahl an ID binden. Kurzmeldungen: Spiel, Server, Adresse, Bereitschaft.
 
 Bereitschaft an Prozesslauf binden: Enshrouded hat relative Logzeiten und Kopf `Current UTC date: YYYY.MM.DD HH:MM:SS`, am 16.10.2026 passend zur nativen Startsekunde. mtime allein genügt nicht. Bei Leselücken nur Übergänge aus lückenlosem Ende; alte up-Meldung hatte neueres down überdeckt. Zusammenhängende Byteblöcke ohne künstlichen Zeilenumbruch verbinden.

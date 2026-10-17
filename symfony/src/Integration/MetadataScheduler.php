@@ -16,7 +16,8 @@ use Symfony\Component\Lock\Store\FlockStore;
 final class MetadataScheduler
 {
     public function __construct(private readonly SliceRuntime $runtime, private readonly RuntimeLifecycle $lifecycle,
-        private readonly InstanceRegistry $registry, private readonly JobService $jobs, private readonly ClockInterface $clock) {}
+        private readonly InstanceRegistry $registry, private readonly JobService $jobs, private readonly ClockInterface $clock,
+        private readonly DiscordStatusCard $cards) {}
     public function tick(): int
     {
         $epoch = $this->lifecycle->epoch(); $lock = (new LockFactory(new FlockStore($this->runtime->directory.'/locks')))->createLock('metadata-scheduler');
@@ -27,6 +28,13 @@ final class MetadataScheduler
             if (($state->epoch ?? null) !== $epoch) { $state = (object) ['epoch' => $epoch, 'boot_at' => $now, 'network' => 0, 'steam' => new \stdClass()]; }
             if (!($state->steam ?? null) instanceof \stdClass) { $state->steam = new \stdClass(); }
             $profiles = $this->registry->settings(); $count = 0; $actor = new Principal('local-owner', 'owner');
+            foreach ($this->cards->due() as $id) {
+                $previous=$state->cards->{$id} ?? 0;
+                if ($now-$previous<60 && $previous<=$now) { continue; }
+                try { $this->jobs->submit($id,'discord_card_update',bin2hex(random_bytes(16)),$actor); }
+                catch (\DomainException) { continue; }
+                $state->cards ??= new \stdClass(); $state->cards->{$id}=$now; ++$count;
+            }
             $persist = function () use ($path, $state): void { PrivateFiles::directory(dirname($path)); PrivateFiles::write($path, PrivateFiles::json($state)); };
             if ($profiles->servers && ($now - ($state->network ?? 0) >= Connections::MAX_AGE || ($state->network ?? 0) > $now)) {
                 foreach ($profiles->servers as $profile) {

@@ -35,6 +35,51 @@ use Symfony\Component\Lock\Store\FlockStore;
 
 final class IntegrationTest extends SliceTestCase
 {
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testStatusCardCreatesOnceThenEditsSameMessageAcrossPollingAndReconstruction(): void
+    {
+        $messages=[];
+        $transport=$this->createMock(DiscordTransport::class);
+        $transport->expects(self::once())->method('send')->willReturnCallback(function($url,$text) use (&$messages) { $messages[]=$text; return '7654'; });
+        $transport->expects(self::once())->method('edit')->with('https://discord.com/api/webhooks/123/synthetic','7654',self::callback(function($text) use (&$messages) { $messages[]=$text; return str_contains($text,'Sitzung bereit'); }))->willReturn('7654');
+        $client=$this->boot(discord:$transport,http:true); $container=static::getContainer(); $owner=new Principal('local-owner','owner');
+        $container->get(Discord::class)->save($owner,'fixture',(object)['auto_notify'=>true,'webhook_url'=>'https://discord.com/api/webhooks/123/synthetic']);
+        $card=$container->get(\App\Integration\DiscordStatusCard::class);
+        $job=$container->get(JobService::class)->submit('fixture','discord_card_create',str_repeat('c',32),$owner,(object)['replace'=>false,'generation'=>'new']);
+        self::assertSame('metadata',$container->get(Connection::class)->fetchOne('SELECT queue_name FROM messenger_messages LIMIT 1'));
+        $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id']));
+        self::assertSame('succeeded',$container->get(JobRepository::class)->get($job['id'])['state']);
+        $card->execute('fixture',false,false,static function() {}); // No second message or edit for identical observation.
+        $status=['known'=>true,'running'=>true,'processes'=>[['pid'=>42,'started'=>gmdate('Y-m-d\TH:i:s\Z',time()-10)]]];
+        $config=\App\Storage\PrivateFiles::object(\App\Storage\PrivateFiles::read($this->directory.'/steamapps/common/Fixture/enshrouded_server.json'));
+        $config->logDirectory='./logs'; PrivateFiles::write($this->directory.'/steamapps/common/Fixture/enshrouded_server.json',PrivateFiles::json($config));
+        PrivateFiles::directory($this->directory.'/steamapps/common/Fixture/logs');
+        PrivateFiles::write($this->directory.'/steamapps/common/Fixture/logs/enshrouded_server.log','Current UTC date: '.gmdate('Y.m.d H:i:s',time()-10)."\n[Session] 'HostOnline' (up)!");
+        $container->get(\App\Runtime\ProcessObservation::class)->record('fixture',$status);
+        $card->execute('fixture',false,false,static function() {});
+        $card->execute('fixture',false,false,static function() {});
+        self::assertCount(2,$messages); self::assertStringContainsString('fixture.example.org:15637',$messages[1]);
+        self::assertStringNotContainsString('synthetic-secret',implode('',$messages));
+        $client->request('GET','/api/discord?server=fixture'); self::assertResponseIsSuccessful();
+        $data=json_decode($client->getResponse()->getContent(),true); self::assertSame('7654',$data['card']['message_id']);
+        self::assertSame('active',$data['card']['state']); self::assertStringNotContainsString('/api/webhooks/', $client->getResponse()->getContent());
+        $replacement=$container->get(JobService::class)->submit('fixture','discord_card_create',str_repeat('d',32),$owner,(object)['replace'=>true,'generation'=>$data['card']['generation']]);
+        $card->disable($owner,'fixture');
+        $container->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($replacement['id']));
+        self::assertFalse($card->active('fixture')); self::assertSame([],$card->due());
+    }
+    public function testStatusCardHttpEditSuppressesMentionsAndRespectsRateLimit(): void
+    {
+        $transport=new DiscordWebhook(new MockHttpClient(function($method,$url,$options) {
+            self::assertSame('PATCH',$method); self::assertStringEndsWith('/messages/7654',$url);
+            self::assertSame([],json_decode($options['body'],true)['allowed_mentions']['parse']);
+            return new MockResponse('{"id":"7654"}');
+        }));
+        self::assertSame('7654',$transport->edit('https://discord.com/api/webhooks/123/synthetic','7654','Own fixture'));
+        $transport=new DiscordWebhook(new MockHttpClient(new MockResponse('', ['http_code'=>429,'response_headers'=>['Retry-After: 91']])));
+        try { $transport->edit('https://discord.com/api/webhooks/123/synthetic','7654','Own fixture'); self::fail('Rate limit ignored'); }
+        catch (\App\Integration\DiscordRateLimit $error) { self::assertSame(91,$error->seconds); }
+    }
     private function boot(?SteamProvider $steam = null, ?HostNetworkProvider $network = null, ?DiscordTransport $discord = null, bool $http = false, ?ProcessGateway $gateway = null): mixed
     {
         $_ENV['SLICE_DRIVER'] = $_SERVER['SLICE_DRIVER'] = 'managed'; putenv('SLICE_DRIVER=managed');
@@ -199,7 +244,7 @@ final class IntegrationTest extends SliceTestCase
     {
         $this->boot(); $container = static::getContainer(); $clock = new \Symfony\Component\Clock\MockClock('2026-10-16T12:00:00Z');
         $scheduler = new \App\Integration\MetadataScheduler($container->get(\App\Runtime\SliceRuntime::class), $container->get(RuntimeLifecycle::class),
-            $container->get(InstanceRegistry::class), $container->get(JobService::class), $clock);
+            $container->get(InstanceRegistry::class), $container->get(JobService::class), $clock, $container->get(\App\Integration\DiscordStatusCard::class));
         self::assertSame(1, $scheduler->tick()); self::assertSame(0, $scheduler->tick());
         $clock->sleep(59); self::assertSame(0, $scheduler->tick()); $clock->sleep(1); self::assertSame(1, $scheduler->tick());
         $clock->sleep(1800); self::assertSame(2, $scheduler->tick());
@@ -233,7 +278,7 @@ final class IntegrationTest extends SliceTestCase
         $this->boot(); $container = static::getContainer(); $clock = new \Symfony\Component\Clock\MockClock('2026-10-16T12:00:00Z');
         $owner = new Principal('local-owner', 'owner'); $second = $this->directory.'/own-second'; PrivateFiles::directory($second);
         $container->get(InstanceRegistry::class)->register($owner, (object) ['id' => 'second', 'game' => 'enshrouded', 'label' => 'Second', 'server_directory' => $second]);
-        $scheduler = new \App\Integration\MetadataScheduler($container->get(\App\Runtime\SliceRuntime::class), $container->get(RuntimeLifecycle::class), $container->get(InstanceRegistry::class), $container->get(JobService::class), $clock);
+        $scheduler = new \App\Integration\MetadataScheduler($container->get(\App\Runtime\SliceRuntime::class), $container->get(RuntimeLifecycle::class), $container->get(InstanceRegistry::class), $container->get(JobService::class), $clock, $container->get(\App\Integration\DiscordStatusCard::class));
         $jobs = $container->get(JobRepository::class); $service = $container->get(JobService::class);
         self::assertSame(1, $scheduler->tick()); foreach ($jobs->recent() as $job) { $jobs->transition($job['id'], 'succeeded', 'Own fixture'); }
         for ($index=0; $index<8; ++$index) { $service->submit('second', 'start', bin2hex(random_bytes(16))); }

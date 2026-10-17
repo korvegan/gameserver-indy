@@ -20,7 +20,7 @@ final class IntegrationController extends AbstractController
 {
     public function __construct(private readonly AccessPolicy $policy, private readonly JobService $jobs,
         private readonly SteamUpdates $updates, private readonly Connections $connections, private readonly Discord $discord,
-        private readonly ProcessObservation $observations) {}
+        private readonly ProcessObservation $observations, private readonly \App\Integration\DiscordStatusCard $cards) {}
     private function actor(): Principal { $actor = $this->getUser(); assert($actor instanceof Principal); return $actor; }
     private function id(mixed $id): string { return is_string($id) && $id !== '' ? $id : throw new \InvalidArgumentException('Serverprofil ausdrücklich auswählen.'); }
     private function body(Request $request, array $keys): \stdClass
@@ -54,7 +54,7 @@ final class IntegrationController extends AbstractController
     public function discord(Request $request): JsonResponse
     {
         $id = $this->id($request->query->get('server')); return $this->json(['discord' => $this->discord->view($this->actor(), $id),
-            'join_message' => $this->connections->details($id)['share_message']]);
+            'card'=>$this->cards->view($this->actor(),$id), 'join_message' => $this->connections->details($id)['share_message']]);
     }
     #[Route('/api/discord/settings', methods: ['POST'])]
     public function save(Request $request): JsonResponse
@@ -68,5 +68,16 @@ final class IntegrationController extends AbstractController
         $body = $this->body($request, ['server_id', 'request_id', 'message']);
         return $this->json(['job' => JobRepository::public($this->jobs->submit($this->id($body->server_id ?? null), 'discord_send',
             $this->id($body->request_id ?? null), $this->actor(), (object) ['message' => $body->message ?? null]))], 202);
+    }
+    #[Route('/api/discord/card', methods: ['POST'])]
+    public function card(Request $request): JsonResponse
+    {
+        $body=$this->body($request,['server_id','request_id','replace','action','generation']); $id=$this->id($body->server_id ?? null);
+        if (($body->action ?? null)==='disable') {
+            $this->cards->disable($this->actor(),$id); return $this->json(['message'=>'Automatische Statuskarte pausiert. Die vorhandene Nachricht bleibt erhalten.']);
+        }
+        if (($body->action ?? null)!=='create') { throw new \InvalidArgumentException('Kartenaktion auswählen.'); }
+        return $this->json(['job'=>JobRepository::public($this->jobs->submit($id,'discord_card_create',$this->id($body->request_id ?? null),
+            $this->actor(),(object)['replace'=>$body->replace ?? false,'generation'=>$body->generation ?? null]))],202);
     }
 }

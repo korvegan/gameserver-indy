@@ -15,6 +15,9 @@ final class Discord
     {
         $this->db->executeStatement('CREATE TABLE IF NOT EXISTS discord_deliveries (id TEXT PRIMARY KEY, revision TEXT NOT NULL,
             state TEXT NOT NULL, remote_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)');
+        $this->db->executeStatement('CREATE TABLE IF NOT EXISTS discord_status_cards (server_id TEXT PRIMARY KEY, webhook_hash TEXT NOT NULL,
+            remote_id TEXT, revision TEXT NOT NULL, state TEXT NOT NULL, enabled INTEGER NOT NULL, attempted_at INTEGER NOT NULL,
+            updated_at INTEGER, next_try INTEGER NOT NULL, error TEXT, generation TEXT NOT NULL)');
     }
     private function configuration(): array
     {
@@ -30,6 +33,8 @@ final class Discord
         return ['configured' => $config['url'] !== '', 'auto_notify' => $config['automatic'], 'environment_override' => $config['environment']];
     }
     public function automatic(): bool { $config = $this->configuration(); return $config['automatic'] && $config['url'] !== ''; }
+    /** Internal transport input; never included in HTTP responses or log context. */
+    public function webhook(): string { return $this->configuration()['url']; }
     public function save(Principal $actor, string $id, \stdClass $value): array
     {
         $this->policy->require($actor, 'discord.write', $id);
