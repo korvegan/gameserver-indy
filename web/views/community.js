@@ -170,17 +170,9 @@ export function bindCommunity() {
     event.preventDefault(); filters = Object.fromEntries([...new FormData(event.target)].filter(([, value]) => value)); loadCommunity(false, true);
   });
   $('#chronicle-filters').addEventListener('reset', () => { filters = {}; loadCommunity(false, true); });
-  setInterval(async () => {
-    if (document.hidden || state.view !== 'community' || !token || $('#moment-editor').open || $('#moment-detail').open) return;
-    const generation = request, epoch = state.navigationEpoch;
-    try {
-      const result = await api('/api/community?' + query({limit: 1}));
-      if (generation !== request || epoch !== state.navigationEpoch || state.view !== 'community') return;
-      if (result.change_token !== token) {
-        announceChanges();
-      }
-    } catch { /* Keep the last good reading position; explicit refresh reports errors. */ }
-  }, 30000);
+  window.addEventListener('indy:change', event => {
+    if (token && ['community','snapshot'].includes(event.detail.topic)) announceChanges();
+  });
 }
 
 function announceChanges() {

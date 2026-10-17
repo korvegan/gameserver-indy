@@ -22,6 +22,7 @@ export function navigate(next) {
     } else if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
   }
   $('#breadcrumb').textContent = names[next];
+  window.dispatchEvent(new CustomEvent('indy:navigate', {detail: next}));
   return next;
 }
 

@@ -44,7 +44,7 @@ $degraded = $false
 try {
     foreach ($profile in $configuration.profiles) {
         if ($profile.executable -notmatch '^[a-zA-Z0-9_. -]+\.exe$') { throw 'Ungültiger Prozessfilter.' }
-        foreach ($entry in @(@{ path=$profile.log; kind='log' }, @{ path=$profile.config; kind='config' })) {
+        foreach ($entry in @(@{ path=$profile.log; kind='log' }, @{ path=$profile.launcher; kind='log' }, @{ path=$profile.config; kind='config' })) {
             if ($entry.path) { try { $inbox.File($entry.path, ($entry.kind + ':' + $profile.id)) } catch { $degraded = $true } }
         }
     }

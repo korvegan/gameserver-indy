@@ -1,9 +1,8 @@
-import {api} from './api.js';
 import {$, element, notice} from './dom.js';
 import {state} from './state.js';
 import {renderWorkspaceJobs} from './views/workspace.js';
 
-const watching = new Set(), completed = new Set();
+const completed = new Set();
 const outstanding = new Map(), versions = new Map();
 const active = job => job.state === 'queued' || job.state === 'running';
 const names = {queued: 'Wartet', running: 'Läuft', succeeded: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen'};
@@ -51,32 +50,23 @@ export function renderJobs() {
 
 export function watchJob(initial, update, finish) {
   initial = canonical(initial);
-  if (!active(initial) || watching.has(initial.id) || completed.has(initial.id)) return;
-  watching.add(initial.id);
+  if (!active(initial) || completed.has(initial.id)) return;
   track(initial);
   update();
-  (async () => {
-    try {
-      for (;;) {
-        let job;
-        try { job = canonical((await api(`/api/jobs?id=${encodeURIComponent(initial.id)}`)).job); }
-        catch (error) {
-          if (state.selectedServer === initial.server_id) notice(`Auftragsstatus nicht erreichbar: ${error.message}`, true);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          continue;
-        }
-        if (state.selectedServer === job.server_id) { mergeJobs([job]); renderJobs(); }
-        if (!active(job)) {
-          track(job);
-          update();
-          if (!completed.has(job.id)) { completed.add(job.id); await finish(job); }
-          return;
-        }
-        track(job); update();
-        await new Promise(resolve => setTimeout(resolve, document.hidden ? 2000 : 500));
-      }
-    } finally { watching.delete(initial.id); }
-  })().catch(error => notice(error.message, true));
+}
+
+export async function syncJobs(jobs, update, finish) {
+  // A long-hidden tab may still track a command older than the recent history window.
+  // Resolve it once on reconnect, never on a repeating timer.
+  const visible = new Set(jobs.map(job => job.id));
+  const missing = [...outstanding.keys()].filter(id => !visible.has(id));
+  const recovered = await Promise.all(missing.map(async id => (await api('/api/jobs?id='+encodeURIComponent(id))).job));
+  jobs = [...jobs, ...recovered];
+  for (const job of jobs) {
+    if (active(job) || outstanding.has(job.id)) acceptJob(job, update, finish);
+    else canonical(job);
+  }
+  mergeJobs(jobs); renderJobs();
 }
 
 export function acceptJob(job, update, finish) {
@@ -89,3 +79,4 @@ export function acceptJob(job, update, finish) {
   }
   return job;
 }
+import {api} from './api.js';

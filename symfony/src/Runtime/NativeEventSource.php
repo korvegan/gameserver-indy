@@ -29,6 +29,7 @@ final class NativeEventSource
             try { $log = $this->logs->path($profile->id); } catch (\Throwable) { $log = null; }
             $profiles[] = (object)['id'=>$profile->id, 'executable'=>$this->games->schema($profile->game)->executable,
                 'log'=>$nativePath($log, 'log:'.$profile->id),
+                'launcher'=>$nativePath($this->registry->diagnosticPath($profile).'/launcher.log', 'log:'.$profile->id),
                 'config'=>$nativePath($this->registry->configPath($profile), 'config:'.$profile->id)];
         }
         $folder = $this->runtime->directory.'/runtime'; PrivateFiles::directory($folder);

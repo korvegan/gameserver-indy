@@ -19,6 +19,12 @@ Der Starter verwendet das bestehende Windows-Konto und führt
 WSL-Distribution aus. Ein vorhandenes Dashboard wird wiederverwendet.
 `start.cmd` im Checkout verwendet dieselbe private Startkonfiguration.
 
+Die Ereignisbeobachtung nutzt Windows-WMI/`FileSystemWatcher` und für WSL-Dateien
+einen kleinen `inotify`-Helfer. Dessen versionierter C-Quelltext wird einmal je
+Stand mit `cc` in die private Laufzeitablage gebaut. Unter WSL muss ein C-Compiler
+verfügbar sein. Es gibt keinen zusätzlichen Broker. Details und begrenzte
+Abgleichfristen: [Ereignisbetrieb](event-driven-runtime.md).
+
 Der Installer `scripts/install-desktop-shortcut.ps1` kann bei einem geprüften
 Releasewechsel nur `-ProjectDirectory` ändern und erhält die übrigen bestehenden
 Einstellungen. Er registriert weder die Bootaufgabe noch das Benutzerkonto neu.
