@@ -16,7 +16,7 @@ final class DashboardController extends AbstractController
         private readonly InstanceRegistry $registry,private readonly TechnicalEvents $events) {}
     #[Route('/dashboard',methods:['GET'])]
     public function dashboard(): Response { $this->denyAccessUnlessGranted('catalog.read'); return $this->render('dashboard.html.twig'); }
-    #[Route('/{asset}',requirements:['asset'=>'(?:app|api|state|dom|forms|navigation|jobs|job-stream|log-lines)\.js|(?:style|serverzentrale)\.css|favicon\.svg|views/(?:server|workspace|logs|catalog|mods|mod-profiles|community|updates|connection|chronicle-form|story|story-art|access|backups|whatsapp|performance|discord-card|members|challenges|community-discord)\.js|artwork/(?:enshrouded|aska)-(?:hero\.jpg|logo\.png)'],methods:['GET'])]
+    #[Route('/{asset}',requirements:['asset'=>'(?:app|api|state|dom|forms|navigation|jobs|job-stream|log-lines)\.js|(?:style|serverzentrale)\.css|favicon\.svg|views/(?:server|workspace|logs|catalog|mods|mod-profiles|worlds|community|updates|connection|chronicle-form|story|story-art|access|backups|whatsapp|performance|discord-card|members|challenges|community-discord)\.js|artwork/(?:enshrouded|aska)-(?:hero\.jpg|logo\.png)'],methods:['GET'])]
     public function asset(string $asset): Response
     {
         $path = dirname($this->projectDirectory).'/web/'.$asset;

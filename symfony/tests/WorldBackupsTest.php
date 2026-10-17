@@ -64,6 +64,32 @@ final class WorldBackupsTest extends SliceTestCase
     }
     protected function tearDown(): void { Clock::set(new NativeClock()); parent::tearDown(); }
     #[\PHPUnit\Framework\Attributes\Group('regular')]
+    public function testWorldCopyNewCampaignAndSwitchPreserveOriginalAndAllowLeavingEmptyWorld(): void
+    {
+        $this->fixture(); $c=static::getContainer(); $worlds=$c->get(\App\Instance\Worlds::class); $original=$worlds->view($this->owner(),'fixture')['current'];
+        $request=500; $run=function(array $values) use ($c,$worlds,&$request): array {
+            $payload=(object)[...$values,'revision'=>$worlds->view($this->owner(),'fixture')['current']['revision'],'confirmation'=>'WELTWECHSEL'];
+            $job=$c->get(JobService::class)->submit('fixture','world',str_pad(dechex(++$request),32,'0',STR_PAD_LEFT),$this->owner(),$payload);
+            $c->get(ExecuteServerJobHandler::class)(new ExecuteServerJob($job['id'])); $result=$c->get(JobRepository::class)->get($job['id']);
+            self::assertSame('succeeded',$result['state'],$result['message']); return json_decode($result['result'],true);
+        };
+        $copy=$run(['action'=>'clone','name'=>'Eigene Testkopie']);
+        $run(['action'=>'switch','world_id'=>$copy['world_id']]); $copied=$worlds->view($this->owner(),'fixture')['current'];
+        self::assertSame('Eigene Testkopie',$copied['name']); self::assertNotSame($this->world,$copied['path']);
+        self::assertSame("world one\0\xff",PrivateFiles::read($copied['path'].'/world0.ksd'));
+        PrivateFiles::write($copied['path'].'/world0.ksd','test changes'); self::assertSame("world one\0\xff",PrivateFiles::read($this->world.'/world0.ksd'));
+        $new=$run(['action'=>'new','name'=>'Neue Kampagne']); $run(['action'=>'switch','world_id'=>$new['world_id']]);
+        self::assertSame([],array_values(array_diff(scandir($worlds->view($this->owner(),'fixture')['current']['path']),['.','..'])));
+        $leftEmpty=$run(['action'=>'switch','world_id'=>$original['id']]); self::assertSame($original['path'],$worlds->view($this->owner(),'fixture')['current']['path']);
+        $run(['action'=>'switch','world_id'=>$new['world_id']]); $emptyPath=$worlds->view($this->owner(),'fixture')['current']['path'];
+        PrivateFiles::write($emptyPath.'/own-new-world','own later game state');
+        $restored=$this->restore($leftEmpty['backup_id']); self::assertFileDoesNotExist($emptyPath.'/own-new-world');
+        $this->restore($restored['before_backup_id']); self::assertSame('own later game state',PrivateFiles::read($emptyPath.'/own-new-world'));
+        $run(['action'=>'switch','world_id'=>$original['id']]);
+        self::assertSame("world one\0\xff",PrivateFiles::read($this->world.'/world0.ksd'));
+        self::assertNotEmpty(array_filter($this->backups()->view($this->owner(),'fixture')['backups'],fn($row)=>$row['pinned']));
+    }
+    #[\PHPUnit\Framework\Attributes\Group('regular')]
     public function testCompleteWorldAndExactConfigRoundTripWithoutResettingAccessOrChronicle(): void
     {
         $this->fixture(); $config = $this->directory.'/own-install/enshrouded_server.json'; $bytes = PrivateFiles::read($config);

@@ -27,7 +27,7 @@ final class ExecuteServerJobHandler
         private readonly ServerControl $control, private readonly AccessPolicy $policy,
         private readonly RuntimeLifecycle $lifecycle, private readonly WorkerClaim $claim,
         private readonly InstanceConfiguration $configuration, private readonly WorldBackups $backups,
-        private readonly ?IntegrationOperations $integrations = null) {}
+        private readonly ?IntegrationOperations $integrations = null,private readonly ?\App\Instance\Worlds $worlds = null) {}
 
     public function __invoke(ExecuteServerJob $message): void
     {
@@ -70,6 +70,7 @@ final class ExecuteServerJobHandler
                             return $this->configuration->save($actor, $serverId, $payload->config, $payload->revision);
                         }
                         if ($job['operation'] === 'setup') { return $this->configuration->setup($actor, $serverId); }
+                        if ($job['operation']==='world') { return ($this->worlds ?? throw new \LogicException('Weltdienst fehlt.'))->execute($actor,$serverId,PrivateFiles::object($job['payload'])); }
                         if (in_array($job['operation'], BackupOperations::ALL, true)) {
                             return $this->backups->execute($actor, $serverId, $job['operation'], $job['payload'] === null ? null : PrivateFiles::object($job['payload']));
                         }

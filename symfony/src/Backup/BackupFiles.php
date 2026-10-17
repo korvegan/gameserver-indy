@@ -71,7 +71,7 @@ final class BackupFiles
             if (!$process->isSuccessful() || trim($process->getOutput()) !== 'plain') { throw new \DomainException('Dateibestand ist nativ nicht vollständig als gewöhnliche Dateien bestätigt. Links, Junctions und Zugriffsrechte prüfen.'); }
         } finally { if (file_exists($path)) { unlink($path); } }
     }
-    public function inventory(string $world, array $extras): array
+    public function inventory(string $world, array $extras, bool $requireWorldFiles = true): array
     {
         $this->native([$world, ...array_values($extras)], $world);
         $world = $this->plain($world);
@@ -91,7 +91,7 @@ final class BackupFiles
                 if (count($entries) + count($directories) > self::MAX_FILES) { throw new \DomainException('Zu viele Dateien für eine Weltsicherung.'); }
             }
         }
-        if (count($entries) === count($extras)) { throw new \DomainException('Der Weltordner enthält keine Spielstanddateien.'); }
+        if ($requireWorldFiles && count($entries) === count($extras)) { throw new \DomainException('Der Weltordner enthält keine Spielstanddateien.'); }
         $names = []; $signature = []; $total = 0; ksort($entries); sort($directories);
         foreach ([...array_keys($entries), ...$directories] as $name) {
             self::member($name); $key = mb_convert_case($name, MB_CASE_FOLD, 'UTF-8');
