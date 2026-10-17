@@ -96,7 +96,7 @@ async function submit(remove = false) {
     else Object.assign(body, {title: $('#moment-title').value, description: $('#moment-description').value,
       game_id: $('#moment-game').value, instance_id: $('#moment-instance').value, campaign: $('#moment-campaign').value,
       members: $('#moment-members').value.split('\n').map(name => name.trim()).filter(Boolean), badge: $('#moment-badge').value,
-      participant_ids: [...$('#moment-participants input:checked')].map(input=>input.value),
+      participant_ids: [...document.querySelectorAll('#moment-participants input:checked')].map(input=>input.value),
       occurred_at: date ? new Date(date).toISOString() : '', image, clear_image: $('#moment-clear-image').checked});
     const result = await api('/api/community', body);
     state.communityDirty = false; editor().close(); clearPreview();
