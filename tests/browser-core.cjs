@@ -118,6 +118,10 @@ const fs=require('node:fs/promises');
       await page.locator(`.sidebar [data-view="${view}"]`).click();
       assert.equal(await page.locator('#server-context').isVisible(),true);
       if(view==='games') {
+        await page.getByText('Spiel ohne eigenen Dedicated Server hinzufügen',{exact:true}).click();
+        const catalogForm=page.locator('#game-catalog > details form'); await catalogForm.locator('[name="id"]').fill('own-catalog-game');
+        await catalogForm.locator('[name="label"]').fill('Eigenes Katalogspiel'); await catalogForm.getByRole('button',{name:'Spiel hinzufügen'}).click();
+        await page.getByRole('heading',{name:'Eigenes Katalogspiel',exact:true}).waitFor();
         const raft=page.locator('#game-catalog article').filter({has:page.getByRole('heading',{name:'Raft',exact:true})});
         await raft.locator('summary').click();
         const source=raft.locator('[data-mod-source="raft"]'); await source.locator('[name="source"]').selectOption('raftmodding');

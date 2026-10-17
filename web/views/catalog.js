@@ -10,6 +10,18 @@ export async function loadGames(openServer) {
     const {games} = await api('/api/games');
     if (generation !== request || state.view !== 'games') return;
     const container = $('#game-catalog'); container.replaceChildren();
+    if (state.principal?.permissions.includes('catalog.write')) {
+      const details = element('details'), form = element('form',undefined,'settings-grid'); details.append(element('summary','Spiel ohne eigenen Dedicated Server hinzufügen'),form);
+      for (const [name,label,placeholder] of [['id','Spielkennung','z. B. raft'],['label','Anzeigename','z. B. Raft']]) {
+        const wrap = element('label',label), field = element('input'); field.name = name; field.required = true; field.maxLength = 80; field.placeholder = placeholder; wrap.append(field); form.append(wrap);
+      }
+      form.append(element('button','Spiel hinzufügen','button secondary')); container.append(details);
+      form.addEventListener('submit',async event => {
+        event.preventDefault(); const button = form.querySelector('button'); button.disabled = true;
+        try { const result = await api('/api/games',Object.fromEntries(new FormData(form))); notice(result.message); await loadGames(openServer); }
+        catch (error) { notice(error.message,true); } finally { button.disabled = false; }
+      });
+    }
     for (const game of games) {
       const card = element('article', undefined, 'panel');
       card.append(element('p', 'DEINE SPIELE', 'eyebrow'), element('h2', game.label));

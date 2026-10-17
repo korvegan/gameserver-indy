@@ -118,6 +118,15 @@ final class InstanceRegistry
         $this->validateProfile($profile);
         return $this->mutate($actor, function (\stdClass $settings) use ($profile): \stdClass { $settings->servers[] = $profile; return $this->validate($settings); }) + ['server_id'=>$profile->id];
     }
+    public function addGame(Principal $actor,\stdClass $game): array
+    {
+        $this->policy->require($actor,'catalog.write');
+        if ($actor->serverIds!==null) { throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException('Neue Katalogspiele benötigen einen Besitzer ohne Profilbegrenzung.'); }
+        if (array_diff(array_keys(get_object_vars($game)),['id','label'])) { throw new \InvalidArgumentException('Nur Spielkennung und Name angeben.'); }
+        return $this->mutate($actor,function(\stdClass $settings) use ($game): \stdClass {
+            $settings->catalog_games ??= []; $settings->catalog_games[]=$game; return $this->validate($settings);
+        });
+    }
     public function saveConnection(Principal $actor, string $id, mixed $host): array
     {
         $this->policy->require($actor, 'catalog.write', $id); $host = self::publicHost($host);
