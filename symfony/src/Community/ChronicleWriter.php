@@ -9,11 +9,12 @@ use App\Game\GameCatalog;
 /** Manual evidence only. Names never become verified Steam/Discord identities. */
 final class ChronicleWriter
 {
-    public function __construct(private readonly AccessPolicy $policy, private readonly ChronicleReader $reader, private readonly CommunityLedger $ledger) {}
+    public function __construct(private readonly AccessPolicy $policy, private readonly ChronicleReader $reader, private readonly CommunityLedger $ledger,
+        private readonly MemberProfiles $profiles) {}
     public function save(Principal $actor, \stdClass $body): array
     {
         $this->policy->require($actor, 'community.write');
-        if (array_diff(array_keys(get_object_vars($body)), ['id', 'revision', 'title', 'description', 'game_id', 'instance_id', 'campaign', 'members', 'badge', 'occurred_at', 'reason', 'remove', 'image', 'clear_image'])
+        if (array_diff(array_keys(get_object_vars($body)), ['id', 'revision', 'title', 'description', 'game_id', 'instance_id', 'campaign', 'members', 'participant_ids', 'badge', 'occurred_at', 'reason', 'remove', 'image', 'clear_image'])
             || !GameCatalog::identifier($body->id ?? null) || !is_int($body->revision ?? null)) { throw new \InvalidArgumentException('Ungültiger Chronikbeitrag.'); }
         foreach (['remove', 'clear_image'] as $key) { if (property_exists($body, $key) && !is_bool($body->{$key})) { throw new \InvalidArgumentException('Ungültige Auswahl zum Entfernen.'); } }
         $previous = null;
@@ -36,13 +37,21 @@ final class ChronicleWriter
         if ($instance !== null && !is_string($instance)) { throw new \InvalidArgumentException('Ungültige Serverzuordnung.'); }
         $this->policy->require($actor, 'community.write', $instance);
         if ($previous !== null && ($game !== $previous['game_id'] || $instance !== ($previous['instance_id'] ?? null))) { throw new \DomainException('Spiel und Serverzuordnung bleiben bei Korrekturen erhalten.'); }
-        if (!is_array($body->members ?? null) || !array_is_list($body->members) || count($body->members) < 1 || count($body->members) > 16) { throw new \InvalidArgumentException('Bitte 1 bis 16 Beteiligte angeben.'); }
-        $previousNames = []; $names = [];
+        if (!is_array($body->members ?? null) || !array_is_list($body->members) || count($body->members) > 16
+            || !is_array($body->participant_ids ?? []) || !array_is_list($body->participant_ids ?? [])) { throw new \InvalidArgumentException('Bitte 1 bis 16 Beteiligte angeben.'); }
+        $previousNames = []; $names = []; $ids=$body->participant_ids ?? [];
+        if (count($ids)!==count(array_unique($ids,SORT_REGULAR))) { throw new \InvalidArgumentException('Beteiligte jeweils einmal auswählen.'); }
+        foreach ($ids as $id) {
+            if (!is_string($id)) { throw new \InvalidArgumentException('Ungültige Mitglieder-ID.'); }
+            if ($previous!==null && in_array($id,$previous['member_ids'],true)) { $names[$id]=$previous['member_names']->{$id} ?? $id; }
+            else { $names=[...$names,...$this->profiles->selected([$id])]; }
+        }
         foreach ($previous['member_ids'] ?? [] as $member) { $previousNames[ChronicleValues::normalized($previous['member_names']->{$member} ?? $member)] = $member; }
         foreach ($body->members as $value) {
             $name = ChronicleValues::text($value, 80, true); $member = $previousNames[ChronicleValues::normalized($name)] ?? ChronicleValues::nameId('member-', $name);
             if (isset($names[$member])) { throw new \InvalidArgumentException('Beteiligte bitte jeweils nur einmal eintragen.'); } $names[$member] = $name;
         }
+        if (count($names)<1 || count($names)>16) { throw new \InvalidArgumentException('Bitte insgesamt 1 bis 16 Beteiligte auswählen oder benennen.'); }
         $occurred = ChronicleValues::occurred(ChronicleValues::text($body->occurred_at ?? '', 80));
         $campaign = ChronicleValues::text($body->campaign ?? '', 100); $badge = ChronicleValues::text($body->badge ?? '', 80, true);
         $campaignId = $campaign !== '' ? ChronicleValues::nameId('campaign-', $campaign) : null; $badgeId = ChronicleValues::nameId('badge-', $badge);
@@ -55,6 +64,8 @@ final class ChronicleWriter
             'title' => ChronicleValues::text($body->title ?? '', 160, true), 'description' => ChronicleValues::text($body->description ?? '', 1000),
             'source' => 'manual', 'member_ids' => array_map(strval(...), array_keys($names)), 'member_names' => (object) $names, 'badge_id' => $badgeId, 'badge_label' => $badge,
             'occurred_at' => $occurred, 'actor_id' => $actor->id, 'correction_reason' => $reason];
+        $author=$this->profiles->own($actor);
+        if ($author) { $event->author_member_id=$author['id']; $event->author_name=$author['name']; }
         $media = null;
         if (isset($body->image) && $body->image !== '') {
             if (!is_string($body->image) || strlen($body->image) % 4 !== 0 || strlen($body->image) > (int) ceil(ChronicleValues::IMAGE_LIMIT / 3) * 4

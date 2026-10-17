@@ -118,6 +118,7 @@ export async function showDetail(id, updateHash = true) {
       element('p', event.description || ''), element('p', event.occurred_at ? `Erlebt: ${new Date(event.occurred_at).toLocaleString('de-DE')}` : 'Ursprünglicher Zeitpunkt unbekannt.'),
       element('p', `Erfasst / korrigiert: ${new Date(event.recorded_at).toLocaleString('de-DE')} · Version ${event.revision}`, 'muted'), awards(event));
     if (event.media_id) body.append(image(event));
+    if (event.author_name) body.append(element('p',`Festgehalten von ${event.author_name} · Beteiligte siehe Auszeichnungen`,'muted'));
     const link = element('a', 'Dauerhafter Link zu diesem Moment', 'path'); link.href = `#moment-${event.id}`; body.append(link);
     if (!event.removed) {
       const replay = element('button', 'Moment noch einmal feiern', 'button secondary');

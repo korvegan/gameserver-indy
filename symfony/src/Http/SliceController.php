@@ -59,7 +59,7 @@ final class SliceController extends AbstractController
     {
         $this->denyAccessUnlessGranted('catalog.read'); $principal = $this->principal();
         return $this->json(['token' => $this->keys->token($principal, $request->attributes->get('_indy_scope')),
-            'role' => $principal->role, 'principal' => $principal->public(), 'grant_revision' => $principal->revision, 'api_version' => 2,
+            'role' => $principal->role, 'principal' => [...$principal->public(),'permissions'=>$this->policy->permissions($principal)], 'grant_revision' => $principal->revision, 'api_version' => 2,
             'access_mode' => $request->attributes->get('_indy_scope') === 'local-owner' ? 'local' : 'private',
             'isolated' => $this->runtime->driver !== 'managed', 'driver' => $this->runtime->driver, 'servers' => $this->servers($principal)]);
     }

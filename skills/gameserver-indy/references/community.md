@@ -2,6 +2,8 @@
 
 `docs/chronicle.md`, `symfony/src/Community/`: manuelle gemeinsame Momente, beständige Ereignis-IDs, nachvollziehbare Quellen. Keine noch unbelegte Spielereigniserkennung/Steam-Verknüpfung behaupten.
 
+Mitglieder: `docs/member-profiles.md`. Profile nur vorhandenen persönlichen Freigaben zuordnen; lokale und eigene Tailscale-Identität können dieselbe Person sein. Namen und Mitgliedschaft ändern historische Moment-Snapshots nicht. Gemeinschafts-Schreibrecht erteilt keine Serverrechte. Steam-Link ist eigener einmaliger Browser-/Identitätsnachweis am festen Provider, keine Eingabe einer Steam-ID und keine Freigabe privater Erfolge. PHP normalisiert Punkte in Query-Schlüsseln; OpenID-Antworten aus dem begrenzten Rohquery eindeutig lesen. Reale Steam-Anmeldung bleibt persönliche Abnahme.
+
 - Schemawechsel mit konsistentem Snapshot; Daten bei Programm-Rückweg erhalten. Natives `ext-intl`: alter Normalizer-Polyfill lieferte andere IDs. `ChronicleValues` erhält Unicode-16-ID-Vertrag auch unter neuerem ICU.
 - Historische Wiederholungen auf Vorgängerversion aufbauen; Zeit nur für Lesesicht UTC-normalisieren. Nachladen erhält Neuigkeiten/Entwürfe.
 - Gewählter illustrierter Fantasy-Wandteppich: sechs feste Plätze je Kapitel unabhängig von Chronikseite. Filter/Rollen/Entfernung verdichten keine Plätze. Vorlagen/alte milestone-Ableitungen erhalten; reduzierte Bewegung beachten.
