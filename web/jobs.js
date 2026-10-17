@@ -1,3 +1,4 @@
+import {api} from './api.js';
 import {$, element, notice} from './dom.js';
 import {state} from './state.js';
 import {renderWorkspaceJobs} from './views/workspace.js';
@@ -79,4 +80,3 @@ export function acceptJob(job, update, finish) {
   }
   return job;
 }
-import {api} from './api.js';

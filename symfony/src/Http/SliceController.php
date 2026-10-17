@@ -31,7 +31,19 @@ final class SliceController extends AbstractController
         private readonly JobReconciler $reconciler, private readonly AccessPolicy $policy,
         private readonly SessionKeys $keys, private readonly ListenerIdentity $identity,
         private readonly InstanceRegistry $registry, private readonly ProcessObservation $observation,
-        private readonly \App\Dashboard\ServerOverview $overview, private readonly \App\Runtime\RuntimeSignals $signals) {}
+        private readonly \App\Dashboard\ServerOverview $overview, private readonly \App\Runtime\RuntimeSignals $signals,
+        private readonly \App\Runtime\RuntimeSettings $settings) {}
+
+    private function streamLease(): ?\Symfony\Component\Lock\LockInterface
+    {
+        $threads = is_file($this->runtime->directory.'/runtime.local.json') ? $this->settings->read()['threads'] : 6;
+        $factory = new \Symfony\Component\Lock\LockFactory(new \Symfony\Component\Lock\Store\FlockStore($this->runtime->directory.'/locks'));
+        for ($slot=0; $slot<max(1,$threads-2); ++$slot) {
+            $lease = $factory->createLock('live-stream:'.$slot);
+            if ($lease->acquire()) { return $lease; }
+        }
+        return null;
+    }
 
     private function principal(): Principal
     {
@@ -120,6 +132,10 @@ final class SliceController extends AbstractController
         $after = (int) $cursor;
         $scope = $request->attributes->get('_indy_scope');
         return new EventStreamResponse(function () use ($after, $principal, $request, $scope): iterable {
+            $lease = $this->streamLease();
+            if ($lease === null) {
+                yield new ServerEvent('Liveplatz belegt · weitere Dashboard-Tabs schließen.', type:'capacity'); return;
+            }
             $listener = $this->signals->listen();
             // In-process CLI requests can inspect the initial events; real HTTP keeps one live channel.
             $deadline = microtime(true) + (PHP_SAPI === 'cli' ? .05 : 300);
@@ -158,7 +174,7 @@ final class SliceController extends AbstractController
                 }
                 $notifications = $this->signals->wait($listener, max(0,min($heartbeat,$deadline)-microtime(true)));
                 $readJobs = in_array('jobs', array_column($notifications, 'topic'), true);
-            } } finally { $this->signals->close($listener); }
+            } } finally { $this->signals->close($listener); $lease->release(); }
         });
     }
 }

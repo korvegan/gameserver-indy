@@ -36,6 +36,16 @@ const {setTimeout: delay} = require('node:timers/promises');
     assert.deepEqual(requests.filter(url=>url.pathname==='/api/jobs' && url.searchParams.has('id')).map(url=>url.href), [], 'UI must never poll individual jobs.');
     assert.ok(attempts>=3, 'Initial failure and visibility reconnect both exercised.');
     assert.deepEqual(errors, []);
+    // Reproduce the review finding: streaming must leave PHP capacity for normal commands.
+    await page.close();
+    const controllers = Array.from({length:7},()=>new AbortController());
+    try {
+      const streams = await Promise.all(controllers.map(controller=>fetch(origin+'/api/job-events', {signal:controller.signal})));
+      const first = await Promise.all(streams.map(async response=>new TextDecoder().decode((await response.body.getReader().read()).value)));
+      assert.ok(first.filter(chunk=>chunk.includes('event: capacity')).length>=3, 'Extra live channels must be explicitly limited.');
+      const session = await fetch(origin+'/api/session', {signal:AbortSignal.timeout(2000)});
+      assert.equal(session.status,200, 'Normal API requests stay reachable with excess live tabs.');
+    } finally { for (const controller of controllers) controller.abort(); }
     console.log('Event UI passed: idle has zero status/job requests, live completion, offline pending state and snapshot recovery; no individual job polling.');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -20,7 +20,7 @@ export function connectJobStream({snapshot, job, controls, change}) {
           || (session.grant_revision ?? null) !== state.grantRevision) revoke();
     } catch (error) { if (error.status === 403) revoke(); }
   }
-  function retry() { if (!stopped && !paused && timer === undefined) timer = setTimeout(() => { timer = undefined; connect(); }, 2000); }
+  function retry(delay = 2000) { if (!stopped && !paused && timer === undefined) timer = setTimeout(() => { timer = undefined; connect(); }, delay); }
   async function connect() {
     if (stopped || paused) return;
     const generation = ++attempt;
@@ -35,6 +35,10 @@ export function connectJobStream({snapshot, job, controls, change}) {
       current.addEventListener('job', event => { if (!stopped && stream === current) { try { job(JSON.parse(event.data)); } catch { say('Live-Ereignis nicht lesbar'); } } });
       current.addEventListener('change', event => { if (!stopped && stream === current) { try { change(JSON.parse(event.data)); } catch { say('Änderung nicht lesbar'); } } });
       current.addEventListener('access-revoked', revoke);
+      current.addEventListener('capacity', () => {
+        if (stopped || stream !== current) return;
+        current.close(); say('Liveplatz belegt · weitere Dashboard-Tabs schließen'); retry(15000);
+      });
       current.addEventListener('error', async () => {
         if (stopped || stream !== current) return;
         current.close(); say('Live-Verbindung wird wiederhergestellt …'); await identity(); if (stream === current) retry();
