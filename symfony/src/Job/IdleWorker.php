@@ -23,7 +23,7 @@ final class IdleWorker
         $this->deadline = $limit > 0 ? microtime(true)+$limit : INF;
     }
     #[AsEventListener]
-    public function started(WorkerStartedEvent $event): void { $this->listener = $this->signals->listen(); }
+    public function started(WorkerStartedEvent $event): void { $this->listener = $this->signals->listen(['jobs']); }
     #[AsEventListener(priority: -1024)]
     public function idle(WorkerRunningEvent $event): void
     {

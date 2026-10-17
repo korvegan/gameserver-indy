@@ -57,4 +57,17 @@ final class MetadataScheduler
             $persist(); return $count;
         } finally { $lock->release(); }
     }
+    public function nextDue(): int
+    {
+        $now = $this->clock->now()->getTimestamp();
+        try { $state = PrivateFiles::object(PrivateFiles::read($this->runtime->directory.'/data/metadata-schedule.json', 16384)); }
+        catch (\Throwable) { return $now; }
+        $profiles = $this->registry->settings(); $times = [$now+900, $this->cards->nextDue()];
+        if ($profiles->servers) { $times[] = ($state->network ?? 0)+Connections::MAX_AGE; }
+        if (($profiles->automatic_update_checks ?? true) === true) {
+            foreach ($profiles->servers as $profile) { $times[] = max(($state->boot_at ?? $now)+60, ($state->steam->{$profile->id} ?? 0)+SteamUpdates::INTERVAL); }
+        }
+        return max($now+5, min($times)); // A full queue retries acceptance slowly, or immediately on the next job event.
+    }
+    public function changed(?string $id): void { $this->cards->invalidate($id); }
 }
