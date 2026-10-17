@@ -2,6 +2,8 @@
 
 Unter **Spiele / Mods → Spiel → Modquellen und feste Modstände** ordnet ein Besitzer mehrere Anbieter zu. Das funktioniert auch für Raft ohne Dedicated-Serveradapter. Steam verwendet die **Spiel-App-ID**, Nexus das Spielkürzel seiner Modseiten, RaftModding `raft`; weitere Seiten erhalten eine eigene Spielkennung.
 
+Über **Spiel ohne eigenen Dedicated Server hinzufügen** werden beispielsweise Kennung `raft` und Anzeigename `Raft` eingetragen. Das legt nur einen Katalogeintrag an: keinen Installationsordner, keine Serverdateien und keine angebliche Dedicated-Unterstützung. Nur ein uneingeschränkter Besitzer darf neue globale Katalogspiele hinzufügen.
+
 Der Katalog importiert Originalseiten und eindeutige Quellenkennungen. Gleiche Anzeigenamen führen nicht zum Zusammenlegen verschiedener Anbieter. Modversion, Dateikennung, SHA-256, Loader, Client-/Server-Ziel, Ladefolge, quellenübergreifende Abhängigkeiten über die angezeigte Modkennung und gemeinsame Hinweise werden bewusst manuell erfasst. Zum Aktualisieren denselben Quellen-/Dateieintrag erneut speichern. Ein neuer Dateistand bleibt ein eigener Eintrag.
 
 Es gibt keine verdeckten Downloads, keine Installation, keinen Datei-Cache und keine automatischen Metadatenabrufe. Abrufbarkeit steht zunächst auf **ungeprüft**. Originallinks werden im Browser des jeweiligen Spielers geöffnet. Persönliche Parameter und kurzlebige Downloadlinks werden nicht akzeptiert; keine Passwörter oder persönlichen Konfigurationen in Hinweise schreiben. Versionen ohne Hash oder Loader sind noch kein geprüftes Gruppenprofil. Der Browser kann andere Spielordner nicht inventarisieren.

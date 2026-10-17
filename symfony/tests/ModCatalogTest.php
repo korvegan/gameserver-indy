@@ -12,10 +12,10 @@ final class ModCatalogTest extends SliceTestCase
     public function testOwnerCombinesOriginalSourcesWithoutDownloadsOrDedicatedAdapter(): void
     {
         static::bootKernel(); $this->ledger(); $c=static::getContainer(); $owner=new Principal('local-owner','owner');
-        $registry=$c->get(InstanceRegistry::class); $settings=$registry->settings();
-        $settings->servers=[(object)['id'=>'fixture','game'=>'enshrouded','label'=>'Eigener Test','server_directory'=>$this->directory.'/game']];
-        $settings->catalog_games=[(object)['id'=>'raft','label'=>'Raft']];
-        \App\Storage\PrivateFiles::write($this->directory.'/manager.local.json',\App\Storage\PrivateFiles::json($settings));
+        $registry=$c->get(InstanceRegistry::class);
+        $registry->register($owner,(object)['id'=>'fixture','game'=>'enshrouded','label'=>'Eigener Test','server_directory'=>$this->directory.'/game']);
+        $registry->addGame($owner,(object)['id'=>'raft','label'=>'Raft']);
+        self::assertFalse(array_values(array_filter($registry->catalog($owner)['games'],fn($game)=>$game['id']==='raft'))[0]['server_adapter']);
         $catalog=$c->get(ModCatalog::class);
         $sources=[['steam-workshop','648800','https://steamcommunity.com/sharedfiles/filedetails/?id=12345'],
             ['nexus','raft','https://www.nexusmods.com/raft/mods/21?tab=files&file_id=34'],

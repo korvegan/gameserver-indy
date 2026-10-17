@@ -29,6 +29,12 @@ final class DashboardController extends AbstractController
     }
     #[Route('/api/games',methods:['GET'])]
     public function games(): JsonResponse { $this->denyAccessUnlessGranted('catalog.read'); return $this->json(['games'=>$this->games->entries($this->registry->settings()->catalog_games ?? [])]); }
+    #[Route('/api/games',methods:['POST'])]
+    public function addGame(Request $request): JsonResponse
+    {
+        $actor=$this->getUser(); assert($actor instanceof \App\Access\Principal);
+        return $this->json($this->registry->addGame($actor,\App\Storage\PrivateFiles::object($request->getContent())),201);
+    }
     #[Route('/api/events',methods:['GET'])]
     public function events(Request $request): JsonResponse
     {
