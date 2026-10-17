@@ -58,7 +58,7 @@ final class RuntimeSupervisor
             $console = [$settings['php'],$this->projectDirectory.'/bin/console'];
             foreach (['control-1'=>['messenger:consume','async'],'control-2'=>['messenger:consume','async'],'metadata'=>['messenger:consume','metadata'],
                 'observer'=>['indy:observe'],'scheduler'=>['app:schedule']] as $name=>$arguments) {
-                if (str_starts_with($name,'control') || $name === 'metadata') { array_push($arguments,'--sleep=0.2','--memory-limit=128M','--no-interaction'); }
+                if (str_starts_with($name,'control') || $name === 'metadata') { array_push($arguments,'--sleep=0','--memory-limit=128M','--no-interaction'); }
                 $children[$name] = new Process([...$console,...$arguments],$this->projectDirectory,$environment); $children[$name]->setTimeout(null);
             }
             foreach ($listeners as $listener) fclose($listener); $listeners = [];

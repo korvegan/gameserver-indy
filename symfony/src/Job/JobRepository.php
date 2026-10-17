@@ -12,8 +12,10 @@ use Doctrine\DBAL\Connection;
 final class JobRepository
 {
     private bool $configured = false;
+    private bool $wakePending = false;
 
-    public function __construct(private readonly Connection $db, private readonly SliceRuntime $runtime) {}
+    public function __construct(private readonly Connection $db, private readonly SliceRuntime $runtime,
+        private readonly \App\Runtime\RuntimeSignals $signals) {}
 
     public function initialize(): void
     {
@@ -90,7 +92,14 @@ final class JobRepository
     public function transaction(callable $callback): mixed
     {
         $this->ready();
-        return $this->db->transactional($callback);
+        $before = $this->wakePending;
+        try { $result = $this->db->transactional($callback); }
+        catch (\Throwable $error) { $this->wakePending = $before; throw $error; }
+        if (!$this->db->isTransactionActive() && $this->wakePending) {
+            $this->wakePending = false;
+            $this->signals->publish('jobs');
+        }
+        return $result;
     }
 
     public function next(string $serverId, string $lane = 'control'): ?array
@@ -147,6 +156,7 @@ final class JobRepository
     private function event(string $id): void
     {
         $this->db->insert('slice_events', ['payload' => json_encode(self::public($this->get($id)), JSON_THROW_ON_ERROR)]);
+        $this->wakePending = true;
     }
 
     public function pendingTargets(): array
