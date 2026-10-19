@@ -1,0 +1,36 @@
+name: Migration smoke
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the exact head
+        uses: https://data.forgejo.org/actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use the repository Node pin
+        uses: https://data.forgejo.org/actions/setup-node@3d7870f6218881292d183093179901ae8dc2ef85
+        with:
+          node-version-file: .node-version
+      - name: Confirm the exact Node version
+        run: node -e "require('node:assert/strict').equal(process.versions.node, require('node:fs').readFileSync('.node-version', 'utf8').trim())"
+      - name: Check selection and log handling
+        run: node --test tests/ci-plan.test.cjs tests/log-lines.test.cjs
+      - name: Check release switch selection
+        run: node --test --test-name-pattern='release switch' tests/release.test.cjs

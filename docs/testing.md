@@ -94,3 +94,30 @@ bewusst zu. Tests und Assertions werden dadurch nicht unterdrückt.
 
 Grundlagen: [GitHub-Workflow-Syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
 und [übersprungene erforderliche Prüfungen](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks).
+
+## Forgejo-Migration: erster CI-Schritt
+
+Im privaten [Forgejo-Repository](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy)
+liegt der separate Workflow [Migration smoke](../.forgejo/workflows/migration-smoke.yml).
+Er verwendet den bestehenden isolierten Linux-Runner, lädt den exakten PR-Head
+(sonst den Ereignis-Commit), persistiert keine Checkout-Credentials und setzt die
+Node-Version aus `.node-version`. Externe Actions sind auf vollständige Commits
+gepinnt. Die vorhandenen Auswahl-, Log- und Releasewechseltests benötigen weder
+Secrets noch Anwendungsdaten oder Zugriff auf Windows.
+
+Dies qualifiziert zunächst Checkout, Werkzeugversion und Node-Prüfungen. Es
+ersetzt weder `Relevant checks` noch PHP-, Browser- oder native Windows-Prüfungen.
+Die GitHub-Auswahl bleibt unverändert; native Änderungen wählen weiterhin Windows.
+Der Forgejo-Runner besitzt nur `ubuntu-latest`, Windows-Interop und Hostmounts
+bleiben gesperrt. PHP-/Browserübernahme und ein geeigneter Windows-Prüfweg bleiben
+in [Factory #24](https://git.sturmklingen.dedyn.io/Korwerk/ai-factory/issues/24) offen.
+
+Die Actions-Unit bleibt bis zur gesonderten Freigabe deaktiviert. Gemäß
+[Runner-Verfahren](https://git.sturmklingen.dedyn.io/Korwerk/indy-infrastructure/src/branch/main/docs/runbooks/runner.md)
+erfolgt zuerst der menschliche Merge des geprüften ersten Workflows, danach
+die repositorybezogene Aktivierung und ein echter Lauf auf dem festgehaltenen
+Head. Erst dessen beobachteter Kontext darf als Pflichtcheck gesetzt werden.
+Die Aktivierung benötigt keinen Forgejo-/Runner-Neustart oder neuen Dienst;
+das alte globale Bootstrap-Skript für Workflow-MCP wird dafür nicht verwendet.
+Bis zum dokumentierten CI-/Rechte-/Delta-Cutover bleibt GitHub Schreibquelle;
+dieser Branch enthält ausschließlich Migrationsvorbereitung in Forgejo.
