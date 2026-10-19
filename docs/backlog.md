@@ -1,5 +1,28 @@
 # Bewertung und Reihenfolge des Ausbauplans
 
+## Zwischenfazit 19.10.2026
+
+Die folgende Matrix ist der ursprüngliche Plan vom 15.10., keine heutige Liste
+fehlender Implementierungen. Den angenommenen Stand und echte Restabnahmen
+beschreibt die [Bilanz vom 17.10.](backlog-status-2026-10-17.md); offene Issues
+sind maßgeblich. Bereits erledigte Fähigkeiten, Bereitschaft, Weltsicherung,
+Logwerkzeuge und Discord-Status werden nicht erneut als nächste Entwicklung
+beauftragt.
+
+Beibehalten werden die PHP-/Symfony-Anwendung, getrennte unveränderliche
+Releases/Daten, bestehende Spieladapter und die Familienabläufe. Die archivierte
+Python-Anwendung wird nicht als Rückweg reaktiviert. Reale Geräte-/Spieltests,
+gewählte Modpakete und verifizierte Identitäten bleiben echte Abnahmepunkte.
+
+Neu priorisiert: nach dem projektweiten Housekeeping #129 folgt die beauftragte
+Repository-Migration nach Forgejo ([Factory #24](https://git.sturmklingen.dedyn.io/Korwerk/ai-factory/issues/24)).
+Bis zum geprüften Umschaltpunkt bleibt GitHub Schreibquelle. Das ist keine
+Spiel-/Hostmigration und keine Freigabe für Spielaktionen oder Nachrichten.
+Die folgende historische Empfehlung „nach A zuerst #5/#7/#6“ gilt nicht mehr
+als aktueller Auftrag. Kein Hostneustart in dieser Bereinigung.
+
+## Ursprüngliche Priorisierung
+
 Diese Matrix bewahrt die Priorisierung vom 15.10.2026. Der aktuelle implementierte Bestand und der vollständige Umfang der beauftragten Symfony-Migration einschließlich WhatsApp stehen in der [Bestandsaufnahme vom 16.10.2026](symfony-migration.md#neue-bestandsaufnahme-am-16102026). Insbesondere #6, #24, #29 und #58 sind inzwischen umgesetzt; teilweise offene Fachissues können bereits übernommene Teilfunktionen enthalten.
 
 Stand 15.10.2026, Grundlage #5–#26 und der neue Wunsch #29. #27 führt Bewertung und gemeinsame Grundlagen zusammen. Schätzungen sind Nettoarbeitstage für Entwicklung/Prüfung, keine Terminzusage; Wartezeit auf Zugänge, Spielversionen und gemeinsame Spieltests kommt hinzu. Priorität P1 = benötigte Grundlage, P2 = folgender Nutzen, P3 = späterer Ausbau. Die Spannen berücksichtigen den vorhandenen Windows-/WSL-Betrieb; Unsicherheiten werden beim jeweiligen Auftrag erneut geprüft.
