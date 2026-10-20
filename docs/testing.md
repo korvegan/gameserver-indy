@@ -78,7 +78,8 @@ Zugriffsschlüssel oder privaten Laufzeitordner über CI-Läufe hinweg cachen.
   Prozessablauf mit eigenen Stellvertretern; unter WSL die vorhandene private
   native PHP-Testkopie aus `symfony/tools/run_native_php_tests.py` verwenden.
 - `npm run test:ui`: Syntax und kompakte Browserabnahme gegen eigene PHP-Fixtures;
-  zwei Spiele, wesentliche Tabs, Entwürfe, Rechte sowie Desktop/Mobil.
+  Serverübersicht und Detailansicht, zwei Spiele, wesentliche Tabs, erhaltene
+  Entwürfe, Rechte sowie Desktop/Mobil einschließlich Navigationsdialog und Fokus.
 - Nur bei konkretem Bedarf: `npm run test:php -- --extended --filter <Fall>` oder
   `npm run test:symfony-dashboard` für die ausführlichen Simulationen.
 - Architektur-Abnahme des Livekanals: `npm run test:symfony-dashboard -- --events`.

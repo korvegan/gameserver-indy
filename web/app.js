@@ -140,6 +140,10 @@ async function refresh({includeJobs = true} = {}) {
 }
 
 async function selectServer(target, openOverview = false) {
+  if (target === state.selectedServer) {
+    if (openOverview) await go('overview');
+    return true;
+  }
   if (state.connectionDirty && !confirm('Ungespeicherte Beitrittsadresse verwerfen und das Serverprofil wechseln?')) {
     $('#server-select').value = state.selectedServer; return false;
   }
@@ -172,7 +176,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (permission && !can(permission)) return notice('Für diesen Bereich fehlt die Berechtigung.', true);
   if (!navigate(next)) return;
   if (!keepNotice) notice('');
-  const heading = $(`#${next} h1`); heading?.setAttribute('tabindex', '-1'); heading?.focus({preventScroll: true});
+  const heading = $('#' + next)?.querySelector('h1, h2'); heading?.setAttribute('tabindex', '-1'); heading?.focus({preventScroll: true});
   if (next === 'settings') await loadConfig();
   if (next === 'logs' && can('logs.read')) await loadLogs();
   if (next === 'games') await loadGames(target => selectServer(target, true));

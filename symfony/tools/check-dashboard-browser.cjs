@@ -56,6 +56,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     const page = await browser.newPage({viewport:{width:1440,height:1000}}), errors = [];
     page.on('pageerror',error => errors.push(error.message));
     const nav = require('../../tests/browser-navigation.cjs').navigation(page);
+    const select = game => require('../../tests/browser-navigation.cjs').selectServer(page,game);
     const terminal = async id => {
       for (let attempt = 0; attempt < 200; attempt++) {
         const {job} = await (await page.request.get(origin+'/api/jobs?id='+id)).json();
@@ -74,6 +75,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     assert.ok(interrupted >= 2,'SSE recovers from HTTP 503');
     await page.unrouteAll({behavior:'wait'});
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Symfony Indy');
+    await nav('Übersicht').click();
     for (const id of ['start','stop','restart']) assert.equal(await page.locator('#'+id).isEnabled(),true);
     const sidebar = await page.locator('#server-context').boundingBox();
     for (const name of ['Sturmklingen','Spiele / Mods','Übersicht']) {
@@ -118,17 +120,17 @@ const {setTimeout: delay} = require('node:timers/promises');
     assert.equal((await terminal(failed.id)).state,'failed');
     assert.equal(await page.getByLabel('Servername',{exact:true}).inputValue(),'Unverlorener Entwurf');
     assert.equal(await page.locator('#unsaved').isVisible(),true); await fs.unlink(path.join(root,'unknown-status'));
-    page.once('dialog',dialog => dialog.dismiss()); await page.locator('[data-select-server="aska"]').click();
+    page.once('dialog',dialog => dialog.dismiss()); await select('aska');
     assert.equal(await page.locator('#server-select').inputValue(),'enshrouded');
-    page.once('dialog',dialog => dialog.accept()); await page.locator('[data-select-server="aska"]').click();
+    page.once('dialog',dialog => dialog.accept()); await select('aska');
     await page.waitForFunction(() => document.querySelector('#game-label').textContent.startsWith('ASKA'));
-    await page.locator('[data-select-server="enshrouded"]').click(); await nav('Übersicht').click();
+    await select('enshrouded'); await nav('Übersicht').click();
     // An invalid configuration keeps the catalog and the other profile usable.
     const configPath = path.join(root,'library/steamapps/common/EnshroudedServer/enshrouded_server.json'), original = await fs.readFile(configPath);
     await fs.writeFile(configPath,'broken'); await page.locator('#refresh').click();
     await page.waitForFunction(() => document.querySelector('#configuration-check').textContent.includes('nicht lesbar'));
-    await page.locator('[data-select-server="aska"]').click(); await page.waitForFunction(() => document.querySelector('#game-label').textContent.startsWith('ASKA'));
-    await fs.writeFile(configPath,original); await page.locator('[data-select-server="enshrouded"]').click();
+    await select('aska'); await page.waitForFunction(() => document.querySelector('#game-label').textContent.startsWith('ASKA'));
+    await fs.writeFile(configPath,original); await select('enshrouded');
     await page.waitForFunction(() => document.querySelector('#server-name').textContent === 'Erster Entwurf');
     // Backups use the real queue/archive services and an own, stopped fixture world.
     await nav('Weltsicherungen').click(); await page.locator('#backup-create').click();
@@ -162,6 +164,7 @@ const {setTimeout: delay} = require('node:timers/promises');
     const familyGrant = await privateAccess();
     const remote = await browser.newPage({viewport:{width:390,height:844}}); await remote.goto(privateOrigin);
     await remote.waitForFunction(() => document.querySelector('#identity-label').textContent === 'Besitzer · privat');
+    await require('../../tests/browser-navigation.cjs').navigation(remote)('Übersicht').click();
     assert.equal(await remote.getByRole('button',{name:'WhatsApp',exact:true}).count(),0);
     for (const id of ['start','stop','restart']) assert.equal(await remote.locator('#'+id).isEnabled(),true);
     assert.equal((await remote.request.get(privateOrigin+'/api/whatsapp')).status(),403);

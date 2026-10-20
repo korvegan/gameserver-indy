@@ -1,5 +1,5 @@
 import {api} from '../api.js';
-import {$, element} from '../dom.js';
+import {$, element, icon} from '../dom.js';
 import {state} from '../state.js';
 
 export const serverViews = new Set(['overview', 'settings', 'logs', 'backups', 'updates', 'discord', 'whatsapp']);
@@ -18,12 +18,16 @@ export function initWorkspace(selectServer, go) {
     view.setAttribute('role', 'tabpanel'); view.setAttribute('aria-labelledby', `tab-${id === 'whatsapp' ? 'discord' : id}`);
   }
   $('#workspace-heading-actions').append($('#refresh'));
-  $('#workspace-identity').append($('#game-label'), $('#server-name'), $('#profile-caption'));
-  $('#workspace-state').append($('#server-state'), $('#status-updated'), $('#process-note'));
+  $('#workspace-identity').append($('#server-name'));
+  $('#workspace-state').append($('#game-label'), $('#server-state'), $('#status-updated'), $('#process-note'));
   $('#workspace-actions').append($('#start'), $('#stop'), $('#restart'));
+  $('#workspace-actions').before($('#profile-caption'));
+  for (const [id, name, label] of [['refresh', 'refresh', 'Aktualisieren'], ['start', 'play', 'Server starten'], ['stop', 'stop', 'Stoppen'], ['restart', 'refresh', 'Neu starten']]) {
+    $('#' + id).replaceChildren(icon(name), document.createTextNode(label));
+  }
   $('#workspace-setup').append($('#setup-panel'), $('#control-hint'), $('#access-note'));
-  $('#overview .page-heading h1').textContent = 'Übersicht';
-  $('#overview .subtitle').textContent = 'Stand deines ausgewählten Serverprofils.';
+  $('#overview .page-heading h1').textContent = 'Server im Überblick';
+  $('#overview .subtitle').remove();
   const metrics = $('#overview .server-details'); metrics.classList.add('overview-metrics');
   $('#overview .server-card').replaceWith(metrics);
   const join = $('#join-heading').closest('section'), network = element('details', undefined, 'network-details');
@@ -46,8 +50,10 @@ export function initWorkspace(selectServer, go) {
     ['players-summary', 'Spielerbelegung', 'Unbekannt', 'logs'], ['steam-summary', 'Steam-Version', 'Prüfung offen', 'updates'],
     ['backup-summary', 'Weltsicherungen', '72 Stunden · Pins bleiben', 'backups']]) {
     const button = element('button', undefined, 'overview-summary'); button.type = 'button';
-    button.append(element('small', title), Object.assign(element('strong', value), {id}));
-    if (id === 'readiness-summary') button.append(Object.assign(element('small',''),{id:'readiness-evidence'}));
+    const content = element('span');
+    content.append(element('small', title), Object.assign(element('strong', value), {id}));
+    if (id === 'readiness-summary') content.append(Object.assign(element('small',''),{id:'readiness-evidence'}));
+    button.append(icon({'readiness-summary':'server', 'players-summary':'users', 'steam-summary':'disc', 'backup-summary':'database'}[id]), content, icon('chevron'));
     button.addEventListener('click', () => go(target));
     if (target === 'backups') button.dataset.permission = 'backups.manage';
     if (target === 'logs') button.dataset.permission = 'jobs.read';
@@ -56,7 +62,7 @@ export function initWorkspace(selectServer, go) {
   metrics.before(metricsPanel);
   $('#world-list').addEventListener('click', event => {
     const button = event.target.closest('[data-select-server]');
-    if (button && button.dataset.selectServer !== state.selectedServer) selectServer(button.dataset.selectServer);
+    if (button) selectServer(button.dataset.selectServer, true);
   });
   $('#open-join-details').addEventListener('click', async () => { await go('overview'); $('#network-details').open = true; $('#network-details').scrollIntoView({block: 'nearest'}); });
   $('.server-tabs').addEventListener('keydown', event => {
@@ -66,6 +72,14 @@ export function initWorkspace(selectServer, go) {
       : (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
     event.preventDefault(); tabs[next].click(); tabs[next].focus({preventScroll: true});
   });
+  for (const id of serverViews) {
+    const heading = $('#' + id + ' .page-heading h1');
+    if (heading) heading.replaceWith(element('h2', heading.textContent));
+  }
+  for (const [details, name] of [[$('#performance-panel'),'activity'], [technical,'profiles'], [network,'users'], [help,'help']]) {
+    details.querySelector('summary').prepend(icon(name));
+    details.querySelector('summary').append(icon('chevron'));
+  }
 }
 
 function observationLabel(data) {
@@ -76,52 +90,57 @@ function observationLabel(data) {
 export function renderWorkspace() {
   const profile = state.catalog.servers.find(server => server.id === state.selectedServer), game = profile?.game;
   $('#server-context-name').textContent = profile?.label || 'Serverprofil wird geladen …';
+  $('#server-context').disabled = !profile || !state.catalogAvailable;
   $('#server-detail').dataset.game = Object.hasOwn(artwork, game) ? game : 'generic';
-  if (selectedProfile !== state.selectedServer) {
-    selectedProfile = state.selectedServer;
+  if (selectedProfile !== state.selectedServer + ':' + game) {
+    selectedProfile = state.selectedServer + ':' + game;
     const style = artwork[game];
-    for (const [id, suffix] of [['game-banner-art', 'hero.jpg'], ['game-wordmark-image', 'logo.png']]) {
+    for (const id of ['game-banner-art', 'server-context-art']) {
       const image = $(`#${id}`); image.hidden = !style;
-      if (style) image.src = `/artwork/${game}-${suffix}`; else image.removeAttribute('src');
+      if (style) image.src = `/artwork/${game}-hero.jpg`; else image.removeAttribute('src');
     }
-    $('#game-wordmark-image').alt = style?.label || '';
-    $('#game-wordmark-fallback').hidden = Boolean(style); $('#game-wordmark-fallback').textContent = profile?.game || 'GameServer Indy';
-    $('#game-banner-caption').textContent = style?.caption || 'Deine gemeinsame Spielwelt.';
     $('#server-detail').setAttribute('aria-label', `${profile?.label || 'Serverprofil'} · Serverbereiche`);
-    $('#game-label').textContent = `${style?.label || game || 'Spielserver'} · DEDICATED SERVER`;
-    $('#profile-caption').textContent = profile?.label || 'Serverprofil wird geladen';
+    $('#game-label').textContent = style?.label || game || 'Spielserver';
+    $('#profile-caption').textContent = 'Profil: ' + (profile?.label || 'wird geladen');
     $('#readiness-summary').textContent = 'Unbekannt';
     $('#readiness-evidence').textContent = '';
   }
-  const list = $('#world-list'), signature = JSON.stringify(state.catalog.servers.map(({id, game, label}) => ({id, game, label})));
+  const list = $('#world-list'), signature = JSON.stringify([state.catalogAvailable, state.catalog.servers.map(({id, game, label}) => ({id, game, label}))]);
   if (list.dataset.catalog !== signature) {
     list.dataset.catalog = signature; list.replaceChildren();
     for (const entry of state.catalog.servers) {
       const card = element('button', undefined, 'world-card'); card.type = 'button'; card.dataset.selectServer = entry.id;
       card.dataset.game = Object.hasOwn(artwork, entry.game) ? entry.game : 'generic';
       const gameLabel = artwork[entry.game]?.label || state.catalog.games.find(game => game.id === entry.game)?.label || entry.game;
-      card.setAttribute('aria-label', `${gameLabel} · ${entry.label} auswählen`);
+      card.setAttribute('aria-label', `${gameLabel} · ${entry.label} öffnen`);
       card.setAttribute('aria-describedby', `world-status-${entry.id}`);
+      const media = element('span', undefined, 'world-media');
       if (Object.hasOwn(artwork, entry.game)) {
-        const image = element('img'); image.src = `/artwork/${entry.game}-hero.jpg`; image.alt = ''; image.className = 'world-art'; card.append(image);
-        const logo = element('img'); logo.src = `/artwork/${entry.game}-logo.png`; logo.alt = artwork[entry.game].label;
-        const mark = element('span', undefined, 'game-wordmark'); mark.append(logo); card.append(mark);
-      } else card.append(element('span', entry.game, 'world-game'));
+        const image = element('img'); image.src = `/artwork/${entry.game}-hero.jpg`; image.alt = ''; image.className = 'world-art';
+        media.append(image);
+      } else media.append(icon('server'));
       const status = element('span', '', 'world-status'); status.id = `world-status-${entry.id}`;
-      card.append(element('strong', entry.label), status, element('span', '', 'world-selection'));
+      const body = element('span', undefined, 'world-card-body'), identity = element('span', undefined, 'world-identity');
+      identity.append(element('strong', gameLabel), element('small', '', 'world-profile'));
+      const statusGroup = element('span', undefined, 'world-observation'); statusGroup.append(status, element('small', 'Serverstatus'));
+      body.append(identity, statusGroup);
+      const open = element('span', undefined, 'world-selection'); open.append(element('span', 'Server öffnen'), icon('arrow'));
+      card.append(media, body, open);
       list.append(card);
     }
+    if (!state.catalog.servers.length) list.append(element('p', state.catalogAvailable ? 'Keine Serverprofile freigegeben.' : 'Serverprofile werden geladen …', 'empty'));
     const allowed = new Set(state.catalog.servers.map(server => server.id));
     for (const id of snapshots.keys()) if (!allowed.has(id)) snapshots.delete(id);
   }
   $('#world-count').textContent = `${state.catalog.servers.length} Profile`;
   for (const card of list.children) {
-    const active = card.dataset.selectServer === state.selectedServer;
-    card.setAttribute('aria-pressed', String(active)); card.disabled = state.submitting || !state.catalogAvailable;
+    if (!card.dataset.selectServer) continue;
+    card.disabled = state.submitting || !state.catalogAvailable;
     const cached = snapshots.get(card.dataset.selectServer);
+    const profile = state.catalog.servers.find(server => server.id === card.dataset.selectServer);
+    card.querySelector('.world-profile').textContent = 'Profil: ' + (cached?.summary?.title || profile.label);
     card.querySelector('.world-status').textContent = observationLabel(cached);
     card.querySelector('.world-status').classList.toggle('running', Boolean(cached?.status.running && cached.status.known !== false));
-    card.querySelector('.world-selection').textContent = active ? '✓ Ausgewählt' : 'Öffnen →';
     card.title = cached?.observedAt ? `Stand: ${new Date(cached.observedAt).toLocaleTimeString('de-DE')}` : 'Noch keine bestätigte Statusabfrage';
   }
 }

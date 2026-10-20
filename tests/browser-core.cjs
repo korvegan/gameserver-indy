@@ -10,8 +10,12 @@ const fs=require('node:fs/promises');
     const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
     page.on('pageerror',e=>errors.push(e.message));await page.goto(origin);
     await page.waitForSelector('#world-list [data-select-server="aska"]');
+    const navigation = require('./browser-navigation.cjs');
+    const nav = navigation.navigation(page);
+    assert.equal(await page.locator('#fleet').isVisible(),true);
+    assert.equal(await page.locator('#server-workspace').isVisible(),false);
     const select=async game=>{
-      await page.locator(`[data-select-server="${game}"]`).click();
+      await navigation.selectServer(page,game);
       const download = await page.locator('#export-logs').getAttribute('href');
       assert.ok(!download || new URL(download,origin).searchParams.get('server')===game);
       await page.waitForFunction(async game=>{const {state}=await import('/state.js');return state.selectedServer===game&&state.available&&!state.refreshing;},game);
@@ -105,17 +109,21 @@ const fs=require('node:fs/promises');
     await fs.mkdir('artifacts',{recursive:true}); await page.screenshot({path:'artifacts/symfony-challenges-390.png',fullPage:true});
     await page.setViewportSize({width:1440,height:1000});
     await page.locator('#community-challenges > summary').click();
-    await page.locator('#server-context').click();
+    await nav('Übersicht').click();
     await page.getByRole('tab',{name:'Einstellungen',exact:true}).click();
     await page.getByLabel('Servername',{exact:true}).fill('Familienentwurf');
     await page.getByRole('tab',{name:'Updates',exact:true}).click();
     await page.getByRole('tab',{name:'Einstellungen',exact:true}).click();
     assert.equal(await page.getByLabel('Servername',{exact:true}).inputValue(),'Familienentwurf');
-    page.once('dialog',d=>d.dismiss());await page.locator('[data-select-server="aska"]').click();
+    await nav('Serverübersicht').click();
+    await select('enshrouded');
+    await nav('Einstellungen').click();
+    assert.equal(await page.getByLabel('Servername',{exact:true}).inputValue(),'Familienentwurf');
+    page.once('dialog',d=>d.dismiss());await navigation.selectServer(page,'aska');
     assert.equal(await page.locator('#server-select').inputValue(),'enshrouded');
     assert.equal(await page.locator('#server-select').isVisible(),false);
     for(const view of ['games','community','access']) {
-      await page.locator(`.sidebar [data-view="${view}"]`).click();
+      await nav({games:'Spiele / Mods',community:'Sturmklingen',access:'Familienzugang'}[view]).click();
       assert.equal(await page.locator('#server-context').isVisible(),true);
       if(view==='games') {
         await page.getByText('Spiel ohne eigenen Dedicated Server hinzufügen',{exact:true}).click();
@@ -144,9 +152,10 @@ const fs=require('node:fs/promises');
         await page.setViewportSize({width:390,height:1000}); assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
         await page.setViewportSize({width:1440,height:1000});
       }
-      await page.locator('#server-context').click();
+      await nav('Serverübersicht').click();
       assert.equal(await page.locator('#world-list').isVisible(),true);
     }
+    await nav('Übersicht').click();
     await fs.mkdir('artifacts',{recursive:true});
     await page.getByRole('tab',{name:'Übersicht',exact:true}).click();
     await page.getByText('Leistung & Ruckler',{exact:true}).click();
@@ -188,12 +197,21 @@ const fs=require('node:fs/promises');
       assert.equal(await page.locator('#quick-join-value').isVisible(),true);
       await page.screenshot({path:`artifacts/symfony-core-${width}.png`,fullPage:true});
       if (width===390) {
+        await page.locator('#navigation-toggle').click();
+        await page.locator('#mobile-navigation').waitFor({state:'visible'});
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(()=>!document.querySelector('#mobile-navigation').open && document.querySelector('#navigation-toggle').getAttribute('aria-expanded')==='false');
+        assert.equal(await page.evaluate(()=>document.activeElement.id),'navigation-toggle');
+        await nav('Serverübersicht').click();
+        assert.equal(await page.locator('#mobile-navigation').isVisible(),false);
+        assert.equal(await page.locator('#fleet').isVisible(),true);
+        await nav('Übersicht').click();
         await page.getByText('Leistung & Ruckler',{exact:true}).click(); await page.locator('#performance-chart svg').waitFor();
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
         await page.screenshot({path:'artifacts/symfony-performance-390.png',fullPage:true});
         await page.getByText('Leistung & Ruckler',{exact:true}).click();
       }
     }
-    assert.deepEqual(errors,[]);console.log('Family UI passed: both games, server tabs, drafts, join details and desktop/mobile.');
+    assert.deepEqual(errors,[]);console.log('Family UI passed: overview/detail navigation, both games, surviving drafts, tabs, join details, mobile drawer and keyboard focus.');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

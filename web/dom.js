@@ -1,5 +1,12 @@
 export const $ = selector => document.querySelector(selector);
 
+export function icon(name) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'ui-icon'); svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(svg.namespaceURI, 'use'); use.setAttribute('href', '#icon-' + name);
+  svg.append(use); return svg;
+}
+
 export function notice(message, error = false) {
   const box = $('#notice');
   box.replaceChildren();
