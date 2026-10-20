@@ -10,18 +10,19 @@ const fs = require('node:fs/promises');
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (!request.url().startsWith(origin) && !request.url().startsWith('blob:') && !request.url().startsWith('data:')) external.push(request.url()); });
   const nav = require('./browser-navigation.cjs').navigation(page);
+  const select = game => require('./browser-navigation.cjs').selectServer(page,game);
   const position = element => { const rect = element.getBoundingClientRect(); return {x: rect.x + scrollX, y: rect.y + scrollY, width: rect.width, height: rect.height}; };
   try {
     await page.goto(origin);
     await page.waitForFunction(() => document.querySelector('#world-list [data-select-server="aska"]'));
-    await page.locator('[data-select-server="enshrouded"]').click();
+    await select('enshrouded');
     await page.waitForFunction(() => document.querySelector('#server-detail').dataset.game === 'enshrouded' && document.querySelector('#quick-join-value').textContent.includes(':'));
     assert.equal(await page.locator('#network-details').evaluate(node => node.open), false);
     await fs.mkdir('artifacts', {recursive:true});
     for (const width of [1440, 820, 390, 320, 2560]) {
       await page.setViewportSize({width, height: 1000});
       for (const game of ['aska', 'enshrouded']) {
-        await page.locator(`[data-select-server="${game}"]`).click();
+        await select(game);
         await page.waitForFunction(game => document.querySelector('#game-banner-art').getAttribute('src') === `/artwork/${game}-hero.jpg`, game);
         await page.waitForFunction(async game => { const {state} = await import('/state.js'); return state.selectedServer === game && state.available && !state.refreshing; }, game);
         await page.locator('#game-banner-art').evaluate(image => image.decode());
@@ -57,10 +58,10 @@ const fs = require('node:fs/promises');
     assert.equal(await page.getByLabel('Servername',{exact:true}).inputValue(),'Unberührter Tab-Entwurf');
     assert.equal(await page.evaluate(() => window.workspaceDraftNode === document.querySelector('[name="name"]')),true);
     page.once('dialog',dialog=>dialog.dismiss());
-    await page.locator('[data-select-server="aska"]').click();
+    await select('aska');
     assert.equal(await page.locator('#server-select').inputValue(),'enshrouded');
     page.once('dialog',dialog=>dialog.accept());
-    await page.locator('[data-select-server="aska"]').click();
+    await select('aska');
     await nav('Übersicht').click();
     // A failed status keeps the selected theme and actions; it never exposes the old address.
     await page.route('**/api/status?server=aska', route => route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Isolierter Statusausfall'})}));
@@ -70,8 +71,8 @@ const fs = require('node:fs/promises');
     assert.match(await page.locator('[data-select-server="aska"] .world-status').innerText(),/unbekannt/);
     for (const id of ['start','stop','restart']) assert.equal(await page.locator('#'+id).isEnabled(),true);
     await page.unrouteAll({behavior:'wait'});
-    await page.locator('[data-select-server="enshrouded"]').click();
-    await page.waitForFunction(() => document.querySelector('#game-label').textContent.startsWith('ENSHROUDED'));
+    await select('enshrouded');
+    await page.waitForFunction(() => document.querySelector('#game-label').textContent === 'Enshrouded');
     await page.getByRole('tab',{name:'Übersicht',exact:true}).focus();
     await page.keyboard.press('End');
     assert.equal(await page.evaluate(() => document.activeElement.id),'tab-discord');

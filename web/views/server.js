@@ -89,11 +89,11 @@ export function renderStatus(data) {
   renderUpdate(data.update);
   renderConnection(data.connection);
   $('#server-name').textContent = summary.title;
-  $('#game-label').textContent = `${status.game_label.toUpperCase()} · DEDICATED SERVER`;
-  $('#profile-caption').textContent = status.profile_label;
+  $('#game-label').textContent = status.game_label;
+  $('#profile-caption').textContent = 'Profil: ' + status.profile_label;
   for (const [index, id] of ['slot-count', 'preset-label', 'query-port'].entries()) {
     const metric = summary.metrics[index];
-    $(`#metric-label-${index}`).textContent = metric?.label.toUpperCase() || '—';
+    $(`#metric-label-${index}`).textContent = metric?.label || '—';
     $(`#${id}`).textContent = metric?.value === '' ? '—' : metric?.value ?? '—';
   }
   $('#process-id').textContent = status.processes?.map(p => p.pid).join(', ') || '—';

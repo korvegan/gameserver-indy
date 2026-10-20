@@ -18,6 +18,7 @@ const assert = require('node:assert/strict');
         });
         await page.goto(origin);
         await page.waitForFunction(() => document.querySelector('#job-list').textContent.includes('Isolierter Startfehler'));
+        await require('./browser-navigation.cjs').selectServer(page,'aska');
         const session = await (await page.request.get(origin+'/api/session')).json();
         assert.equal(session.principal.role,role);
         assert.equal((await page.request.get(origin+'/api/jobs?server=aska')).status(),200);

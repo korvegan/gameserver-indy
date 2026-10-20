@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0e191f">
+  <meta name="theme-color" content="#101214">
   <title>GameServer Indy · Serververwaltung</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
@@ -11,31 +11,65 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
+  <svg class="icon-definitions" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="icon-grid" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></symbol>
+    <symbol id="icon-game" viewBox="0 0 24 24"><path d="M7 6h10c3 0 4 4 5 10 .5 3-2 4-4 1l-2-2H8l-2 2c-2 3-4.5 2-4-1C3 10 4 6 7 6Z"/><path d="M6 9v6M3 12h6M16 10h.01M19 13h.01"/></symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24"><path d="M12 5C8 2 4 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-2-1-6-2-10 1Zm0 0v16"/></symbol>
+    <symbol id="icon-profiles" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 12h8M8 17h4"/></symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a7 7 0 0 1 14 0v2H2ZM17 3a4 4 0 0 1 0 8m2 4a6 6 0 0 1 3 6"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+    <symbol id="icon-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="m7 3 15 9-15 9Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="7" width="13" height="15" rx="2"/><path d="M16 7V2H3v15h5"/></symbol>
+    <symbol id="icon-server" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="7" rx="2"/><rect x="2" y="14" width="20" height="7" rx="2"/><path d="M6 6.5h.01M6 17.5h.01M17 6.5h2M17 17.5h2"/></symbol>
+    <symbol id="icon-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M5 9a8 8 0 0 1 4-4m6 14a8 8 0 0 0 4-4"/></symbol>
+    <symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 4 18 4 18 0V5M3 12c0 4 18 4 18 0"/></symbol>
+    <symbol id="icon-activity" viewBox="0 0 24 24"><path d="M1 12h5l3-9 6 18 3-9h5"/></symbol>
+    <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4m0 3h.01"/></symbol>
+  </defs></svg>
+  <a class="skip-link" href="#main-content">Zum Inhalt</a>
+  <header class="mobile-header"><a href="/" class="mobile-brand" aria-label="GameServer Indy Startseite">indy</a><button id="navigation-toggle" class="icon-button" aria-label="Navigation öffnen" aria-controls="mobile-navigation" aria-expanded="false"><svg class="ui-icon" aria-hidden="true"><use href="#icon-menu"/></svg></button></header>
+  <div id="desktop-navigation">
   <aside class="sidebar">
-    <a class="brand" href="/" aria-label="GameServer Indy Startseite"><img src="/favicon.svg" alt="" width="38" height="38"><span>GAMESERVER<small>INDY / SERVERVERWALTUNG</small></span></a>
-    <div class="server-picker"><button id="server-context" class="server-context" data-view="overview"><strong id="server-context-name">Serverprofil wird geladen …</strong><small>Zur Spielauswahl →</small></button><select id="server-select" aria-label="Aktuelles Serverprofil" hidden disabled><option>Wird geladen …</option></select></div>
-    <p class="nav-label">VERWALTUNG</p>
+    <div class="brand-row"><a class="brand" href="/" aria-label="GameServer Indy Startseite"><span>indy<small>GameServer</small></span></a><button id="navigation-close" class="icon-button" aria-label="Navigation schließen"><svg class="ui-icon" aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+    <select id="server-select" aria-label="Aktuelles Serverprofil" hidden disabled><option>Wird geladen …</option></select>
     <nav aria-label="Hauptnavigation">
-      <button class="nav active" data-view="overview" aria-current="page"><span aria-hidden="true">◈</span> Serverzentrale</button>
-      <button class="nav" data-view="games"><span aria-hidden="true">▦</span> Spiele / Mods</button>
-      <button class="nav" data-view="community"><span aria-hidden="true">⚑</span> Sturmklingen</button>
-      <button class="nav" data-view="profiles" data-permission="catalog.write" hidden><span aria-hidden="true">＋</span> Serverprofile</button>
-      <button class="nav" data-view="access" data-permission="access.manage" hidden><span aria-hidden="true">♙</span> Familienzugang</button>
+      <button class="nav active" data-view="fleet" aria-current="page"><svg class="ui-icon" aria-hidden="true"><use href="#icon-grid"/></svg> Serverübersicht</button>
+      <button class="nav" data-view="games"><svg class="ui-icon" aria-hidden="true"><use href="#icon-game"/></svg> Spiele / Mods</button>
+      <button class="nav" data-view="community"><svg class="ui-icon" aria-hidden="true"><use href="#icon-book"/></svg> Sturmklingen</button>
+      <button class="nav" data-view="profiles" data-permission="catalog.write" hidden><svg class="ui-icon" aria-hidden="true"><use href="#icon-profiles"/></svg> Serverprofile</button>
+      <button class="nav" data-view="access" data-permission="access.manage" hidden><svg class="ui-icon" aria-hidden="true"><use href="#icon-users"/></svg> Familienzugang</button>
     </nav>
+    <button id="server-context" class="server-context" data-view="fleet" disabled><img id="server-context-art" alt="" hidden width="48" height="48"><span><strong id="server-context-name">Serverprofil wird geladen …</strong><small>Server wechseln</small></span><svg class="ui-icon" aria-hidden="true"><use href="#icon-chevron"/></svg></button>
     <div class="sidebar-bottom"><span class="local-dot"></span> <span id="location-label">Lokal auf deinem Rechner</span><small>GameServer Indy · v0.3</small></div>
   </aside>
-  <main>
-    <header class="topbar"><span><span class="muted">Verwaltung</span><span class="slash">/</span><span id="breadcrumb">Übersicht</span></span><span class="local-badge" id="identity-label">LOCAL HOST</span></header>
+  </div>
+  <dialog id="mobile-navigation" aria-label="Hauptnavigation"></dialog>
+  <main id="main-content" tabindex="-1">
+    <header class="topbar"><span id="breadcrumb-trail"><span class="muted">Verwaltung</span><span class="slash">/</span><span id="breadcrumb">Serverübersicht</span></span><button id="back-to-fleet" class="text-button" data-view="fleet" hidden><svg class="ui-icon" aria-hidden="true"><use href="#icon-back"/></svg> Alle Server</button><div class="topbar-actions"><span class="local-badge" id="identity-label">Zugriff wird geprüft</span><div id="workspace-heading-actions"></div></div></header>
     <div id="notice" role="status" aria-live="polite" hidden></div>
     <div id="maintenance-banner" class="inline-info" role="status" hidden></div>
     <section id="update-assistant" class="panel mod-catalog" data-permission="backups.manage" hidden></section>
-    <section id="server-workspace" aria-label="Serverzentrale">
-      <div class="page-heading workspace-heading"><div><h1>Serverzentrale</h1><p class="subtitle">Deine Spiele. Ein gemeinsamer Überblick.</p></div><div id="workspace-heading-actions"></div></div>
-      <div class="workspace-layout">
-        <section class="worlds"><div class="worlds-heading"><h2>Deine Spielwelten</h2><span id="world-count">Profile laden …</span></div><div id="world-list"><p class="empty">Serverprofile werden geladen …</p></div></section>
+    <section id="fleet" class="view" aria-labelledby="fleet-heading">
+      <div class="page-heading"><div><h1 id="fleet-heading">Deine Spielserver</h1><p class="subtitle">Wähle eine Welt für euren nächsten Spielabend.</p></div></div>
+      <span id="world-count" class="sr-only">Profile laden …</span>
+      <div id="world-list"><p class="empty">Serverprofile werden geladen …</p></div>
+      <section class="fleet-shortcuts" aria-labelledby="shortcuts-heading"><h2 id="shortcuts-heading">Direkt weiter</h2>
+        <button class="shortcut-row" data-view="games"><svg class="ui-icon" aria-hidden="true"><use href="#icon-game"/></svg><span><strong>Spiele / Mods</strong><small>Spiele und gemeinsame Mod-Stände</small></span><svg class="ui-icon" aria-hidden="true"><use href="#icon-chevron"/></svg></button>
+        <button class="shortcut-row" data-view="community"><svg class="ui-icon" aria-hidden="true"><use href="#icon-book"/></svg><span><strong>Sturmklingen</strong><small>Eure Chronik und gemeinsamen Ziele</small></span><svg class="ui-icon" aria-hidden="true"><use href="#icon-chevron"/></svg></button>
+      </section>
+    </section>
+    <section id="server-workspace" aria-label="Ausgewählter Spielserver" hidden>
         <section id="server-detail" class="server-detail" data-game="generic" aria-label="Ausgewählter Server">
-          <header class="game-banner"><img id="game-banner-art" class="game-banner-art" alt="" hidden width="1920" height="620"><div class="game-banner-shade" aria-hidden="true"></div><span class="game-banner-kicker">DEINE SPIELWELT · DEDICATED SERVER</span><span id="game-wordmark" class="game-wordmark"><span id="game-wordmark-fallback">GameServer Indy</span><img id="game-wordmark-image" alt="" width="640" height="360" hidden></span><span id="game-banner-caption" class="game-banner-caption">Deine gemeinsame Spielwelt.</span></header>
+          <div class="server-heading">
           <div id="workspace-controlbar" class="workspace-controlbar"><div id="workspace-identity"></div><div id="workspace-state" class="workspace-state"></div><div id="workspace-actions"></div></div>
+          <header class="game-banner"><img id="game-banner-art" class="game-banner-art" alt="" hidden width="1920" height="620"></header>
+          </div>
           <div class="quick-join"><div><small id="quick-join-label">Beitrittsangabe</small><strong id="quick-join-value">Wird geladen …</strong><span id="quick-join-hint">Verbindung wird geprüft.</span></div><button id="quick-join-copy" class="button secondary" disabled>Kopieren</button><button class="text-button" id="open-join-details">Details →</button></div>
           <div class="workspace-receipt"><p id="workspace-job-state" role="status">Keine Auftragsdaten geladen.</p><button class="text-button" data-go="logs" data-permission="jobs.read" hidden>Aufträge ansehen <span id="workspace-job-count"></span> →</button></div>
           <div id="workspace-setup"></div>
@@ -50,14 +84,13 @@
           <nav id="message-channels" class="message-channels" aria-label="Mitteilungskanal" hidden><button data-view="discord" class="button secondary">Discord</button><button data-view="whatsapp" class="button secondary" data-local-owner data-permission="discord.write" hidden>WhatsApp</button></nav>
           <div id="server-panels" class="server-panels"></div>
         </section>
-      </div>
     </section>
     <section id="overview" class="view">
       <div class="page-heading"><div><p class="eyebrow">DEINE SPIELE. DEINE SERVER.</p><h1>Dein nächster Spielabend.</h1><p class="subtitle">Dedicated Server an einem Ort verwalten.</p></div><button class="button secondary" id="refresh">↻ Aktualisieren</button></div>
       <div class="server-card">
         <div class="server-card-top"><div class="world-icon" aria-hidden="true">♜</div><span class="pill" id="server-state">Status wird geprüft</span></div>
-        <p class="eyebrow" id="game-label">DEDICATED SERVER</p><h2 id="server-name">GameServer Indy</h2><p class="server-caption" id="profile-caption">Dein ausgewähltes Serverprofil.</p><p id="status-updated" class="field-help"></p>
-        <div class="server-details"><div><small id="metric-label-0">SPIELERPLÄTZE</small><strong id="slot-count">—</strong></div><div><small id="metric-label-1">SCHWIERIGKEIT</small><strong id="preset-label">—</strong></div><div><small id="metric-label-2">QUERY-PORT</small><strong id="query-port">—</strong></div><div><small>PROZESS-ID</small><strong id="process-id">—</strong></div></div>
+        <p class="eyebrow" id="game-label">Spielserver</p><h1 id="server-name">GameServer Indy</h1><p class="server-caption" id="profile-caption">Dein ausgewähltes Serverprofil.</p><p id="status-updated" class="field-help"></p>
+        <div class="server-details"><div><small id="metric-label-0">Spielerplätze</small><strong id="slot-count">—</strong></div><div><small id="metric-label-1">Schwierigkeit</small><strong id="preset-label">—</strong></div><div><small id="metric-label-2">Query-Port</small><strong id="query-port">—</strong></div><div><small>Prozess-ID</small><strong id="process-id">—</strong></div></div>
         <div class="server-actions"><button class="button primary" id="start" disabled>▶ Server starten</button><button class="button secondary" id="stop" disabled>■ Stoppen</button><button class="button secondary" id="restart" disabled>↻ Neu starten</button><span id="process-note">Windows-Prozess wird geprüft.</span></div>
       </div>
       <div id="setup-panel" class="setup-panel" hidden><div><h3>Bereit für den ersten Start?</h3><p>Erzeuge eine fehlende Konfiguration passend zum Spiel. Vorhandene Dateien werden geprüft.</p></div><button class="button primary" id="setup">Server vorbereiten</button></div>
@@ -213,7 +246,6 @@
         <div class="form-footer chronicle-actions"><button id="edit-moment" class="button primary" hidden>Moment korrigieren</button><button id="close-moment-detail" class="button secondary">Schließen</button></div>
       </dialog>
     </section>
-    <footer>GAMESERVER INDY<span>Deine Welten bleiben auf deinem Rechner.</span></footer>
   </main>
 </body>
 </html>
