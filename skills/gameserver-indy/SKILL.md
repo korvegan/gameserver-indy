@@ -5,7 +5,7 @@ description: GameServer Indy auf korvegans Windows-/WSL-Rechner weiterentwickeln
 
 # GameServer Indy
 
-Native Windows-Spielserver, verwaltet durch **PHP/Symfony und FrankenPHP unter WSL**. Hauptcheckout: `/home/korvegan/projects/gameserver-indy`; Repository: `korvegan/gameserver-indy`. Der frühere Projektpfad `enshrouded-indy` existiert nicht mehr.
+Native Windows-Spielserver, verwaltet durch **PHP/Symfony und FrankenPHP unter WSL**. Hauptcheckout: `/home/korvegan/projects/gameserver-indy`; führendes Repository: `Korwerk/gameserver-indy` auf Forgejo (`git.sturmklingen.dedyn.io`). GitHub `korvegan/gameserver-indy` ist nur Backup; neue Issues, PRs und Reviews gehören nach Forgejo. Der frühere Projektpfad `enshrouded-indy` existiert nicht mehr.
 
 Seit 17.10.2026 ist PHP die einzige Anwendungslaufzeit. Python-Anwendung und eigene Tests liegen unter `archive/`; weder starten noch als Rückweg prüfen. Einige isolierte Testhelfer sind weiterhin Python-Skripte. Ein Rückweg verwendet ein vorheriges PHP-Release mit derselben aktuellen Datenablage.
 
