@@ -28,3 +28,19 @@ Die Kopfzeile priorisiert Spiel, Server, Prozessstand, Beitritt und Aktionen.
 Auftragshinweise nennen knapp Annahme oder Ausführung; technische Hintergründe
 stehen unter „Wie funktionieren Serverbefehle?“. Unbekannte Bereitschaft und
 Spielerbelegung bleiben ausdrücklich unbestätigt.
+
+## Neugestaltung mit Build Web Apps
+
+Der Auftrag vom 20.10.2026 zu #134 übernimmt einen mit Build Web Apps und
+Imagegen erstellten Entwurf in die bestehende Oberfläche. Neutrale dunkle
+Flächen, eine breitere Hauptnavigation und größere Systemschrift ersetzen
+die bisherige kleinteilige Darstellung. Die Spielmotive und die Akzentfarben
+von Enshrouded und ASKA bleiben erhalten. Status und technische Angaben stehen
+in zusammenhängenden Leisten; auf schmalen Displays ordnen sie sich in zwei
+Spalten. Serveraktionen und Tabs erhalten ausreichend hohe Bedienelemente.
+
+Die Umsetzung ändert ausschließlich CSS und die Browser-Themenfarbe. Symfony,
+Twig, native JavaScript-Module, Profilbindung, Berechtigungen, Entwürfe und
+Liveereignisse verwenden dieselben vorhandenen Abläufe. Der vom Plugin
+bevorzugte Browser-Skill fehlt in dieser Sitzung; die Prüfung verwendet
+deshalb das vorhandene Playwright mit der isolierten PHP-Dashboard-Fixture.

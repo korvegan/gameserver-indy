@@ -1,83 +1,97 @@
 /* Persistent server shell; existing feature views retain their own behavior. */
+:root {
+  --bg: #0e191f;
+  --surface: #19272f;
+  --border: #344a56;
+  --text: #edf3f7;
+  --muted: #a7bfcd;
+  --accent: #d5bf92;
+}
 body {
   font-size: 14px;
 }
 .sidebar {
-  width: 194px;
-  padding: 24px 14px;
+  width: 238px;
+  padding: 24px 16px;
+  background: #101c22;
 }
 .brand {
   gap: 9px;
-  font-size: 12px;
-  letter-spacing: 1.1px;
+  font-size: 17px;
+  letter-spacing: 0.5px;
 }
 .brand img {
-  width: 31px;
-  height: 31px;
+  width: 34px;
+  height: 34px;
 }
 .brand small {
-  font-size: 8px;
+  font-size: 10px;
 }
 .server-picker {
-  margin-top: 24px;
-  font-size: 11px;
+  margin-top: 28px;
+  font-size: 12px;
 }
 .server-picker select {
-  font-size: 11px;
+  font-size: 12px;
   min-width: 0;
 }
 .nav-label {
-  font-size: 9px;
-  margin: 22px 10px 10px;
+  font-size: 12px;
+  margin: 24px 12px 12px;
+  color: var(--muted);
 }
 .sidebar nav {
-  gap: 5px;
-}
-.sidebar .nav {
-  font-size: 12px;
-  padding: 10px 9px;
   gap: 8px;
 }
+.sidebar .nav {
+  font-size: 14px;
+  padding: 12px 10px;
+  min-height: 48px;
+  color: var(--muted);
+  gap: 12px;
+}
 .sidebar .nav span {
-  font-size: 16px;
-  width: 18px;
+  font-size: 20px;
+  width: 22px;
 }
 .sidebar-bottom {
-  font-size: 10px;
+  font-size: 12px;
   padding-inline: 6px;
+  color: var(--muted);
 }
 main {
-  margin-left: 194px;
-  padding: 0 28px;
+  margin-left: 238px;
+  padding: 0 24px;
   max-width: none;
 }
 .topbar {
-  height: 62px;
-  font-size: 12px;
+  height: 54px;
+  font-size: 14px;
 }
 .workspace-heading {
-  margin: 22px 0 18px;
+  margin: 18px 0 12px;
   align-items: center;
 }
 .workspace-heading h1 {
   font:
-    600 25px/1.3 system-ui,
+    650 36px/1.2 system-ui,
     sans-serif;
   margin: 0;
   letter-spacing: -0.6px;
 }
 .workspace-heading .subtitle {
-  font-size: 12px;
+  font-size: 16px;
   margin-top: 5px;
 }
 .workspace-heading .button {
-  font-size: 11px;
-  padding: 8px 12px;
+  font-size: 13px;
+  padding: 10px 14px;
+  min-height: 44px;
 }
 .workspace-layout {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 268px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
   max-width: 1700px;
 }
@@ -93,41 +107,41 @@ main {
 }
 .worlds-heading h2 {
   font:
-    600 13px/1.5 system-ui,
+    600 17px/1.5 system-ui,
     sans-serif;
   margin: 0;
 }
 .worlds-heading > span {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 #world-list {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 .world-card,
 .server-detail {
   --game-accent: #d5bf92;
-  --game-border: #59604a;
-  --game-surface: #20281f;
-  --game-dark: #141e16;
-  --game-muted: #b5c3af;
+  --game-border: #43525a;
+  --game-surface: #202b2d;
+  --game-dark: #142024;
+  --game-muted: #b7c5c9;
   --game-rgb: 183, 191, 153;
 }
 [data-game="enshrouded"] {
   --game-accent: #9edee8;
-  --game-border: #40656b;
-  --game-surface: #152429;
-  --game-dark: #0b1a20;
-  --game-muted: #acc3c6;
+  --game-border: #3c5d6b;
+  --game-surface: #192b34;
+  --game-dark: #0e202a;
+  --game-muted: #b0c8d4;
   --game-rgb: 100, 190, 211;
 }
 [data-game="aska"] {
   --game-accent: #e6b47c;
-  --game-border: #765d43;
-  --game-surface: #27251d;
-  --game-dark: #211b17;
-  --game-muted: #c6bca8;
+  --game-border: #685445;
+  --game-surface: #272a29;
+  --game-dark: #211e1b;
+  --game-muted: #d2c2ac;
   --game-rgb: 215, 162, 98;
 }
 .world-card {
@@ -138,10 +152,10 @@ main {
   position: relative;
   overflow: hidden;
   min-width: 0;
-  min-height: 140px;
-  padding: 12px 14px 32px;
+  min-height: 160px;
+  padding: 14px 16px 38px;
   border: 1px solid var(--game-border);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text);
   background: var(--game-dark);
   text-align: left;
@@ -157,7 +171,7 @@ main {
     linear-gradient(0deg, #091923e6, transparent 80%);
 }
 .world-card[data-game="aska"] {
-  border-radius: 3px 10px 3px 10px;
+  border-radius: 8px;
 }
 .world-card[data-game="aska"]::before {
   background:
@@ -212,8 +226,8 @@ main {
 }
 .world-card > strong {
   font:
-    600 19px/1.3 Georgia,
-    serif;
+    600 19px/1.3 system-ui,
+    sans-serif;
   overflow-wrap: anywhere;
 }
 .world-game {
@@ -225,12 +239,12 @@ main {
   position: absolute;
   right: 11px;
   bottom: 10px;
-  font-size: 9px;
-  padding: 3px 6px;
+  font-size: 12px;
+  padding: 3px 8px;
   border: 1px solid #b5c3af44;
   border-radius: 5px;
-  background: #161c17d9;
-  color: #c8d2c7;
+  background: #15232deb;
+  color: #d6e1e6;
   max-width: 70%;
   line-height: 1.3;
 }
@@ -243,7 +257,7 @@ main {
   position: absolute;
   left: 13px;
   bottom: 12px;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--game-accent);
 }
 .server-detail {
@@ -255,14 +269,14 @@ main {
   background: var(--game-surface);
 }
 .server-detail[data-game="aska"] {
-  border-radius: 3px 11px 3px 11px;
+  border-radius: 11px;
 }
 .game-banner {
   position: relative;
   isolation: isolate;
-  height: 130px;
+  height: 148px;
   overflow: hidden;
-  padding: 14px 20px;
+  padding: 20px;
   background: var(--game-dark);
   border-bottom: 1px solid var(--game-border);
 }
@@ -284,26 +298,26 @@ main {
     linear-gradient(0deg, #14252bdd, transparent 75%);
 }
 .game-banner-kicker {
-  font-size: 8px;
-  letter-spacing: 1.5px;
+  font-size: 12px;
+  letter-spacing: 0.6px;
   color: var(--game-accent);
   text-shadow: 0 1px 5px #000;
 }
 .game-banner .game-wordmark {
   position: absolute;
   left: 20px;
-  bottom: 33px;
-  width: 214px;
-  height: 45px;
+  bottom: 39px;
+  width: 252px;
+  height: 52px;
 }
 .game-banner .game-wordmark img {
-  width: 214px;
+  width: 252px;
 }
 .game-banner-caption {
   position: absolute;
   left: 21px;
-  bottom: 14px;
-  font-size: 10px;
+  bottom: 17px;
+  font-size: 14px;
   letter-spacing: 0.4px;
   color: #d5e8e9;
   text-shadow: 0 1px 5px #000;
@@ -326,7 +340,7 @@ main {
 [data-game="aska"] .game-banner .game-wordmark {
   width: 116px;
   height: 46px;
-  bottom: 30px;
+  bottom: 44px;
 }
 [data-game="aska"] .game-banner .game-wordmark img {
   width: 116px;
@@ -339,8 +353,8 @@ main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 16px;
-  padding: 18px 20px 15px;
+  gap: 20px;
+  padding: 16px 20px;
   background: linear-gradient(110deg, rgba(var(--game-rgb), 0.08), transparent);
 }
 #workspace-identity {
@@ -348,7 +362,7 @@ main {
 }
 #workspace-identity .eyebrow {
   font:
-    10px/1.5 system-ui,
+    12px/1.5 system-ui,
     sans-serif;
   letter-spacing: 0.5px;
   margin: 0;
@@ -356,13 +370,13 @@ main {
 }
 #server-name {
   font:
-    600 25px/1.25 Georgia,
-    serif;
+    650 28px/1.25 system-ui,
+    sans-serif;
   letter-spacing: -0.3px;
   margin: 4px 0;
 }
 #profile-caption {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.4;
   margin: 0;
   color: var(--game-muted);
@@ -375,16 +389,17 @@ main {
   max-width: 210px;
 }
 .workspace-state .pill {
-  font-size: 10px;
-  padding: 3px 7px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 5px;
 }
 .workspace-state #status-updated {
-  font-size: 9px;
+  font-size: 12px;
   margin: 0;
   color: var(--game-muted);
 }
 .workspace-state #process-note {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--game-muted);
 }
@@ -394,9 +409,9 @@ main {
   gap: 7px;
 }
 #workspace-actions .button {
-  font-size: 11px;
-  padding: 8px 11px;
-  min-height: 38px;
+  font-size: 13px;
+  padding: 10px 13px;
+  min-height: 44px;
   white-space: nowrap;
 }
 #workspace-actions #stop {
@@ -408,7 +423,7 @@ main {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
-  padding: 12px 20px;
+  padding: 11px 20px;
   border-top: 1px solid var(--game-border);
   background: var(--game-dark);
 }
@@ -420,20 +435,20 @@ main {
 }
 .quick-join small,
 .quick-join span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--game-muted);
 }
 #quick-join-value {
   font:
-    600 12px/1.5 ui-monospace,
+    600 16px/1.5 ui-monospace,
     monospace;
   overflow-wrap: anywhere;
 }
 .quick-join .button,
 .quick-join .text-button {
-  font-size: 11px;
+  font-size: 13px;
   padding: 7px 9px;
-  min-height: 36px;
+  min-height: 44px;
   white-space: nowrap;
 }
 .workspace-receipt {
@@ -441,17 +456,18 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 4px 20px;
+  padding: 0 20px;
+  min-height: 44px;
   border-bottom: 1px solid var(--game-border);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--game-muted);
 }
 .workspace-receipt p {
   margin: 0;
 }
 .workspace-receipt .text-button {
-  font-size: 10px;
-  min-height: 30px;
+  font-size: 12px;
+  min-height: 44px;
 }
 .quick-join .text-button,
 .workspace-receipt .text-button {
@@ -463,10 +479,10 @@ main {
   gap: 4px;
 }
 .workspace-receipt #job-live-state {
-  font-size: 9px;
+  font-size: 12px;
 }
 #workspace-setup #control-hint {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
   padding: 6px 20px;
   margin: 0;
@@ -480,10 +496,10 @@ main {
   border-radius: 0;
 }
 #workspace-setup .setup-panel p {
-  font-size: 11px;
+  font-size: 12px;
 }
 #workspace-setup #access-note {
-  font-size: 10px;
+  font-size: 12px;
   margin: 0;
   border-radius: 0;
   padding: 10px 20px;
@@ -504,7 +520,7 @@ main {
   border-bottom: 2px solid transparent;
   border-radius: 0;
   padding: 8px 5px;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--game-muted);
   background: transparent;
@@ -532,7 +548,7 @@ main {
   padding: 12px 20px 0;
 }
 .message-channels .button {
-  font-size: 11px;
+  font-size: 12px;
   padding: 6px 10px;
 }
 .message-channels .active {
@@ -555,18 +571,18 @@ main {
 }
 .server-panels .page-heading h1 {
   font:
-    600 16px/1.4 system-ui,
+    600 20px/1.4 system-ui,
     sans-serif;
   letter-spacing: 0;
   margin: 0;
 }
 .server-panels .page-heading .subtitle {
-  font-size: 11px;
+  font-size: 12px;
   margin: 5px 0 0;
   color: var(--game-muted);
 }
 .server-panels .page-heading .button {
-  font-size: 11px;
+  font-size: 12px;
   padding: 7px 10px;
 }
 .server-panels .panel {
@@ -578,7 +594,7 @@ main {
 .server-panels .panel h3,
 .server-panels .panel-heading h3 {
   font:
-    600 13px/1.5 system-ui,
+    600 15px/1.5 system-ui,
     sans-serif;
 }
 .server-panels .panel-heading {
@@ -589,27 +605,27 @@ main {
   color: var(--game-muted);
 }
 .server-panels .field-help {
-  font-size: 10px;
+  font-size: 12px;
 }
 .server-panels .section-title {
   font-size: 17px;
 }
 .server-panels .panel p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .server-panels .form-footer {
   gap: 10px;
 }
 .server-panels .form-footer .button {
-  font-size: 11px;
+  font-size: 12px;
 }
 .server-panels label {
-  font-size: 12px;
+  font-size: 14px;
 }
 .server-panels input,
 .server-panels select,
 .server-panels textarea {
-  font-size: 12px;
+  font-size: 14px;
 }
 .server-panels .log-window {
   margin-top: 14px;
@@ -617,57 +633,62 @@ main {
 .server-panels .log-window pre {
   min-height: 160px;
   max-height: 440px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .server-panels .activity {
   margin-top: 14px;
 }
 .server-panels .log-title {
   gap: 10px;
-  font-size: 10px;
+  font-size: 12px;
   flex-wrap: wrap;
 }
 .server-panels .log-title select {
-  font-size: 11px;
+  font-size: 12px;
 }
 .server-panels .event {
-  font-size: 11px;
+  font-size: 12px;
   padding: 10px 0;
 }
 .server-panels .event time {
-  font-size: 10px;
+  font-size: 12px;
 }
 .server-panels .job-row {
-  font-size: 11px;
+  font-size: 12px;
   padding: 10px 0;
 }
 .server-panels .job-row small {
-  font-size: 10px;
+  font-size: 12px;
 }
 .overview-summaries {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  gap: 0;
   margin-bottom: 15px;
+  padding: 12px 0;
+  border: 1px solid var(--game-border);
+  border-radius: 6px;
 }
 .overview-summary {
   display: grid;
-  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  align-content: start;
   text-align: left;
-  min-height: 88px;
-  padding: 12px;
-  border: 1px solid var(--game-border);
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.14);
+  min-height: 54px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
 }
 .overview-summary small {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--game-muted);
 }
 .overview-summary strong {
-  font-size: 13px;
-  font-weight: 550;
+  font-size: 15px;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 .overview-summary:hover {
@@ -677,30 +698,32 @@ main {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+  max-width: none;
   margin: 0 0 15px;
-  padding: 13px;
+  padding: 12px 18px;
   border: 1px solid rgba(var(--game-rgb), 0.22);
   border-radius: 7px;
 }
 .overview-metrics small {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--game-muted);
+  margin-bottom: 4px;
 }
 .overview-metrics strong {
   font:
-    500 13px/1.5 system-ui,
+    500 15px/1.5 system-ui,
     sans-serif;
-  margin-top: 4px;
+  margin-top: 0;
 }
 .network-details {
-  padding: 12px 0;
+  padding: 0;
   border-top: 1px solid var(--game-border);
-  font-size: 12px;
+  font-size: 14px;
 }
 .network-details summary {
   cursor: pointer;
   color: var(--game-muted);
-  min-height: 32px;
+  min-height: 46px;
   display: list-item;
   align-content: center;
 }
@@ -708,10 +731,10 @@ main {
   margin: 8px 0 0;
 }
 .network-details .path {
-  font-size: 11px;
+  font-size: 12px;
 }
 .network-details .check-row {
-  font-size: 10px;
+  font-size: 12px;
 }
 .server-panels #overview > .page-heading {
   display: none;
@@ -738,7 +761,7 @@ main {
     min-height: 320px;
   }
 }
-@media (max-width: 1280px) {
+@media (max-width: 1380px) {
   .workspace-layout {
     grid-template-columns: 220px minmax(0, 1fr);
     gap: 14px;
@@ -751,6 +774,7 @@ main {
     justify-content: flex-end;
   }
   .overview-summaries {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .server-tabs {
@@ -778,10 +802,10 @@ main {
     bottom: -6px;
   }
   .world-status {
-    font-size: 8px;
+    font-size: 12px;
   }
   .world-selection {
-    font-size: 8px;
+    font-size: 12px;
   }
 }
 @media (max-width: 1000px) {
@@ -834,11 +858,11 @@ main {
     gap: 12px;
   }
   .brand {
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.7px;
   }
   .brand small {
-    font-size: 7px;
+    font-size: 12px;
   }
   .brand img {
     width: 28px;
@@ -850,7 +874,7 @@ main {
     min-width: 0;
   }
   .server-picker select {
-    font-size: 10px;
+    font-size: 12px;
     min-height: 40px;
     width: 100%;
   }
@@ -871,7 +895,7 @@ main {
     flex-direction: row;
     flex-shrink: 0;
     justify-content: flex-start;
-    font-size: 11px;
+    font-size: 12px;
     padding: 8px;
     min-height: 38px;
     gap: 5px;
@@ -886,7 +910,7 @@ main {
   }
   .topbar {
     height: 48px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .workspace-heading {
     margin: 17px 0 14px;
@@ -897,10 +921,10 @@ main {
     font-size: 22px;
   }
   .workspace-heading .subtitle {
-    font-size: 10px;
+    font-size: 12px;
   }
   .workspace-heading .button {
-    font-size: 10px;
+    font-size: 12px;
     min-height: 36px;
     padding: 7px 9px;
   }
@@ -914,7 +938,7 @@ main {
     font-size: 12px;
   }
   .worlds-heading > span {
-    font-size: 9px;
+    font-size: 12px;
   }
   #world-list {
     gap: 8px;
@@ -943,7 +967,7 @@ main {
     bottom: -5px;
   }
   .world-status {
-    font-size: 8px;
+    font-size: 12px;
     right: 8px;
     bottom: 8px;
     max-width: calc(100% - 16px);
@@ -964,7 +988,7 @@ main {
     padding: 10px 14px;
   }
   .game-banner-kicker {
-    font-size: 7px;
+    font-size: 12px;
     letter-spacing: 0.8px;
   }
   .game-banner .game-wordmark {
@@ -994,22 +1018,22 @@ main {
     gap: 12px;
   }
   #workspace-identity .eyebrow {
-    font-size: 8px;
+    font-size: 12px;
   }
   #server-name {
     font-size: 22px;
   }
   #profile-caption {
-    font-size: 9px;
+    font-size: 12px;
   }
   .workspace-state {
     max-width: 125px;
   }
   .workspace-state .pill {
-    font-size: 9px;
+    font-size: 12px;
   }
   .workspace-state #status-updated {
-    font-size: 8px;
+    font-size: 12px;
   }
   .workspace-state #process-note {
     display: none;
@@ -1022,7 +1046,9 @@ main {
     flex: 1;
     min-height: 44px;
     padding: 7px 5px;
-    font-size: 10px;
+    font-size: 12px;
+    min-width: 0;
+    white-space: normal;
   }
   .quick-join {
     padding: 12px 14px;
@@ -1033,36 +1059,36 @@ main {
   }
   .quick-join small,
   .quick-join span {
-    font-size: 9px;
+    font-size: 12px;
   }
   #quick-join-value {
-    font-size: 11px;
+    font-size: 12px;
   }
   .quick-join .button {
     min-height: 44px;
-    font-size: 10px;
+    font-size: 12px;
     padding: 7px;
   }
   .quick-join .text-button {
-    font-size: 10px;
+    font-size: 12px;
     padding: 4px;
     min-height: 32px;
   }
   .workspace-receipt {
     padding: 5px 14px;
-    font-size: 9px;
+    font-size: 12px;
     flex-wrap: wrap;
     gap: 3px 8px;
   }
   .workspace-receipt .text-button {
-    font-size: 9px;
+    font-size: 12px;
     min-height: 32px;
   }
   .workspace-receipt #job-live-state {
-    font-size: 8px;
+    font-size: 12px;
   }
   #workspace-setup #control-hint {
-    font-size: 8px;
+    font-size: 12px;
     padding: 5px 14px;
   }
   .server-tabs {
@@ -1072,7 +1098,7 @@ main {
     gap: 3px;
   }
   .server-tabs button {
-    font-size: 10px;
+    font-size: 12px;
     min-height: 44px;
     padding: 6px 3px;
   }
@@ -1094,7 +1120,7 @@ main {
     font-size: 15px;
   }
   .server-panels .page-heading .subtitle {
-    font-size: 10px;
+    font-size: 12px;
   }
   .server-panels .panel {
     padding: 13px;
@@ -1103,41 +1129,42 @@ main {
     font-size: 12px;
   }
   .server-panels .panel p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .overview-summaries {
-    gap: 8px;
+    gap: 0;
     margin-bottom: 12px;
+    row-gap: 16px;
   }
   .overview-summary {
     padding: 10px;
-    min-height: 85px;
+    min-height: 70px;
   }
   .overview-summary small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .overview-summary strong {
-    font-size: 12px;
+    font-size: 15px;
   }
   .overview-metrics {
     gap: 12px;
     padding: 11px;
   }
   .overview-metrics small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .overview-metrics strong {
     font-size: 12px;
   }
   .network-details {
-    font-size: 11px;
+    font-size: 12px;
   }
   .server-panels .update-builds {
     grid-template-columns: 1fr;
     gap: 12px;
   }
   .server-panels .log-window pre {
-    font-size: 10px;
+    font-size: 12px;
   }
   .server-panels .log-title {
     display: flex;
@@ -1145,7 +1172,7 @@ main {
     gap: 8px;
   }
   .server-panels .job-row {
-    font-size: 10px;
+    font-size: 12px;
   }
   .server-panels .form-grid {
     grid-template-columns: 1fr;
@@ -1175,7 +1202,7 @@ main {
     font-size: 19px;
   }
   .workspace-state .pill {
-    font-size: 8px;
+    font-size: 12px;
   }
   #workspace-actions {
     display: grid;
@@ -1183,13 +1210,52 @@ main {
     gap: 5px;
   }
   #workspace-actions .button {
-    font-size: 9px;
+    font-size: 12px;
     min-width: 0;
   }
   .world-status {
-    font-size: 7px;
+    font-size: 12px;
   }
 }
 .mod-catalog { min-width: 0; overflow-wrap: anywhere; }
 .mod-catalog small { display: block; }
 .mod-catalog input, .mod-catalog select { min-width: 0; max-width: 100%; }
+
+.server-context strong { font-size: 16px; }
+.server-context small { font-size: 12px; }
+.sidebar .nav.active {
+  color: var(--accent);
+  border-color: #40525a;
+  background: #233036;
+  box-shadow: inset 2px 0 var(--accent);
+}
+.sidebar .nav:hover { background: #233036; }
+.secondary { color: var(--text); background: #15242c; border-color: #3a505c; }
+.secondary:hover:enabled { background: #263c48; }
+.primary:hover:enabled { background: color-mix(in srgb, var(--accent), white 20%); }
+.local-badge { color: var(--muted); border-color: var(--border); letter-spacing: 0.5px; }
+.workspace-state .pill:not(.running):not(.error) {
+  color: #d6e1e6; background: #1d2c34; border-color: #52616b;
+}
+.overview-summary + .overview-summary { border-left: 1px solid var(--game-border); }
+.overview-summary:last-child { flex-grow: 1.3; }
+.overview-summary:focus-visible { outline: 2px solid var(--game-accent); outline-offset: -3px; }
+@media (max-width: 1380px) {
+  .overview-summary:nth-child(odd) { border-left: 0; }
+  .overview-summaries { row-gap: 16px; }
+}
+@media (max-width: 760px) {
+  .brand small { font-size: 10px; letter-spacing: 0.5px; }
+  .sidebar .nav { min-height: 44px; }
+  .server-context strong { font-size: 14px; }
+  .server-context small { font-size: 12px; }
+  .workspace-heading h1 { font-size: 28px; }
+  .workspace-heading .subtitle { font-size: 13px; }
+  .quick-join { grid-template-columns: minmax(0, 1fr) auto; }
+  .quick-join > div { grid-column: 1 / -1; }
+  .quick-join .button, .quick-join .text-button { min-height: 44px; }
+  #workspace-actions { align-items: stretch; }
+  .server-tabs button { min-height: 50px; }
+  .server-panels .page-heading h1 { font-size: 18px; }
+  .server-panels .panel p { font-size: 14px; }
+}
