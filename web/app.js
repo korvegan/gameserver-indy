@@ -22,7 +22,7 @@ import {bindMembers, loadMembers} from './views/members.js';
 import {bindChallenges, loadChallenges} from './views/challenges.js';
 import {bindCommunityDiscord, loadCommunityDiscord} from './views/community-discord.js';
 
-let statusRequest = 0, configRequest = 0, controller;
+let statusRequest = 0, configRequest = 0, eventsRequest = 0, controller;
 const liveChanges = new Map();
 let liveTimer, liveBusy = false;
 function scheduleChanges() {
@@ -89,6 +89,18 @@ async function refreshCatalog() {
   state.catalogAvailable = true; renderCatalog(catalog); controls();
 }
 
+async function loadEvents(signal) {
+  if (!can('config.read') || !['overview', 'logs'].includes(state.view)) return;
+  const generation = ++eventsRequest, epoch = state.selectionEpoch, target = state.selectedServer;
+  const current = () => generation === eventsRequest && epoch === state.selectionEpoch;
+  try {
+    const {events} = await api('/api/events', undefined, target, signal);
+    if (current()) renderEvents(events);
+  } catch (error) {
+    if (current() && error.name !== 'AbortError') notice(error.message, true);
+  }
+}
+
 async function refresh({includeJobs = true} = {}) {
   if (!state.selectedServer) return;
   const generation = ++statusRequest, epoch = state.selectionEpoch, target = state.selectedServer;
@@ -109,10 +121,7 @@ async function refresh({includeJobs = true} = {}) {
       mergeJobs(jobs); renderJobs();
       for (const job of jobs) watchJob(job, controls, finishJob);
     })());
-    if (can('config.read') && ['overview', 'logs'].includes(state.view)) tasks.push((async () => {
-      const {events} = await api('/api/events', undefined, target, signal);
-      if (current()) renderEvents(events);
-    })());
+    tasks.push(loadEvents(signal));
     tasks.push(refreshFleet());
     tasks.push(loadMaintenance());
     if (state.view === 'updates') tasks.push(loadUpdateAssistant());
@@ -178,7 +187,7 @@ async function go(next, {keepNotice = false} = {}) {
   if (!keepNotice) notice('');
   const heading = $('#' + next)?.querySelector('h1, h2'); heading?.setAttribute('tabindex', '-1'); heading?.focus({preventScroll: true});
   if (next === 'settings') await loadConfig();
-  if (next === 'logs' && can('logs.read')) await loadLogs();
+  if (next === 'logs') await Promise.all([loadEvents(), can('logs.read') && loadLogs()]);
   if (next === 'games') await loadGames(target => selectServer(target, true));
   if (next === 'community') { await loadCommunity(); if ($('#community-members').open) await loadMembers(); await loadChallenges(); await loadCommunityDiscord(); }
   if (next === 'access') await loadAccess();

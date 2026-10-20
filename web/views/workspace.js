@@ -138,7 +138,7 @@ export function renderWorkspace() {
     card.disabled = state.submitting || !state.catalogAvailable;
     const cached = snapshots.get(card.dataset.selectServer);
     const profile = state.catalog.servers.find(server => server.id === card.dataset.selectServer);
-    card.querySelector('.world-profile').textContent = 'Profil: ' + (cached?.summary?.title || profile.label);
+    card.querySelector('.world-profile').textContent = 'Profil: ' + profile.label;
     card.querySelector('.world-status').textContent = observationLabel(cached);
     card.querySelector('.world-status').classList.toggle('running', Boolean(cached?.status.running && cached.status.known !== false));
     card.title = cached?.observedAt ? `Stand: ${new Date(cached.observedAt).toLocaleTimeString('de-DE')}` : 'Noch keine bestätigte Statusabfrage';

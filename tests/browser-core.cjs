@@ -8,12 +8,22 @@ const fs=require('node:fs/promises');
   const browser=await chromium.launch({headless:true});
   try{
     const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+    let eventsRequests=0;
+    await page.route('**/api/events?*',route=>{eventsRequests++;return route.fulfill({json:{events:[{time:'2026-10-21T10:00:00Z',message:'Aktivität vor dem ersten Öffnen'}]}});});
     page.on('pageerror',e=>errors.push(e.message));await page.goto(origin);
     await page.waitForSelector('#world-list [data-select-server="aska"]');
     const navigation = require('./browser-navigation.cjs');
     const nav = navigation.navigation(page);
     assert.equal(await page.locator('#fleet').isVisible(),true);
     assert.equal(await page.locator('#server-workspace').isVisible(),false);
+    await page.waitForFunction(async()=>{const {state}=await import('/state.js');return state.available&&!state.refreshing;});
+    const profiles=await page.evaluate(async()=>{const {state}=await import('/state.js');return state.catalog.servers.map(({id,label})=>({id,label}));});
+    for(const {id,label} of profiles) assert.equal(await page.locator('[data-select-server="'+id+'"] .world-profile').innerText(),'Profil: '+label);
+    await navigation.selectServer(page,await page.locator('#server-select').inputValue());
+    await nav('Serverlog').click();
+    await page.locator('#events').getByText('Aktivität vor dem ersten Öffnen',{exact:true}).waitFor();
+    assert.ok(eventsRequests>0,'Opening logs loads existing activities without a manual refresh.');
+    await page.unrouteAll({behavior:'wait'});
     const select=async game=>{
       await navigation.selectServer(page,game);
       const download = await page.locator('#export-logs').getAttribute('href');
