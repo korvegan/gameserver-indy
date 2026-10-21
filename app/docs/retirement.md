@@ -63,6 +63,15 @@ HTTP-Dienst wird abgelehnt. `/health` muss `mode=fixture`, `native_enabled=false
 und den installierten Commit bestätigen. Der erreichbare Einstieg ist beim
 bisherigen Verwaltungsport `http://127.0.0.1:8765`.
 
+Der lokale Windows-Starter verlangt Linux-Pfade ohne Leerraum und Anführungszeichen.
+WSL übernimmt unnötige Anführungszeichen um `Indy` hier wörtlich und meldete im
+realen Startversuch `WSL_E_DISTRO_NOT_FOUND`; ein nativer lesender Vergleich mit
+`printenv` bestätigte den Fehler und die funktionierende unquotierte Argumentfolge.
+Nach einer reinen Starterkorrektur darf die geprüfte private Starterdatei separat
+aktualisiert werden: zuerst erneut sichern, dann bytegleich aus dem geprüften
+Commit kopieren. Das unveränderliche PHP-Release samt `CodeCommit` bleibt dabei
+erhalten, wenn sich ausschließlich der Windows-Startweg geändert hat.
+
 ## Rückweg
 
 Zuerst nur den neuen FrankenPHP-Prozess anhand von Release-Arbeitsverzeichnis,

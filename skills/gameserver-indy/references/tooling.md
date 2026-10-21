@@ -16,6 +16,9 @@ Auftrag. Für ein Issue nur die nötigen Quellen und Nachweise laden.
   Nach Änderungen am Archiv oder an der Struktur ausführen.
 - Windows-Starter: `app/tests/check-launcher.ps1` ersetzt Prozess-/HTTP-Aufrufe
   vollständig durch Mocks und arbeitet in einem eigenen Windows-Tempordner.
+  Native WSL-Prüfung bestätigte: unnötige Quotes um den Distributionswert
+  werden wörtlich übernommen (`WSL_E_DISTRO_NOT_FOUND`). Der lokale Starter
+  übergibt validierte Werte ohne Quotes; seine Linux-Pfade enthalten keinen Leerraum.
 - Node-Version steht in `.node-version`. Browserprüfungen erst für tatsächliche
   UI-Arbeit; verfügbare Browserlaufzeit zuerst prüfen. Bei Playwright benötigen
   Axe-Tests `browser.newContext()` und dessen `newPage()`.
