@@ -27,7 +27,13 @@ an Loopback. Windows-Boot ohne Desktopanmeldung ist noch nicht abgenommen.
 Den sauberen Hauptcheckout auf den geprüften Merge-Commit aktualisieren.
 `app/tools/install.py` verlangt genau diesen HEAD und dessen Erreichbarkeit von
 `origin/main`, eine ausführbare FrankenPHP-Datei, einen inaktiven alten Lifecycle
-und einen freien lokalen Verwaltungsport. Beispiel mit dem vorhandenen Host:
+und einen freien lokalen Verwaltungsport.
+
+Der Portcheck prüft direkt die Bindbarkeit an Loopback. Ein ausgehender
+Verbindungstest wurde beim ersten realen Versuch durch ein Timeout abgebrochen,
+obwohl kein Listener vorhanden war; dabei blieb der installierte Stand unverändert.
+
+Beispiel mit dem vorhandenen Host:
 
 ```sh
 python3 app/tools/install.py <vollständiger-merge-commit> \
