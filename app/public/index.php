@@ -24,7 +24,8 @@ try {
     $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     if ($path === '/health') {
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['mode' => 'fixture', 'native_enabled' => false, 'instance' => basename($directory)], JSON_THROW_ON_ERROR);
+        echo json_encode(['mode' => 'fixture', 'native_enabled' => false, 'instance' => basename($directory),
+            'build' => getenv('INDY_APP_BUILD') ?: 'development'], JSON_THROW_ON_ERROR);
     } elseif ($path === '/api/status') {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['mode' => 'fixture', 'servers' => $store->snapshot()], JSON_THROW_ON_ERROR);

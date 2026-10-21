@@ -1,4 +1,3 @@
 @echo off
-title GameServer Indy
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-manager.ps1" -ConfigPath "%LOCALAPPDATA%\GameServerIndy\launcher.local.json" %*
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%LOCALAPPDATA%\GameServerIndy\Start-Manager.ps1" %*
 if errorlevel 1 pause

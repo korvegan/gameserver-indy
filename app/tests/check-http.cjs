@@ -37,6 +37,8 @@ async function main() {
           assert.equal(health.instance, path.basename(fixture));
           assert.equal(health.mode, 'fixture');
           assert.equal(health.native_enabled, false);
+          const revisionFile = path.join(root, '../REVISION');
+          assert.equal(health.build, fs.existsSync(revisionFile) ? fs.readFileSync(revisionFile, 'utf8').trim() : 'development');
           healthy = true;
           break;
         } catch { /* Wait for this instance, never accept a different listener. */ }
@@ -65,6 +67,12 @@ async function main() {
     fs.renameSync(path.join(fixture, 'fixture'), path.join(fixture, 'fixture.off'));
     assert.equal((await fetch(`${url}/health`)).status, 503);
     fs.renameSync(path.join(fixture, 'fixture.off'), path.join(fixture, 'fixture'));
+    assert.equal((await fetch(`${url}/health`)).status, 200);
+    fs.renameSync(path.join(fixture, 'state.sqlite'), path.join(fixture, 'state.saved'));
+    fs.writeFileSync(path.join(fixture, 'state.sqlite'), '');
+    assert.equal((await fetch(`${url}/health`)).status, 503);
+    assert.equal((await fetch(`${url}/api/status`)).status, 503);
+    fs.renameSync(path.join(fixture, 'state.saved'), path.join(fixture, 'state.sqlite'));
     assert.equal((await fetch(`${url}/health`)).status, 200);
     console.log('PASS: real FrankenPHP startup, PHP page, fixture API, read-only HTTP, Host boundary, unavailable fixture');
     if (process.argv.includes('--idle')) {

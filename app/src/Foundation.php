@@ -65,6 +65,11 @@ final class FixtureStore
         ]);
         $this->db->exec('PRAGMA foreign_keys = ON');
         $this->db->exec('PRAGMA busy_timeout = 2000');
+        $ids = $this->db->query('SELECT id FROM servers ORDER BY id')->fetchAll(\PDO::FETCH_COLUMN);
+        if ($ids !== ['aska', 'enshrouded']) {
+            throw new \RuntimeException('incomplete_fixture');
+        }
+        $this->db->query('SELECT id, server, action, actor, state FROM operations LIMIT 0');
     }
 
     public function snapshot(): array

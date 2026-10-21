@@ -10,10 +10,12 @@ Browser → PHP-Seiten/Fachlogik/Rechte unter WSL → kleine native Windows-Brü
             lokale SQLite-Daten
 ```
 
-Der neue App-Bereich liegt in `next/`. Die bestehende Anwendung läuft weiter
-aus ihrem bisherigen Release. PHP bleibt Hauptanwendung; Spielprozesse bleiben
+Der neue App-Bereich liegt in `app/`. Auf ausdrücklichen Nutzerauftrag wurde
+die bisherige Verwaltung gestoppt und ihr vollständiger Quellstand archiviert.
+PHP bleibt Hauptanwendung; Spielprozesse bleiben
 unabhängig davon native Windows-Prozesse. Installationen und Welten behalten
-ihre bisherigen Pfade. Eine echte Anbindung beginnt in EP03, die Umstellung in EP06.
+ihre bisherigen Pfade. Eine echte Anbindung beginnt in EP03. Der lokale Einstieg
+zeigt vorzeitig auf das Gerüst; die vollständige MVP-/Bootabnahme bleibt EP06.
 
 ## Werkzeuge und Verantwortung
 
@@ -58,9 +60,15 @@ Ein echter Datenpfad/Adapter ist in EP01 nicht konfigurierbar.
 
 HTTP bindet nur Loopback. Die PHP-Grenze prüft zusätzlich Peer und exakten Host,
 ignoriert eingehende Rollen-/Tailscaleheader und bietet keine Schreibroute.
-Unlesbare oder unvollständige Fixtures ergeben 503. Caddy-Admin, HTTPS-Automatik
+Fehlende Fixture-Markierung, Datenbank, Serverzeilen oder Operationsspalten
+ergeben auch bei `/health` 503. Dies ersetzt keine vollständige SQLite-Integritätsprüfung.
+Caddy-Admin, HTTPS-Automatik
 und Konfigurationsspeicherung sind ausgeschaltet; Caddy-Daten liegen in der Fixture.
 Der Entwicklungsstart übernimmt nur benötigte Umgebungswerte, keine Tokens.
+Installierte Releases enthalten ausschließlich die versionierten `app/`-Dateien
+und eine `REVISION` mit Commitkennung. Der Windows-Starter vergleicht diese
+Kennung über `/health` mit seiner privaten Konfiguration. Das ist eine lokale
+Zuordnungsprüfung, keine Authentifizierung oder signierte Herkunftsprüfung.
 
 Für EP03/EP04 festlegen: konkrete native Beobachtungs-/Weckquelle, Verhalten bei
 veralteten Beobachtungen und der begrenzte Ausführungsweg langer Start-/Stoppaktionen.

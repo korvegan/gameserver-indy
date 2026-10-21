@@ -3,17 +3,13 @@
   "version": "0.3.0",
   "type": "module",
   "private": true,
-  "description": "Development checks for GameServer Indy",
+  "description": "Development checks for the new PHP server centre",
   "engines": {
     "node": "^24.22.0"
   },
   "scripts": {
-    "test:next": "node next/tests/check-http.cjs",
-    "check:js": "node tests/check-js.cjs",
-    "test:php": "node scripts/phpunit.cjs",
-    "test:ui": "npm run check:js && node symfony/tools/check-dashboard-browser.cjs --smoke",
-    "test:symfony-browser": "node symfony/tools/check-browser.cjs",
-    "test:symfony-dashboard": "node symfony/tools/check-dashboard-browser.cjs"
+    "test:app": "node app/tests/check-http.cjs",
+    "check:archive": "node app/tests/check-archive.cjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

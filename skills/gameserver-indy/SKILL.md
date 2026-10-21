@@ -1,30 +1,42 @@
 ---
 name: gameserver-indy
-description: GameServer Indy auf korvegans Windows-/WSL-Rechner weiterentwickeln und betreiben; bestätigte Besonderheiten von Enshrouded, ASKA, Familienzugriff und Sturmklingen berücksichtigen.
+description: GameServer Indy auf korvegans Windows-/WSL-Rechner weiterentwickeln; neuen PHP-Aufbau, minimale Windows-Brücke und bestätigte Spielbesonderheiten berücksichtigen.
 ---
 
 # GameServer Indy
 
-Native Windows-Spielserver, verwaltet durch **PHP/Symfony und FrankenPHP unter WSL**. Hauptcheckout: `/home/korvegan/projects/gameserver-indy`; führendes Repository: `Korwerk/gameserver-indy` auf Forgejo (`git.sturmklingen.dedyn.io`). GitHub `korvegan/gameserver-indy` ist nur Backup; neue Issues, PRs und Reviews gehören nach Forgejo. Der frühere Projektpfad `enshrouded-indy` existiert nicht mehr.
+Führendes Repository: `Korwerk/gameserver-indy` auf Forgejo, Hauptcheckout
+`/home/korvegan/projects/gameserver-indy`. GitHub ist nur Backup. Neue Issues,
+PRs und Reviews gehören nach Forgejo. Projektregeln in `AGENTS.md` lesen.
 
-Seit 17.10.2026 ist PHP die einzige Anwendungslaufzeit. Python-Anwendung und eigene Tests liegen unter `archive/`; weder starten noch als Rückweg prüfen. Einige isolierte Testhelfer sind weiterhin Python-Skripte. Ein Rückweg verwendet ein vorheriges PHP-Release mit derselben aktuellen Datenablage.
+Seit dem ausdrücklichen Neubau-/Archivierungsauftrag vom 22.10.2026 ist `app/`
+der führende App-Bereich. PHP läuft unter WSL; native Windows-Aktionen erhalten
+eine möglichst kleine Brücke. Der aktuelle Stand ist ein isoliertes Gerüst
+mit synthetischen Daten, noch ohne echte Spielsteuerung, Familienauthentifizierung
+oder fertiges Dashboard. Einstieg: `app/README.md`, Zielbild Forgejo #140.
 
-Aktive Code- und Datenpfade aus der privaten Windows-Datei `%LOCALAPPDATA%\GameServerIndy\launcher.local.json` lesen. Nicht den Checkout mit dem laufenden unveränderlichen Release verwechseln. Einstieg: `symfony/bin/indy <StateDirectory>`. Lokal: `http://127.0.0.1:8765`; privat mit verbundener Tailscale-App: `https://indy.taila774ef.ts.net`.
+Die alte Verwaltung wurde geordnet gestoppt. Vollständiger Quellnachweis:
+`archive/php-legacy-20261022/snapshot/`, Herkunft in `source.json` daneben.
+Die vorhandenen Spielinstallationen, Welten und privaten State-Dateien bleiben
+an ihren bisherigen Orten. Sie werden nicht als Testdaten oder neue leere
+Initialisierung verwendet. Aktuelle Launcherwerte aus der privaten Datei
+`%LOCALAPPDATA%\\GameServerIndy\\launcher.local.json` lesen.
 
-Arbeitsfreigaben, unabhängiges Review jedes PRs und angemessene Prüfungen stehen in `AGENTS.md`. Reasoning unverändert lassen. Regulär nur wesentliche Familienabläufe prüfen; seltene oder risikoarme Fälle bei konkretem Bedarf manuell. Keine echten Spielaktionen, Nachrichten oder Kontoeinrichtungen aus einer Testabsicht ableiten.
-
-Nur die zur Aufgabe passende Referenz lesen:
-
-| Aufgabe | Referenz |
+| Aufgabe | Gezielter Kontext |
 | --- | --- |
-| Entwicklung, Werkzeuge, Tests | [tooling.md](references/tooling.md) |
-| Releases, Supervisor, Aufträge, Zustand | [runtime.md](references/runtime.md) |
-| Windows, Tailscale, persönliche Rechte | [host-access.md](references/host-access.md) |
-| Spielkonfiguration, Welten, Sicherungen, Updates | [games.md](references/games.md) |
-| Serverzentrale, Navigation und Entwürfe | [frontend.md](references/frontend.md) |
-| Discord, WhatsApp, Beitrittsadressen | [integrations.md](references/integrations.md) |
-| Sturmklingen, Chronik und Geschichtsbild | [community.md](references/community.md) |
+| Entwicklung und Prüfungen | [tooling.md](references/tooling.md) |
+| Aktueller Startstand, Rückweg | [runtime.md](references/runtime.md) |
+| Bestätigte Windows-/Tailscale-Eigenheiten | [host-access.md](references/host-access.md) |
+| Bestätigte Spiel-/Pfadbesonderheiten | [games.md](references/games.md) |
+| Alte Oberfläche, Integrationen oder Chronik gezielt nachschlagen | [frontend.md](references/frontend.md), [integrations.md](references/integrations.md), [community.md](references/community.md) |
 
-Genannte `docs/`-Pfade beziehen sich auf das Repository. Sie beschreiben die aktuelle Bedienung; frühere Migrationsschritte sind Git-Historie und keine heutigen Laufzeitpflichten.
+Die letzten fünf Referenzen bewahren Fachwissen zum bisherigen Betrieb.
+Ihre `docs/`-Verweise beziehen sich auf den Archiv-Snapshot; neue Entscheidungen
+und Umsetzungen führen in `app/` und im aktiven Forgejo-Issue. Nicht pauschal
+die alte Architektur oder den gesamten Altcode laden.
 
-Belegte neue Fallstricke am Abschluss relevanter Arbeiten in der passenden Referenz korrigieren oder knapp ergänzen: Ursache, Abhilfe, verbleibende Prüflücke. Vermutungen kennzeichnen. Die Repository-Version ist die Quelle; nach Änderungen validieren und Einstieg samt Referenzen nach `~/.codex/skills/gameserver-indy/` synchronisieren. Dies geschieht innerhalb beauftragter Arbeit, nicht durch einen Hintergrunddienst.
+Belegte neue Fallstricke im zuständigen Abschnitt knapp ergänzen: Ursache,
+Abhilfe und verbleibende Grenze. Die Repositoryfassung dieses Skills bleibt
+führend; nach Änderungen validieren und mit der installierten Kopie unter
+`~/.codex/skills/gameserver-indy/` abgleichen. Reale Spiel-/Hostaktionen nur
+innerhalb des konkreten Nutzerauftrags ausführen.

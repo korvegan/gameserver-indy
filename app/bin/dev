@@ -6,7 +6,7 @@ require dirname(__DIR__).'/src/Foundation.php';
 $port = $argv[1] ?? '18765';
 $engine = getenv('SLICE_FRANKENPHP');
 if ($argc > 2 || !ctype_digit($port) || (int) $port < 1024 || (int) $port > 65535) {
-    fwrite(STDERR, "Aufruf: php next/bin/dev [Port 1024–65535]\n");
+    fwrite(STDERR, "Aufruf: php app/bin/dev [Port 1024–65535]\n");
     exit(2);
 }
 if (!$engine || !is_file($engine) || !is_executable($engine) || !function_exists('pcntl_exec')) {
@@ -20,6 +20,12 @@ flush();
 $environment = array_intersect_key(getenv(), array_flip(['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR']));
 $environment['INDY_NEXT_PORT'] = (string) (int) $port;
 $environment['INDY_NEXT_FIXTURE'] = $fixture;
+$revisionFile = dirname(__DIR__, 2).'/REVISION';
+$revision = is_file($revisionFile) ? trim(file_get_contents($revisionFile)) : 'development';
+if (!preg_match('/^(development|[a-f0-9]{40})$/D', $revision)) {
+    throw new RuntimeException('invalid_release_revision');
+}
+$environment['INDY_APP_BUILD'] = $revision;
 $environment['XDG_CONFIG_HOME'] = $fixture.'/config';
 $environment['XDG_DATA_HOME'] = $fixture.'/data';
 chdir(dirname(__DIR__));

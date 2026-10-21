@@ -1,9 +1,11 @@
 # EP01: Gezielter Prüfnachweis
 
-Stand: 22.10.2026, Arbeitsissue #147. Lokal unter WSL/Linux geprüft:
+Stand: 22.10.2026, Arbeitsissue #147, ursprünglich unter `next/` an Commit
+`465492a32d30ee0e33101fccd331ab9dcc76e922`, jetzt unverändert unter `app/` aufrufbar.
+Lokal unter WSL/Linux geprüft:
 PHP-CLI 8.5.4, FrankenPHP 1.13.0/PHP 8.5.11, Node 24.22.0.
 
-`npm run test:next -- --idle` besteht:
+`npm run test:app -- --idle` besteht:
 
 - Fixture-Isolation und Symlinkabwehr, Rollen, erlaubte Eingaben und wahrheitsgemäße Beobachtungen.
 - Start/Stopp für beide Rollen, Idempotenz, Gegenaktion, erlaubte Zustandswechsel,
@@ -22,3 +24,5 @@ Der Nachweis gilt für das isolierte EP01-Gerüst. Native Adapter, produktive Da
 Familienanmeldung, Lastbetrieb, fertiges Design und Windows-Boot sind damit nicht
 abgenommen. Diese Arbeiten besitzen eigene Epics. Keine echten Spiele oder Hosts
 wurden für diese Prüfungen gestartet, gestoppt oder neu gestartet.
+Der spätere ausdrückliche Archivierungs-/Umstellungsauftrag #149 ist in
+[retirement.md](retirement.md) getrennt dokumentiert; er stoppte die alte Verwaltung.
