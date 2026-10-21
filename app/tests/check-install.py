@@ -1,6 +1,7 @@
 """Check release bytes/modes and preservation of private configuration."""
 import importlib.util
 from pathlib import Path
+import socket
 import subprocess
 import tempfile
 
@@ -33,4 +34,15 @@ updated = installer.new_settings(old, Path('/release/code'), revision, Path('/to
 for key in ('StateDirectory', 'Port', 'RuntimeExecutable', 'WslUser', 'WslDistribution', 'Other'):
     assert updated[key] == old[key]
 assert old['RuntimeEngine'] == 'symfony' and updated['CodeCommit'] == revision
-print('PASS: exact release tree, executable modes, revision and preservation of private settings; no installation')
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied:
+    occupied.bind(('127.0.0.1', 0))
+    occupied.listen()
+    port = occupied.getsockname()[1]
+    try:
+        installer.require_free_port(port)
+    except OSError:
+        pass
+    else:
+        raise AssertionError('Occupied listener accepted')
+installer.require_free_port(port)
+print('PASS: exact release tree, modes, revision, private settings and free/occupied port; no installation')

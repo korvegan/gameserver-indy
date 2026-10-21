@@ -34,6 +34,13 @@ def new_settings(old, code, revision, engine):
             'CodeCommit': revision, 'FrankenPhpExecutable': str(engine)}
 
 
+def require_free_port(port):
+    # A connect timeout can also mean a closed WSL-forwarded port; test our bind instead.
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        probe.bind(('127.0.0.1', int(port)))
+
+
 def replace(path, data):
     temporary = path.with_name(path.name + '.foundation-new')
     with temporary.open('xb') as stream:
@@ -64,13 +71,7 @@ def install(root, revision, launcher, engine):
     lifecycle = json.loads((Path(old['StateDirectory']) / 'runtime-lifecycle.json').read_text())
     if lifecycle['active']:
         raise RuntimeError('Stop the owned legacy management first')
-    try:
-        connection = socket.create_connection(('127.0.0.1', int(old['Port'])), timeout=1)
-    except ConnectionRefusedError:
-        pass
-    else:
-        connection.close()
-        raise RuntimeError('Management port is already occupied')
+    require_free_port(old['Port'])
     releases = Path.home() / '.local/share/gameserver-indy/foundation-releases'
     releases.mkdir(parents=True, exist_ok=True)
     release = releases / revision
