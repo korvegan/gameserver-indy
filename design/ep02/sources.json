@@ -1,0 +1,14 @@
+{
+  "method": "Integriertes Image Gen",
+  "accepted": "Nutzerbestätigung vom 22.10.2026 nach Ergänzung direkter Start-/Stoppaktionen",
+  "dashboard": {
+    "file": "concepts/dashboard.png",
+    "prompt": "dashboard-prompt.txt",
+    "sha256": "e0da5f339cb0b1c90f4cc40d0cfce597a9d319b8bbcd9c8373e659c30edb9f07",
+    "dimensions": [
+      1536,
+      1024
+    ]
+  },
+  "remaining_concepts_status": "Generierungsaufruf vom Nutzer unterbrochen; Ergebnisse nicht geprüft oder übernommen"
+}
