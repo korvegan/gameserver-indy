@@ -9,6 +9,7 @@ Stand: 17.10.2026. Stack und Prüfwahl: `docs/tech-stack.md`, `docs/testing.md`;
 - Live-/Leerlaufarchitektur gezielt mit `npm run test:symfony-dashboard -- --events` prüfen; den zeitbasierten Nachweis nicht in jede gewöhnliche UI-Prüfung hängen. Linux-Dateiereignisbrücke benötigt vorhandenes `cc`; beide OS-Quellen besitzen eigene isolierte Tests.
 - Gemessene Composer-Installation: etwa 3 s Linux/9 s Windows; Chromium-Setup etwa 23 s. Aktuell kein zusätzliches Image/Cache-System gerechtfertigt. Neue Entscheidungen brauchen Messbefunde.
 - Playwright benötigt zum Lockfile passende Browser: bei fehlender Revision `npx playwright install chromium`. Keine alten Cachepfade fest verdrahten. `js_repl` war nicht verfügbar; versionierte Browserläufe verwenden.
+- Die axe-Prüfungen in `npm run test:ui` benötigen `browser.newContext()` und dessen `newPage()`: axe öffnet selbst eine Hilfsseite; der implizite Kontext von `browser.newPage()` erlaubt das nicht. Prüfumfang steht in `docs/testing.md`.
 - Fixtures belegen eigene Ports/Datenordner. Keine produktiven Listener übernehmen. Caddy-Admin ausschalten und XDG-Pfade in die eigenen Testdaten legen.
 - Native PHP-Tests auf kurzer NTFS-Kopie: lange WSL-UNC-Pfade scheiterten an PHPUnit-Dateinamen. Caches sind nach Betriebssystem getrennt; für neue isolierte Builds `INDY_CACHE_DIR` setzen, damit keine alten Konstruktoren aus Produktionscaches verwendet werden.
 - PowerShell-Testmocks müssen auch Modulimporte und Netz-/Task-Cmdlets ersetzen: echte Modulimporte hatten Mocks überschrieben.

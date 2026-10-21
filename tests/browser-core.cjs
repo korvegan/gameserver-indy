@@ -2,12 +2,14 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs/promises');
+const AxeBuilder=require('@axe-core/playwright').default;
 (async()=>{
   const origin=process.env.INDY_BROWSER_ORIGIN;
   assert.ok(origin,'Use the owned PHP fixture runner.');
   const browser=await chromium.launch({headless:true});
   try{
-    const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+    const context=await browser.newContext({viewport:{width:1440,height:1000}});
+    const page=await context.newPage(),errors=[];
     let eventsRequests=0;
     await page.route('**/api/events?*',route=>{eventsRequests++;return route.fulfill({json:{events:[{time:'2026-10-21T10:00:00Z',message:'Aktivität vor dem ersten Öffnen'}]}});});
     page.on('pageerror',e=>errors.push(e.message));await page.goto(origin);
@@ -17,6 +19,11 @@ const fs=require('node:fs/promises');
     assert.equal(await page.locator('#fleet').isVisible(),true);
     assert.equal(await page.locator('#server-workspace').isVisible(),false);
     await page.waitForFunction(async()=>{const {state}=await import('/state.js');return state.available&&!state.refreshing;});
+    const accessible=async label=>{
+      const {violations}=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+      assert.deepEqual(violations.map(({id,nodes})=>({id,targets:nodes.map(node=>node.target)})),[],label);
+    };
+    await accessible('Server overview WCAG A/AA');
     const profiles=await page.evaluate(async()=>{const {state}=await import('/state.js');return state.catalog.servers.map(({id,label})=>({id,label}));});
     for(const {id,label} of profiles) assert.equal(await page.locator('[data-select-server="'+id+'"] .world-profile').innerText(),'Profil: '+label);
     await navigation.selectServer(page,await page.locator('#server-select').inputValue());
@@ -205,10 +212,12 @@ const fs=require('node:fs/promises');
       await page.getByRole('tab',{name:'Übersicht',exact:true}).click();
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       assert.equal(await page.locator('#quick-join-value').isVisible(),true);
+      await accessible(`Server detail WCAG A/AA at ${width}px`);
       await page.screenshot({path:`artifacts/symfony-core-${width}.png`,fullPage:true});
       if (width===390) {
         await page.locator('#navigation-toggle').click();
         await page.locator('#mobile-navigation').waitFor({state:'visible'});
+        await accessible('Open mobile navigation WCAG A/AA');
         await page.keyboard.press('Escape');
         await page.waitForFunction(()=>!document.querySelector('#mobile-navigation').open && document.querySelector('#navigation-toggle').getAttribute('aria-expanded')==='false');
         assert.equal(await page.evaluate(()=>document.activeElement.id),'navigation-toggle');

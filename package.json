@@ -15,6 +15,7 @@
     "test:symfony-dashboard": "node symfony/tools/check-dashboard-browser.cjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "playwright": "1.64.1"
   }
 }
