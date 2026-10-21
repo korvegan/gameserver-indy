@@ -19,6 +19,10 @@ Releasewechsel stehen in [docs/symfony-runtime.md](docs/symfony-runtime.md).
 
 ## Funktionen und Weiterentwicklung
 
+Der getrennte [Neubau ab Epic #141](next/README.md) liegt unter `next/`.
+Das PHP-Grundgerüst verwendet ausschließlich synthetische Daten; der hier
+beschriebene laufende Release bleibt die bisherige Anwendung.
+
 Die Serverzentrale verbindet Spielkacheln, individuelle Spielkopfzeilen, Steuerung,
 Beitrittsinformationen und sechs Server-Tabs. Hinzu kommen Familienzugriff,
 Discord/WhatsApp, Sicherungen und die Sturmklingen-Chronik.

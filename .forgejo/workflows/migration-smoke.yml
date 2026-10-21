@@ -34,3 +34,13 @@ jobs:
         run: node --test tests/ci-plan.test.cjs tests/log-lines.test.cjs
       - name: Check release switch selection
         run: node --test --test-name-pattern='release switch' tests/release.test.cjs
+      - name: Use PHP for the isolated new foundation
+        # 2.40.0, also used by the existing PHP checks.
+        uses: https://github.com/shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, pcntl
+          coverage: none
+          tools: none
+      - name: Check the new foundation contracts
+        run: php next/tests/run.php

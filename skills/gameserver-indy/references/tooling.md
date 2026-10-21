@@ -2,6 +2,12 @@
 
 Stand: 17.10.2026. Stack und Prüfwahl: `docs/tech-stack.md`, `docs/testing.md`; Architektur: `docs/architecture.md`.
 
+Neubau ab Epic #141: `next/README.md` und dessen Architektur-/Schnittstellenvertrag
+führen für den neuen App-Bereich. EP01 ist ein ausschließlich synthetisches
+PHP-Grundgerüst ohne native Spielanbindung; `npm run test:next` prüft es getrennt.
+PHP-Kindprozesse müssen `SLICE_PHP` beachten: `PHP_BINARY` allein übernimmt die
+mit `-n/-d` gesetzten Erweiterungen des vorhandenen CLI-Wrappers nicht.
+
 - PHP-CLI: `/home/korvegan/.local/share/gameserver-indy-tools/php`; Composer daneben als `composer.phar`; FrankenPHP unter `frankenphp-1.13.0/frankenphp`. System-PATH kann andere oder keine PHP-Werkzeuge enthalten. CLI für Console/Composer, FrankenPHP für HTTP verwenden.
 - Node-Version: `.node-version`. Vorhandene npm-Befehle und `gh` bevorzugen. PR-Texte über Dateien mit echten Zeilenumbrüchen übergeben.
 - `npm run test:php` prüft `regular`, bei Fehlern mit Diagnostik; `npm run test:ui` kompakte Familien-/Serverzentralenabläufe. Weitere Tests nach betroffenem Verhalten auswählen, native Änderungen mit isolierten Windows-Stellvertretern.
