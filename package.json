@@ -8,6 +8,7 @@
     "node": "^24.22.0"
   },
   "scripts": {
+    "test:next": "node next/tests/check-http.cjs",
     "check:js": "node tests/check-js.cjs",
     "test:php": "node scripts/phpunit.cjs",
     "test:ui": "npm run check:js && node symfony/tools/check-dashboard-browser.cjs --smoke",

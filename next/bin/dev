@@ -1,0 +1,28 @@
+<?php
+declare(strict_types=1);
+
+require dirname(__DIR__).'/src/Foundation.php';
+
+$port = $argv[1] ?? '18765';
+$engine = getenv('SLICE_FRANKENPHP');
+if ($argc > 2 || !ctype_digit($port) || (int) $port < 1024 || (int) $port > 65535) {
+    fwrite(STDERR, "Aufruf: php next/bin/dev [Port 1024–65535]\n");
+    exit(2);
+}
+if (!$engine || !is_file($engine) || !is_executable($engine) || !function_exists('pcntl_exec')) {
+    fwrite(STDERR, "SLICE_FRANKENPHP auf die vorhandene ausführbare FrankenPHP-Datei setzen; PHP-CLI benötigt pcntl.\n");
+    exit(2);
+}
+$fixture = \IndyNext\FixtureStore::create();
+echo 'Fixture: '.$fixture."\n";
+echo 'URL: http://127.0.0.1:'.(int) $port."\n";
+flush();
+$environment = array_intersect_key(getenv(), array_flip(['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR']));
+$environment['INDY_NEXT_PORT'] = (string) (int) $port;
+$environment['INDY_NEXT_FIXTURE'] = $fixture;
+$environment['XDG_CONFIG_HOME'] = $fixture.'/config';
+$environment['XDG_DATA_HOME'] = $fixture.'/data';
+chdir(dirname(__DIR__));
+pcntl_exec($engine, ['run', '--config', __DIR__.'/../Caddyfile', '--adapter', 'caddyfile'], $environment);
+fwrite(STDERR, "FrankenPHP konnte nicht gestartet werden.\n");
+exit(1);
