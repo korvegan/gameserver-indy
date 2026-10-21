@@ -80,6 +80,10 @@ Zugriffsschlüssel oder privaten Laufzeitordner über CI-Läufe hinweg cachen.
 - `npm run test:ui`: Syntax und kompakte Browserabnahme gegen eigene PHP-Fixtures;
   Serverübersicht und Detailansicht, zwei Spiele, wesentliche Tabs, erhaltene
   Entwürfe, Rechte sowie Desktop/Mobil einschließlich Navigationsdialog und Fokus.
+  Die gepinnte Entwicklungsabhängigkeit `@axe-core/playwright` prüft dabei
+  Serverübersicht, Desktop-/Mobil-Detailansicht und geöffneten mobilen Dialog
+  auf automatisch erkennbare WCAG-2.0-/2.1-A-/AA-Verstöße. Keine pauschalen
+  Regelausnahmen; Tastatur- und Fokusprüfungen bleiben zusätzlich erhalten.
 - Nur bei konkretem Bedarf: `npm run test:php -- --extended --filter <Fall>` oder
   `npm run test:symfony-dashboard` für die ausführlichen Simulationen.
 - Architektur-Abnahme des Livekanals: `npm run test:symfony-dashboard -- --events`.

@@ -112,7 +112,6 @@ export function renderWorkspace() {
       const card = element('button', undefined, 'world-card'); card.type = 'button'; card.dataset.selectServer = entry.id;
       card.dataset.game = Object.hasOwn(artwork, entry.game) ? entry.game : 'generic';
       const gameLabel = artwork[entry.game]?.label || state.catalog.games.find(game => game.id === entry.game)?.label || entry.game;
-      card.setAttribute('aria-label', `${gameLabel} · ${entry.label} öffnen`);
       card.setAttribute('aria-describedby', `world-status-${entry.id}`);
       const media = element('span', undefined, 'world-media');
       if (Object.hasOwn(artwork, entry.game)) {
