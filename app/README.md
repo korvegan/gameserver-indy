@@ -4,7 +4,7 @@ Zu [EP01 #141](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/
 [Arbeitsissue #147](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/147)
 und [Zielbild #140](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/140).
 
-`next/` ist der getrennte neue App-Bereich. EP01 liefert eine PHP-gerenderte
+`app/` ist der führende neue App-Bereich. EP01 liefert eine PHP-gerenderte
 Entwicklungsdiagnose, synthetischen Status und einen geprüften Zustandsvertrag.
 Fantasy-Design, native Spielaktionen und Tailscale-Anmeldung folgen in eigenen
 Epics. Das bestehende Release und seine Daten werden hier nicht geladen.
@@ -18,7 +18,7 @@ benötigt PHP ab 8.4 mit PDO SQLite; der WSL-Entwicklungsstarter zusätzlich
 ```sh
 export SLICE_PHP=/home/korvegan/.local/share/gameserver-indy-tools/php
 export SLICE_FRANKENPHP=/home/korvegan/.local/share/gameserver-indy-tools/frankenphp-1.13.0/frankenphp
-"$SLICE_PHP" next/bin/dev
+"$SLICE_PHP" app/bin/dev
 ```
 
 Der Starter erzeugt ein neues privates Verzeichnis unter dem temporären
@@ -29,8 +29,8 @@ danach gelöscht werden. Es gibt keinen Parameter für echte Spieldaten.
 Ein belegter Port wird nicht übernommen und kein vorhandener Dienst beendet.
 
 ```sh
-npm run test:next
-npm run test:next -- --idle
+npm run test:app
+npm run test:app -- --idle
 ```
 
 Der erste Aufruf prüft PHP-Verträge, vier konkurrierende PHP-Prozesse und den
@@ -39,6 +39,19 @@ Datenablage und beendet ihren Server. `--idle` ergänzt unter Linux eine
 fünfsekündige Stichprobe über `/proc` ohne weitere HTTP-Abfragen.
 Die Forgejo-CI führt den PHP-Vertragstest mit PHP 8.5 aus. FrankenPHP-HTTP und
 Leerlauf werden gezielt lokal geprüft; sie sind nicht Teil dieses CI-Jobs.
+Zusätzlich prüft sie das vollständige Quellarchiv und die Release-Verpackung.
+
+```sh
+npm run check:archive
+python3 app/tests/check-install.py
+```
+
+Der Verpackungstest benötigt einen Commit mit der neuen `app/`-Struktur.
+Der Windows-Starter wird nativ mit `app/tests/check-launcher.ps1` isoliert
+geprüft; WSL-Start, Netzwerk und Prozesse sind darin durch Testfunktionen ersetzt.
+Der installierte Starter verwendet denselben PHP-Einstieg und liefert FrankenPHP
+aus der privaten Konfiguration. Er akzeptiert nur den erwarteten Release-Stand.
+Die [Umstellung und der Rückweg](docs/retirement.md) beschreiben die Installation.
 
 `SLICE_PHP` bezeichnet auch für Kindprozesse den vollständigen CLI-Startweg.
 Ein bloßes `PHP_BINARY` würde die Erweiterungsflags des lokalen Wrappers verlieren.

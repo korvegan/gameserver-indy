@@ -1,25 +1,27 @@
 # Entwicklung und Werkzeuge
 
-Stand: 17.10.2026. Stack und Prüfwahl: `docs/tech-stack.md`, `docs/testing.md`; Architektur: `docs/architecture.md`.
+Neuer App-Bereich: `app/README.md`, Architektur und Brückenvertrag unter
+`app/docs/`. Das aktive Forgejo-Arbeitsissue und Zielbild #140 begrenzen den
+Auftrag. Für ein Issue nur die nötigen Quellen und Nachweise laden.
 
-Neubau ab Epic #141: `next/README.md` und dessen Architektur-/Schnittstellenvertrag
-führen für den neuen App-Bereich. EP01 ist ein ausschließlich synthetisches
-PHP-Grundgerüst ohne native Spielanbindung; `npm run test:next` prüft es getrennt.
-PHP-Kindprozesse müssen `SLICE_PHP` beachten: `PHP_BINARY` allein übernimmt die
-mit `-n/-d` gesetzten Erweiterungen des vorhandenen CLI-Wrappers nicht.
+- PHP-CLI: `/home/korvegan/.local/share/gameserver-indy-tools/php`;
+  FrankenPHP: `/home/korvegan/.local/share/gameserver-indy-tools/frankenphp-1.13.0/frankenphp`.
+  `SLICE_PHP` und `SLICE_FRANKENPHP` wählen diese vorhandenen Werkzeuge.
+- PHP-Kindprozesse beachten `SLICE_PHP`: `PHP_BINARY` übernimmt die mit
+  `-n/-d` gesetzten Erweiterungen des lokalen CLI-Wrappers nicht.
+- `npm run test:app`: gezielter Vertrags-/HTTP-Test mit eigenen synthetischen
+  Daten und eigenem Port. `-- --idle` nur für eine offene Leerlauffrage;
+  bestandene Stichproben nicht ohne Anlass wiederholen.
+- `npm run check:archive`: alle historischen Git-Blobs/Dateimodi vergleichen.
+  Nach Änderungen am Archiv oder an der Struktur ausführen.
+- Windows-Starter: `app/tests/check-launcher.ps1` ersetzt Prozess-/HTTP-Aufrufe
+  vollständig durch Mocks und arbeitet in einem eigenen Windows-Tempordner.
+- Node-Version steht in `.node-version`. Browserprüfungen erst für tatsächliche
+  UI-Arbeit; verfügbare Browserlaufzeit zuerst prüfen. Bei Playwright benötigen
+  Axe-Tests `browser.newContext()` und dessen `newPage()`.
+- Das Archiv und seine alten Workflows/Tests werden nicht als aktuelle Anwendung
+  gestartet. Frühere Werkzeugbefunde bei konkretem Bedarf dort nachlesen.
 
-- PHP-CLI: `/home/korvegan/.local/share/gameserver-indy-tools/php`; Composer daneben als `composer.phar`; FrankenPHP unter `frankenphp-1.13.0/frankenphp`. System-PATH kann andere oder keine PHP-Werkzeuge enthalten. CLI für Console/Composer, FrankenPHP für HTTP verwenden.
-- Node-Version: `.node-version`. Vorhandene npm-Befehle und `gh` bevorzugen. PR-Texte über Dateien mit echten Zeilenumbrüchen übergeben.
-- `npm run test:php` prüft `regular`, bei Fehlern mit Diagnostik; `npm run test:ui` kompakte Familien-/Serverzentralenabläufe. Weitere Tests nach betroffenem Verhalten auswählen, native Änderungen mit isolierten Windows-Stellvertretern.
-- Generische reguläre PHP-Tests laufen auf Linux, Windows zusätzlich für den nativen Ablauf. Erweiterte Fälle sind manuell. Keine archivierten Python-App-Tests oder Sprachvergleiche aktivieren.
-- Live-/Leerlaufarchitektur gezielt mit `npm run test:symfony-dashboard -- --events` prüfen; den zeitbasierten Nachweis nicht in jede gewöhnliche UI-Prüfung hängen. Linux-Dateiereignisbrücke benötigt vorhandenes `cc`; beide OS-Quellen besitzen eigene isolierte Tests.
-- Gemessene Composer-Installation: etwa 3 s Linux/9 s Windows; Chromium-Setup etwa 23 s. Aktuell kein zusätzliches Image/Cache-System gerechtfertigt. Neue Entscheidungen brauchen Messbefunde.
-- Playwright benötigt zum Lockfile passende Browser: bei fehlender Revision `npx playwright install chromium`. Keine alten Cachepfade fest verdrahten. `js_repl` war nicht verfügbar; versionierte Browserläufe verwenden.
-- Die axe-Prüfungen in `npm run test:ui` benötigen `browser.newContext()` und dessen `newPage()`: axe öffnet selbst eine Hilfsseite; der implizite Kontext von `browser.newPage()` erlaubt das nicht. Prüfumfang steht in `docs/testing.md`.
-- Fixtures belegen eigene Ports/Datenordner. Keine produktiven Listener übernehmen. Caddy-Admin ausschalten und XDG-Pfade in die eigenen Testdaten legen.
-- Native PHP-Tests auf kurzer NTFS-Kopie: lange WSL-UNC-Pfade scheiterten an PHPUnit-Dateinamen. Caches sind nach Betriebssystem getrennt; für neue isolierte Builds `INDY_CACHE_DIR` setzen, damit keine alten Konstruktoren aus Produktionscaches verwendet werden.
-- PowerShell-Testmocks müssen auch Modulimporte und Netz-/Task-Cmdlets ersetzen: echte Modulimporte hatten Mocks überschrieben.
-- Für Skill-Änderungen `skill-creator` verwenden. Neue Plugins nur bei konkreter fehlender Fähigkeit. GitHub, Browser, PowerShell und HTTP genügen derzeit.
-
-Review jedes PRs und CI seines endgültigen Commits gemäß `AGENTS.md`. Frühere Audit-Testzahlen sind kein heutiger Prüfauftrag.
-Während Fixture- oder Releasehelfer den Checkout kopieren, keine Dateien/Branches/Stashes verändern. Ein solcher Wechsel verursachte eine unvollständige Browserfixture und eine unnötige Wiederholung. Erst Abschluss abwarten; unabhängige Recherche oder lesende Bestandsaufnahme kann parallel laufen. Commit, Push-Abschluss und PR-Erstellung bleiben abhängig und sequenziell.
+Ein Arbeitsissue pro Branch. Selbstcheck und unabhängigen PR-Review auf den
+endgültigen Head beziehen; Rundenlimit vorher dokumentieren. Keine echten
+Spiele, Originaldaten oder Kontoeinrichtungen als Testfixtures verwenden.

@@ -1,0 +1,43 @@
+name: PHP foundation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the exact head
+        uses: https://data.forgejo.org/actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use the repository Node pin
+        uses: https://data.forgejo.org/actions/setup-node@3d7870f6218881292d183093179901ae8dc2ef85
+        with:
+          node-version-file: .node-version
+      - name: Verify the complete historical source
+        run: node app/tests/check-archive.cjs
+      - name: Verify release packaging and private settings preservation
+        run: python3 app/tests/check-install.py
+      - name: Use the established PHP provider
+        uses: https://github.com/shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, pcntl
+          coverage: none
+          tools: none
+      - name: Check the new foundation contracts
+        run: php app/tests/run.php

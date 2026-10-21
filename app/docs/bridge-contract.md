@@ -63,6 +63,8 @@ nach erneutem Öffnen; er belegt keinen nativen Wiederanlauf.
 ## Entwicklungs-HTTP in EP01
 
 `GET/HEAD /`: PHP-gerenderte Diagnose. `GET/HEAD /health`: Fixture-/Instanzkennung
-und `native_enabled=false`. `GET/HEAD /api/status`: synthetische Beobachtungen
+und `native_enabled=false`, dazu `build` als Release-Commit oder `development`.
+`GET/HEAD /api/status`: synthetische Beobachtungen
 beider Spiele, zunächst unbekannt. Andere Methoden ergeben 405, andere Pfade 404;
-fremde Hosts/Peers 403 und fehlende Fixture 503. Es gibt keine schreibende HTTP-API.
+fremde Hosts/Peers 403 und fehlende oder strukturell unvollständige Fixture 503.
+Es gibt keine schreibende HTTP-API.

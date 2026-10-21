@@ -1,53 +1,26 @@
 # GameServer Indy
 
-Privates Familien-Dashboard für native Windows-Dedicated-Server. Die Anwendung
-läuft mit **PHP/Symfony und FrankenPHP unter WSL**; aktuell werden Enshrouded und
-ASKA verwaltet. Die frühere Python-Anwendung ist [archiviert](archive/README.md).
+Neubau einer kleinen privaten Serverzentrale für Enshrouded und ASKA.
+PHP unter WSL übernimmt Oberfläche, Fachlogik und Rechte; notwendige native
+Windows-Aktionen erhalten eine kleine Brücke. Desktop und Smartphone sind
+gleichrangig vorgesehen, mit Sturmklingen-/Fantasy-Design.
 
-## Dashboard aufrufen
+**Aktueller Stand:** Das [PHP-Grundgerüst](app/README.md) läuft ausschließlich
+mit synthetischen Daten und einer lokalen Entwicklungsdiagnose. Echte
+Spielsteuerung, Familienanmeldung und Dashboard folgen in ihren Epics.
+Die bisherige Verwaltung wurde auf Nutzerauftrag gestoppt und ihr Code
+[vollständig archiviert](archive/README.md). Installationen und Welten bleiben
+an ihren bisherigen Pfaden erhalten.
 
-Auf dem Server-PC: **http://127.0.0.1:8765** oder die Desktop-Verknüpfung
-**GameServer Indy**. Verbundene und freigegebene Familiengeräte verwenden den
-privaten Tailscale-Zugang **https://indy.taila774ef.ts.net**.
-Auf dem Server-PC bleibt die lokale Adresse der direkte Weg, insbesondere wenn
-die Übernahme der Tailscale-DNS-Einstellungen dort deaktiviert ist.
+- [Zielbild und Epic-Plan #140](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/140)
+- [App starten und prüfen](app/README.md)
+- [Architektur](app/docs/architecture.md)
+- [Status-/Brückenvertrag](app/docs/bridge-contract.md)
+- [Umstellung und Rückweg](app/docs/retirement.md)
 
-Der vorhandene Windows-Starter liest seine private Konfiguration unter
-`%LOCALAPPDATA%\GameServerIndy\launcher.local.json`. `RuntimeEngine` ist `symfony`;
-Code, PHP-Werkzeug und aktuelle Datenablage sind getrennt. Installation und
-Releasewechsel stehen in [docs/symfony-runtime.md](docs/symfony-runtime.md).
+Entwicklung: `npm run test:app` mit den in der App-Anleitung genannten vorhandenen
+PHP-/FrankenPHP-Werkzeugen. Unter Windows verwendet `start.cmd` den installierten
+privaten Starter. Die Verwaltungsapp startet keine Spielserver automatisch.
 
-## Funktionen und Weiterentwicklung
-
-Der getrennte [Neubau ab Epic #141](next/README.md) liegt unter `next/`.
-Das PHP-Grundgerüst verwendet ausschließlich synthetische Daten; der hier
-beschriebene laufende Release bleibt die bisherige Anwendung.
-
-Die Serverzentrale verbindet Spielkacheln, individuelle Spielkopfzeilen, Steuerung,
-Beitrittsinformationen und sechs Server-Tabs. Hinzu kommen Familienzugriff,
-Discord/WhatsApp, Sicherungen und die Sturmklingen-Chronik.
-
-- [Architektur und Erweiterung](docs/architecture.md)
-- [Serverzentrale und Bildquellen](docs/dashboard-design.md)
-- [Familienzugriff](docs/family-access.md)
-- [Hostbetrieb und noch nötige persönliche Abnahme](docs/host-operation.md)
-- [Weltsicherungen](docs/world-backups.md)
-- [Getrennte Welten und Testkopien](docs/world-management.md)
-- [Wartung mit Vorlauf](docs/maintenance.md)
-- [Geführter Steam-Updateablauf](docs/update-assistant.md)
-- [Modquellen und gemeinsame Profile](docs/mods.md)
-- [Beitrittsinformationen](docs/connection-info.md)
-- [Chronik und Wandteppich](docs/chronicle.md)
-- [Kleine, gezielte Prüfungen](docs/testing.md)
-- [Gesamter Umsetzungsstand vom 17.10.2026](docs/backlog-status-2026-10-17.md)
-
-Regulär: `npm run test:php` und bei UI-Änderungen `npm run test:ui`.
-PHP, Composer und bei Browserprüfungen Node/Playwright werden als
-Entwicklungswerkzeuge benötigt. `SLICE_PHP`/`SLICE_FRANKENPHP` wählen abweichende
-lokale Werkzeuge. Einige isolierte PHP-Teststarter verwenden Python; das ist kein
-weiteres Backend und benötigt die archivierte Anwendung nicht.
-
-Neue Spiele erhalten ein Profil unter `profiles/` und einen passenden Symfony-
-Konfigurationsadapter. Bedienrechte, Spielstände und der bestätigte externe
-ASKA-Konfigurations-/Weltpfad bleiben erhalten. Keine echten Welten oder
-Nachrichten als Testfixtures verwenden. Die Arbeitsregeln stehen in [AGENTS.md](AGENTS.md).
+Forgejo `Korwerk/gameserver-indy` ist führend; GitHub ist das Backup.
+Arbeitsumfang, Prüfungen und Review stehen in [AGENTS.md](AGENTS.md).
