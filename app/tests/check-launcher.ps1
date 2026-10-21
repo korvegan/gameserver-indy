@@ -26,9 +26,15 @@ try {
     if ($result.Running -or $global:IndyLauncherFixture.Starts -ne 0) { throw 'CheckOnly started a process' }
     $result = & $source -NoBrowser -PassThru | ConvertFrom-Json
     if (-not $result.Running -or -not $result.Started -or $global:IndyLauncherFixture.Starts -ne 1) { throw 'Start failed' }
-    if ($global:IndyLauncherFixture.Arguments -notlike '*--distribution "Indy"*--exec /usr/bin/env "SLICE_FRANKENPHP=/tmp/frankenphp" "/tmp/php" "app/bin/dev"*' -or $global:IndyLauncherFixture.Arguments -like '*symfony*') { throw 'Wrong entrypoint' }
+    if ($global:IndyLauncherFixture.Arguments -ne '--distribution Indy --user fixture --cd /tmp/code --exec /usr/bin/env SLICE_FRANKENPHP=/tmp/frankenphp /tmp/php app/bin/dev 18765') { throw 'Wrong entrypoint or literal WSL quotes' }
     $result = & $source -NoBrowser -PassThru | ConvertFrom-Json
     if ($result.Started -or $global:IndyLauncherFixture.Starts -ne 1) { throw 'Existing app was not reused' }
+    $settings.ProjectDirectory = '/tmp/unsupported path'
+    $settings | ConvertTo-Json | Set-Content -LiteralPath $configuration -Encoding UTF8
+    $rejected = $false
+    try { & $source -CheckOnly -NoBrowser | Out-Null } catch { $rejected = $true }
+    if (-not $rejected) { throw 'Ambiguous whitespace path accepted' }
+    $settings.ProjectDirectory = '/tmp/code'
     $settings.RuntimeEngine = 'symfony'
     $settings | ConvertTo-Json | Set-Content -LiteralPath $configuration -Encoding UTF8
     $rejected = $false

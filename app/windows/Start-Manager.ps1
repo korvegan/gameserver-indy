@@ -5,8 +5,8 @@ $configuration = Join-Path $env:LOCALAPPDATA 'GameServerIndy\launcher.local.json
 $settings = Get-Content -LiteralPath $configuration -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($settings.RuntimeEngine -ne 'php-foundation' -or $settings.CodeCommit -notmatch '^[a-f0-9]{40}$' -or
     $settings.WslDistribution -notmatch '^[A-Za-z0-9_.-]+$' -or $settings.WslUser -notmatch '^[A-Za-z0-9_.-]+$' -or
-    $settings.ProjectDirectory -notmatch '^/[^"\r\n]+$' -or $settings.RuntimeExecutable -notmatch '^/[^"\r\n]+$' -or
-    $settings.FrankenPhpExecutable -notmatch '^/[^"\r\n]+$' -or
+    $settings.ProjectDirectory -notmatch '^/[^\s"\x00]+$' -or $settings.RuntimeExecutable -notmatch '^/[^\s"\x00]+$' -or
+    $settings.FrankenPhpExecutable -notmatch '^/[^\s"\x00]+$' -or
     [int]$settings.Port -lt 1024 -or [int]$settings.Port -gt 65535) {
     throw 'Keine gueltige neue PHP-Startkonfiguration.'
 }
@@ -25,11 +25,11 @@ function Read-Foundation {
 $health = Read-Foundation
 $started = $false
 if (-not $health -and -not $CheckOnly) {
-    # WSL option names remain unquoted; only the validated values are quoted.
-    $arguments = '--distribution "' + $settings.WslDistribution + '" --user "' + $settings.WslUser +
-        '" --cd "' + $settings.ProjectDirectory + '" --exec /usr/bin/env "SLICE_FRANKENPHP=' +
-        $settings.FrankenPhpExecutable + '" "' + $settings.RuntimeExecutable +
-        '" "app/bin/dev" "' + [int]$settings.Port + '"'
+    # WSL preserves unnecessary quotes in option values; local paths contain no whitespace.
+    $arguments = @('--distribution', $settings.WslDistribution, '--user', $settings.WslUser,
+        '--cd', $settings.ProjectDirectory, '--exec', '/usr/bin/env',
+        ('SLICE_FRANKENPHP=' + $settings.FrankenPhpExecutable), $settings.RuntimeExecutable,
+        'app/bin/dev', [int]$settings.Port) -join ' '
     Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\wsl.exe') -ArgumentList $arguments -WindowStyle Hidden | Out-Null
     $started = $true
     $deadline = (Get-Date).AddSeconds(20)
