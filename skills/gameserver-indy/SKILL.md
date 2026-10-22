@@ -11,11 +11,14 @@ PRs und Reviews gehören nach Forgejo. Projektregeln in `AGENTS.md` lesen.
 
 Seit dem ausdrücklichen Neubau-/Archivierungsauftrag vom 22.10.2026 ist `app/`
 der führende App-Bereich. PHP läuft unter WSL; native Windows-Aktionen erhalten
-eine möglichst kleine Brücke. Der aktuelle Stand ist ein isoliertes Gerüst mit
-synthetischen Daten, geprüftem Dashboard, nativer Brücke und Zugangsverwaltung.
-Echte Betriebsanbindung, persönliche Zugangsübernahme und Bootabnahme folgen in EP06.
-Der EP06-Code bereitet den dauerhaften Releaseweg samt gezielter Freigabeübernahme
-vor: `app/docs/operation.md`. Vorbereitung und isolierte Prüfungen aktivieren ihn nicht;
+eine möglichst kleine Brücke. Der Entwicklungsstart verwendet synthetische Daten.
+Die installierte Verwaltung wurde am 22.10.2026 in EP06 auf `php-mvp` mit echten
+Spielbindungen und bestehenden Freigaben umgestellt. Smartphonezugriff, beide
+Bestandswelten/Beitritte, reguläre Stopps und neue Speicherdateien sind bestätigt;
+Verwaltungsneustart erhält die Spielprozesse. Andere Familienidentität, Neustart
+mit aktivem Spieler und Boot ohne Desktopanmeldung bleiben offen.
+Aktueller Nachweis und Rückweg: `app/docs/operation.md`.
+Vorbereitung und isolierte Prüfungen aktivieren keinen Betrieb;
 die konkrete Betriebs-/Neustartfreigabe und persönliche Abnahme separat festhalten.
 Einstieg: `app/README.md`, Zielbild Forgejo #140.
 

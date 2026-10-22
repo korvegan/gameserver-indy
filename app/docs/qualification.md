@@ -222,6 +222,15 @@ Screenshots außerhalb des Repositorys unter
 `~/.codex/browser-tools/general/output/gameserver-ep06-{maintenance,desktop,mobile}.png`,
 mit `view_image` geprüft. Eigene Browser-/Testinstanz anschließend beendet.
 
-**Offen:** reale Aktivierung, aktuelle persönliche Freigabeübernahme, Spiel-/Welt-/Speicher-
-und Beitrittsprüfung, echte Familienidentität/Smartphone sowie Windows-Boot ohne Anmeldung.
-Der [konkrete Ablauf und Rückweg](operation.md) verlangen dafür das vereinbarte Wartungsfenster.
+Die spätere freigegebene Aktivierung, Übernahme der drei bestehenden Zugänge,
+echten Starts und der Verwaltungsneustart mit unveränderten Spielidentitäten sowie
+der vom Nutzer bestätigte Smartphonezugriff sind im [Betriebsnachweis](operation.md#betriebsnachweis-vom-22102026)
+getrennt dokumentiert. Der Nutzer bestätigt beide Bestandswelten und Beitritte;
+reguläre native Stopps und danach inhaltlich geänderte Weltdateien sind belegt.
+Das ist noch keine vollständige Betriebsabnahme: passende andere Familienidentität,
+aktive Spielerunde beim Verwaltungsneustart und Windows-Boot ohne Anmeldung bleiben offen.
+
+Eine fünfsekündige Stichprobe der aktiven Verwaltung während dieser Betriebsprüfung
+zeigt genau einen Serverprozess, RSS 103572–103608 KiB und 16 Threads, an beiden
+Messpunkten ohne Kindprozesse. Die CPU-Zeit steigt um zwei Ticks bei 10 ms Auflösung.
+Das ist eine kurze Betriebsstichprobe, keine Last- oder Leerlaufmessung.

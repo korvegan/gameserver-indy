@@ -58,6 +58,12 @@ Die Quelle bleibt unverändert; der neue CSRF-Schlüssel ist separat.
 
 `Update-Startup.ps1` prüft ohne `-Apply` nur den geplanten Aktionswechsel der vorhandenen
 Besitzer-/Passwort-/Bootaufgabe. Kontokennwort und PIN werden weder gelesen noch gespeichert.
+Beim realen Aktionswechsel verlangte Windows trotz administrativem Kontext mit
+`0x8007052e` erneut das Kontokennwort. Der Nutzer änderte die Aktion lokal über
+`Set-ScheduledTask -Action ... -User ... -Password ...`, mit einem lokalen
+`Get-Credential`-Dialog und ohne Ausgabe des Kennworts. Konto und Trigger blieben
+erhalten. Vor erneutem Aktivieren die gespeicherte Aktion prüfen; passt sie bereits,
+überspringt der Helfer die Änderung und erhält die ursprüngliche XML-Sicherung.
 
 ## Vereinbartes Wartungsfenster
 
@@ -109,11 +115,12 @@ Verwaltung nach Auftragssperre/Abwarten neu und vergleicht die Spielidentitäten
 
 ## Echte Abnahme – erst nach Freigabe abhaken
 
-- [ ] Desktop und Smartphone über privates HTTPS erreichbar, bestätigter Build.
+- [x] Lokal am Desktop und auf dem Smartphone über privates HTTPS erreichbar,
+  bestätigter Build; Smartphone vom Nutzer bestätigt.
 - [ ] Echte Familienidentität bedient beide Spiele; gesperrter Zugang abgewiesen;
   Besitzer einschließlich Verwaltungsrechten erhalten.
-- [ ] Beide vorhandenen Welten im Spiel wiedererkannt, beigetreten und bestätigt
-  gestoppt; tatsächliches Speichern geprüft.
+- [x] Beide vorhandenen Welten im Spiel wiedererkannt, beigetreten und bestätigt
+  gestoppt; neue inhaltlich geänderte Weltdateien nachgewiesen.
 - [ ] Verwaltung während Spielrunde neu gestartet: gleiche PID/Startzeit, Runde läuft weiter.
 - [ ] Nach vereinbartem Windows-Neustart am Anmeldebildschirm bleiben. Smartphonezugriff,
   ASKA-Start im tatsächlichen Bootkontext, Welt/Beitritt/Speichern bestätigen; erst dann Desktopanmeldung.
@@ -122,3 +129,35 @@ Verwaltung nach Auftragssperre/Abwarten neu und vergleicht die Spielidentitäten
 
 Taskregistrierung, manueller Taskstart, synthetische Header und Besitzer-Selbsttest
 ersetzen weder echten Bootnachweis noch die persönliche Smartphone-/Familienabnahme.
+
+## Betriebsnachweis vom 22.10.2026
+
+Die Freigabe „ja, du kannst umstellen“ und der persönliche Windows-Schritt sind in
+[#163](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/163#issuecomment-2808)
+festgehalten. Aktiviert ist das unabhängig geprüfte Release
+`b6bbcc46744b3f942444f97461782a29a347ceec` mit PHP 8.5.12. Beide Spiele waren bei
+der Erstumstellung gestoppt. Vollständige Weltkopien wurden Datei für Datei per SHA-256
+verifiziert; `world-checkpoint/verified.json`, Task-XML und `activation.json` bleiben privat.
+Die drei bestehenden aktivierten Besitzerzugänge wurden als Administratoren übernommen.
+Installationen, Weltpfade und Serve blieben erhalten; keine Netzänderung.
+
+Beide echten Starts über die HTTP-App sind nativ bestätigt. Anschließender
+Verwaltungsneustart bestanden: beide Spiel-PIDs und Startzeiten unverändert,
+passender Produktions-Health wieder verfügbar, `restart.json` vorhanden.
+Das belegt Prozessfortbestand; eine aktive Spielerunde war dabei noch nicht bestätigt.
+Lokaler Browser zeigt Dashboard und beide Spielkarten, der Nutzer bestätigt sie
+auf seinem Smartphone mit Tailscale. Der Nutzer ist beiden Spielen beigetreten
+und bestätigt die vertrauten Welten. Danach beide Stopps über die HTTP-App regulär
+und nativ bestätigt; kein erzwungenes Beenden. Der Offline-Vergleich zum Checkpoint
+zeigt 18 inhaltlich geänderte ASKA-Dateien und vier Enshrouded-Dateien, jeweils mit
+Schreibzeiten nach dem Start und ohne neue/entfernte Dateien im abschließenden
+Dateisatz. `game-cycle-check.json` bleibt privat; der zusammengefasste
+[Spielnachweis](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/163#issuecomment-2809)
+steht im Arbeitsissue. Das belegt geschriebene Weltdateien, keine semantische
+Prüfung des Speicherformats oder Wiederherstellung.
+
+Die Prüfung mit anderer Familienidentität ist auf Nutzerwunsch verschoben.
+Sie und der Verwaltungsneustart bei gleichzeitig aktivem Spieler bleiben offen;
+Prozessfortbestand und Beitritt nach dem bisherigen Neustart sind belegt.
+Der private Startnachweis zeigt Sitzung 1 und ersetzt keinen Bootnachweis.
+Windows wurde nicht neu gestartet; dafür fehlt weiterhin der ausdrückliche Auftrag.

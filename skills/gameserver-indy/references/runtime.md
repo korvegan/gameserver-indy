@@ -6,11 +6,14 @@ Aktiver Codebereich: `app/`. Aktuelle Anleitung und Rückweg:
 und ersetzt sich durch einen FrankenPHP-Prozess. Er startet keine Spiele.
 
 Der private Windows-Starter und die vorhandene Bootaufgabe verwenden
-`%LOCALAPPDATA%\\GameServerIndy\\Start-Manager.ps1`. Die neue Konfiguration
-hat `RuntimeEngine=php-foundation`, ein unveränderliches Code-Release und
-`CodeCommit`. `/health` muss Fixture-Modus, deaktivierte native Anbindung und
-passenden Build bestätigen. Ein Aufrufertimeout allein beweist keinen Startfehler;
-den tatsächlichen Listener prüfen, bevor ein weiterer Start versucht wird.
+`%LOCALAPPDATA%\\GameServerIndy\\Start-Manager.ps1`. Die installierte Konfiguration
+hat seit der freigegebenen EP06-Umstellung am 22.10.2026 `RuntimeEngine=php-mvp`,
+ein unveränderliches Code-/Laufzeitpaket und getrenntes `AppStateDirectory`.
+Aktiviertes Release: `b6bbcc46744b3f942444f97461782a29a347ceec`, FrankenPHP 1.13.2 /
+PHP 8.5.12. Aktuelle Werte immer aus `launcher.local.json` lesen. `/health` muss
+Produktionsmodus, native Anbindung, erwarteten Build und Zustandskennung bestätigen.
+Ein Aufrufertimeout allein beweist keinen Startfehler; den tatsächlichen Listener
+und vorhandenen Auftrag prüfen, bevor ein weiterer Start versucht wird.
 
 Die bisherige Symfony-Verwaltung ist auf ausdrücklichen Nutzerauftrag gestoppt.
 Ihr zuletzt laufendes Release `df80d4abc61b015e08c1fb87e032abee8601eee5`,
@@ -19,26 +22,30 @@ Die Quellarchivierung verschiebt keine Welten, Konfigurationen oder privaten
 Datenbanken. Rückweg nur anhand des lokalen Umstellungsnachweises und mit dem
 aktuellen Datenstand planen; keine historischen Datenbanken zurückkopieren.
 
-Die neue Entwicklungsdiagnose bietet noch keinen Familienlistener, keine echte
-Spielsteuerung und keine Spielserver-Autostartregel. Vorhandene Tailscale-
-Netzeinstellungen werden beim Strukturwechsel nicht verändert. Ein echter
-Windows-Neustart ohne Anmeldung und ASKA im Bootkontext sind dadurch weiterhin
-nicht praktisch abgenommen; dafür bleiben EP03/EP04/EP06 zuständig.
+Der lokale Besitzerlistener liegt auf 8765, das Familienbackend auf 8767;
+der bestehende private Tailscale-Serve-Weg bleibt unverändert. Beide echten Starts
+und ein Verwaltungsneustart mit identischen Spiel-PIDs/Startzeiten sind belegt.
+Der Besitzer bestätigt das neue Dashboard samt beiden Spielen auf dem Smartphone.
+Der Nutzer bestätigt beide vertrauten Bestandswelten und Beitritte. Beide Stopps
+sind nativ bestätigt; beide Weltordner enthalten danach neue inhaltlich geänderte
+Speicherdateien. Das ersetzt keinen Nachweis mit anderer Familienidentität oder
+gleichzeitig aktivem Spieler beim Verwaltungsneustart; diese Prüfungen bleiben offen.
 
-EP05 ergänzt im Quellstand das Dashboard, Serverdetails und autorisierte einmalige
-Aktionen. Die Vorschau verwendet weiterhin eigene synthetische Daten. Der installierte
-Starter und seine private Konfiguration wurden dadurch nicht umgestellt; reale
-Spiel-/Familienanbindung und Installation bleiben EP06. Native HTTP-Tests verwenden
-ausschließlich eigene Windows-Testprogramme, keine vorhandenen Spielinstallationen.
+Die bestehende Besitzer-/Passwort-/Bootaufgabe verwendet jetzt PowerShell 7.6.7
+ohne ExecutionPolicy-Bypass. Ihr Aktionswechsel verlangte trotz administrativem
+Kontext mit `0x8007052e` erneut das Windows-Kontokennwort. Der Nutzer führte
+`Set-ScheduledTask` lokal mit `-User` und `-Password` aus; Konto und Trigger blieben
+erhalten, XML-Sicherung liegt privat. Kennwort/PIN nie in Chat oder Repository erfassen.
+Der aktuelle Startnachweis zeigt Windows-Sitzung 1. Boot ohne Desktopanmeldung
+und ASKA in Sitzung 0 bleiben ungeprüft; Windows-Neustart braucht ausdrücklichen Auftrag.
 
 Wenn ein eigener Prozess beendet werden muss: vollständigen Codepfad, PID und
 Startidentität vor dem Signal prüfen. Keine Prozessnamen-Gruppen beenden.
 
-EP06 ergänzt den getrennten `php-mvp`-Startweg: unveränderliches Code-/Laufzeitpaket,
-persistentes `AppStateDirectory`, geschützte Freigabeübernahme und gezielte Umstellung.
-Anleitung und konkrete Betriebsgrenze: `app/docs/operation.md`. Solange kein
-Aktivierungsnachweis vorliegt, bleibt der oben beschriebene installierte Gerüststand
-führend. Eine reine Vorbereitung verändert weder Starter/Bootaufgabe noch echte Spiele.
+Anleitung, private Nachweise und konkrete Betriebsgrenze: `app/docs/operation.md`.
+Eine reine Vorbereitung aktiviert keinen Betrieb. Der verifizierte Weltcheckpoint
+der Erstumstellung und `activation.json` liegen im privaten Releaseverzeichnis.
 Rückweg setzt nur Codebindung zurück; aktuelle Zugänge, Schlüssel und native Belege
 nie aus alten Datenbanken wiederherstellen. Erstumstellung fällt auf das synthetische
-Gerüst zurück, nicht auf den archivierten Controller.
+Gerüst zurück, nicht auf den archivierten Controller. Native Entwicklungstests bleiben
+auf eigene Windows-Testprogramme begrenzt; reale Spielaktionen gehören ins Betriebsfenster.
