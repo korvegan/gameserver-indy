@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sturmklingen – Überarbeitete Designansichten</title>
+<style>
+  :root { color-scheme: dark; font: 17px/1.6 system-ui, sans-serif; background: #10171a; color: #f1e5d1; }
+  body { max-width: 1280px; margin: auto; padding: 24px; }
+  h1, h2 { font-family: Georgia, serif; line-height: 1.2; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 16px; }
+  h2 { margin-top: 0; }
+  p { max-width: 75ch; }
+  a { color: #e4bb69; text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid #e4bb69; outline-offset: 4px; }
+  nav { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 24px 0 40px; }
+  nav a { padding: 10px 0; }
+  section { scroll-margin-top: 24px; margin-bottom: 48px; }
+  img { display: block; width: 100%; height: auto; margin-top: 16px; }
+  .image-link { display: block; }
+  .note { color: #bbc0c1; }
+  @media (max-width: 540px) { body { padding: 16px; } }
+</style>
+<header>
+  <h1>Sturmklingen – ruhiger, klarer</h1>
+  <p>Weniger Schmuck, mehr Gewicht für Status und Aktionen. Enshrouded und ASKA
+    verwenden ihre eigenen Logos und Bildmotive. Die bestätigte Dashboardrichtung
+    ist jetzt auf alle Ansichten übertragen.</p>
+  <p class="note">Alle sechs Ansichten sind für die spätere Umsetzung bestätigt.
+    Die Zustände und Personen sind fiktiv. Dies sind Bildentwürfe, keine bedienbare
+    Spielverwaltung.</p>
+  <p class="note">Jedes Bild lässt sich für die volle Auflösung öffnen. Desktop und
+    Smartphone stehen jeweils nebeneinander; die Zustandstafel zeigt vier Beispiele.</p>
+  <nav aria-label="Designansichten">
+    <a href="#dashboard-neu">Dashboard</a>
+    <a href="#enshrouded">Enshrouded</a>
+    <a href="#aska">ASKA</a>
+    <a href="#zugaenge">Zugänge</a>
+    <a href="#stopp">Stoppbestätigung</a>
+    <a href="#zustaende">Zustände</a>
+  </nav>
+</header>
+<main>
+  <section id="dashboard-neu">
+    <h2>Dashboard – bestätigte Richtung</h2>
+    <p>Eigene Spielidentität, ruhige Bedienflächen und direkte Start-/Stoppknöpfe.
+      <a href="concepts/dashboard-calm-v2.png">In voller Auflösung öffnen</a>.</p>
+    <a class="image-link" href="concepts/dashboard-calm-v2.png"><img src="concepts/dashboard-calm-v2.png" alt="Neues ruhigeres Dashboard mit den erkennbaren Enshrouded- und ASKA-Logos und Spielmotiven" width="1448" height="1086"></a>
+  </section>
+  <section id="enshrouded">
+    <h2>Enshrouded – Serverdetails</h2>
+    <p>Prozess läuft, Spielbereitschaft unbekannt. Starten und Kopieren sind gesperrt.</p>
+    <a class="image-link" href="concepts/enshrouded-calm-v2.png"><img src="concepts/enshrouded-calm-v2.png" alt="Enshrouded-Details mit eigenem Spiellogo, Spielmotiv und getrenntem Prozessstatus und Spielbereitschaft" width="1448" height="1086" loading="lazy"></a>
+  </section>
+  <section id="aska">
+    <h2>ASKA – Serverdetails</h2>
+    <p>Server gestoppt. Starten ist verfügbar, Stoppen und Kopieren sind gesperrt.</p>
+    <a class="image-link" href="concepts/aska-calm-v2.png"><img src="concepts/aska-calm-v2.png" alt="ASKA-Details mit eigenem Spiellogo, Wikingerbild und gestopptem Server" width="1448" height="1086" loading="lazy"></a>
+  </section>
+  <section id="zugaenge">
+    <h2>Zugänge – Verwaltung</h2>
+    <p>Personen freigeben oder sperren; zwei Rollen und ein kleines Formular.</p>
+    <a class="image-link" href="concepts/zugaenge-calm-v3.png"><img src="concepts/zugaenge-calm-v3.png" alt="Ruhige Verwaltung fiktiver Zugänge mit Administrator und Familie" width="1448" height="1086" loading="lazy"></a>
+  </section>
+  <section id="stopp">
+    <h2>Stoppbestätigung</h2>
+    <p>Bestätigung direkt vom Dashboard. Abbrechen erhält zunächst den Tastaturfokus.</p>
+    <a class="image-link" href="concepts/stoppbestaetigung-calm-v3.png"><img src="concepts/stoppbestaetigung-calm-v3.png" alt="Schlichter Dialog Enshrouded stoppen mit Abbrechen und Server stoppen" width="1448" height="1086" loading="lazy"></a>
+  </section>
+  <section id="zustaende">
+    <h2>Wichtige Zustände</h2>
+    <p>Laufender Start, unklarer Ausgang, bestätigter Fehlstart und gesperrter Zugang.</p>
+    <a class="image-link" href="concepts/zustaende-calm-v3.png"><img src="concepts/zustaende-calm-v3.png" alt="Vier schlichte Beispiele für Operations- und Zugangszustände auf Desktop und Smartphone" width="1448" height="1086" loading="lazy"></a>
+  </section>
+  <details id="vergleich">
+    <summary>Frühere Dashboardfassung zum Vergleich</summary>
+    <a class="image-link" href="concepts/dashboard.png"><img src="concepts/dashboard.png" alt="Früheres Dashboard mit stärkerem Fantasyrahmen und generischen Motiven" width="1536" height="1024" loading="lazy"></a>
+  </details>
+</main>
+</html>

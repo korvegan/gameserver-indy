@@ -1,52 +1,64 @@
-# EP02 – Gesicherter Designstand
+# EP02 – Designstand
 
-Stand: 22.10.2026. Nutzer wünscht Pause bis morgen; keine weitere Designarbeit
-oder automatische Fortsetzung. Epic [#142](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/142),
+Stand: 22.10.2026. Epic [#142](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/142),
 Arbeitsissue [#155](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/155).
 
-## Akzeptiert
+## Bestätigte Richtung
 
-- **A – Dunkle Schmiede**: dunkler Stein, Stahl, warme Goldakzente.
-- [Dashboard mit direkten Aktionen](concepts/dashboard.png), jeweils Desktop
-  und Smartphone. Der Nutzer hat auch diese ergänzte Fassung bestätigt.
-- **Starten** und **Stoppen** direkt bei Enshrouded und ASKA; kein Wechsel in
-  die Detailansicht dafür nötig. **Server öffnen** bleibt zusätzlich erreichbar.
-- Stoppen weiterhin mit Bestätigung. PHP unter WSL, kleine native Windows-Brücke;
-  kein neuer Frontend-Stack und keine zusätzlichen MVP-Bereiche.
+Die ursprüngliche Richtung A – Dunkle Schmiede war dem Nutzer in der ausgearbeiteten
+Fassung zu dominant. Die Aufteilung passt; Status und Bedienung sollen mehr
+Gewicht erhalten und beide Spiele sofort an ihrer eigenen Gestaltung erkennbar sein.
+Der Nutzer hat das [ruhigere Dashboard](concepts/dashboard-calm-v2.png) bestätigt
+und die Überarbeitung der übrigen Ansichten in diesem Stil beauftragt.
 
-Der Entwurf ist ein Bild. Echte Oberfläche, Rechte und Spielaktionen bleiben
-EP04/EP05 beziehungsweise EP03 vorbehalten. Die laufende PHP-Diagnose und reale
-Spiele wurden durch die Designarbeit nicht verändert.
+- Dunkle, ruhige Bedienflächen; Gold nur sparsam, kein großer Fantasyrahmen.
+- Enshrouded und ASKA mit eigenen Logos, Farben und wiedererkennbaren Spielmotiven.
+- **Starten** und **Stoppen** direkt je Spiel; **Server öffnen** zusätzlich.
+  Stoppen mit Bestätigung. Prozessstatus und Spielbereitschaft getrennt.
+- Desktop und Smartphone gleichrangig. Kleine Zugangsverwaltung mit zwei Rollen.
 
-## Dateien
+Die [Browserübersicht](index.html) zeigt die Konzepte; die [Spezifikation](specification.md)
+legt Beschriftungen, Zustände, Gestaltung und responsives Verhalten fest.
+Der Nutzer hat am 22.10.2026 auch den vollständigen Stand aller sechs Ansichten
+für die spätere Umsetzung bestätigt.
 
-- [Dashboard-Prompt](dashboard-prompt.txt) für die bestätigte Überarbeitung.
-- [Geplante Folgekonzepte mit vollständigen Prompts](concept-prompts.json).
-- [Bildherkunft und Hash](sources.json). Erzeugung mit integriertem Image Gen;
-  generierte Illustrationen, keine offiziellen Spiel-Screenshots.
+## Dateien und Herkunft
 
-Die drei ursprünglichen Stilproben bleiben lokal unter
-`artifacts/design-ep02/style-studies/` im Hauptcheckout erhalten.
-Der lokale Bildserver liefert die bestätigte Fassung unter
-`http://127.0.0.1:18742/muster-a-direktaktionen.png`.
-Dieser Vorschauprozess gehört zur aktuellen WSL-Laufzeit, nicht zum App-Autostart.
+- [Dashboard-Prompt](dashboard-calm-prompt.txt), [Prompts der übrigen Ansichten](calm-concept-prompts.json).
+- [Bildherkunft, Abnahmestatus und Hashes](sources.json),
+  [offizielle Markenreferenzen aus dem vorhandenen Archiv](brand-references.json).
+- Die frühere Dashboardfassung bleibt als Vergleich erhalten; sie ist keine
+  aktuelle Umsetzungsvorgabe. Weitere verworfene Tafeln liegen lokal bei den Stilproben.
 
-## Morgen fortsetzen
+Alle Konzepttafeln sind mit dem integrierten Image Gen erstellt. Die neue Runde
+nutzt vorhandene offizielle Logos und Spielbilder als Referenzen; die generierten
+Tafeln sind keine Spiel-Screenshots. Die spätere App soll die originalen
+Markenassets unverändert einbinden, mit echten HTML-Texten und Bedienelementen.
+Keine neuen Pakete und keine Änderung an App-Laufzeit, Rechten oder Spielprozessen.
 
-1. Nur dieses Dokument, #142/#155, AGENTS.md und nötige Skills laden.
-   Arbeitsbranch `design/142-dark-forge`, Worktree `/tmp/gameserver-design-142`.
-   Hauptcheckout bleibt auf unverändertem Main. Der Branch wird auf Forgejo gesichert.
-2. Fünf weitere Ansichten waren angefordert, als der Nutzer unterbrach:
-   Enshrouded-Details, ASKA-Details, Zugangsverwaltung, Stoppbestätigung,
-   wichtige Operations-/Fehlerzustände. Der Code-Mode-Aufruf wurde abgebrochen;
-   keine Ergebnisse daraus als fertig oder akzeptiert behandeln. Eventuell bereits
-   gespeicherte Ergebnisse erst prüfen, bevor dieselbe Generierung erneut startet.
-3. Im selben Stil vervollständigen, kompakte Beschriftungs-, Zustands-, Typografie-,
-   Farb- und Responsive-Spezifikation ableiten und die Gesamtansichten abstimmen.
-   Laufender Prozess bedeutet nicht automatisch Spielbereitschaft; unbekannter
-   Operationsausgang blockiert erneute Aktionen gemäß `app/docs/bridge-contract.md`.
-4. Erst den vollständigen Stand als PR prüfen lassen. Fixes Reviewmaximum:
-   **zwei Runden**, bisher **keine gestartet**. Noch kein PR, Review oder Merge
-   für diesen Zwischenstand; #142 und #155 bleiben offen.
+Die Vorschau läuft lokal unter `http://127.0.0.1:18742/` und ist kein App-Autostart.
+Die Bildkopien liegen dauerhaft unter `artifacts/design-ep02/preview/` im
+Hauptcheckout; die ursprünglichen Stilproben daneben unter `style-studies/`.
+Ein temporärer Worktree kann nach einem WSL-Neustart fehlen; den gesicherten
+Branch `design/142-dark-forge` dann wiederherstellen. Aktueller Worktree:
+`/tmp/gameserver-design-142`. Hauptcheckout auf Main belassen.
 
-Die Ablage liegt außerhalb `app/`, damit Designnachweise die Laufzeit nicht vergrößern.
+## Prüfung und Übergabe
+
+Alle sechs Tafeln sind mit `view_image` auf Beschriftungen, Status, aktive/gesperrte
+Knöpfe, Desktop-/Mobilaufbau und Übereinstimmung mit der bestätigten Richtung
+geprüft. Bildhashes, PNG-Dimensionen, Quellen-/Promptverweise, JSON, lokale
+Markdown-/HTML-Verweise und die HTTP-Auslieferung sind geprüft. Die Vorschau
+liefert ausschließlich ihre Bild-/HTML-Pfade; die Startseite ist auch aus Windows
+erreichbar. Der Browser-MCP zeigt die Galerie und die verlinkten Bilder.
+Die vorhandene Projekt-Playwright-Version prüft Navigation, Originalbildöffnung,
+Bildauslieferung und fehlenden horizontalen Überlauf bei 1280 und 390 px;
+320 px ist zusätzlich als Layoutcheck geprüft. Browserfehler wurden dabei nicht
+beobachtet. Dafür wurde der Projektweg ergänzt, weil die angebotenen MCP-Methoden
+keine Viewportänderung oder Linkklicks bereitstellen.
+
+Festes Reviewmaximum für den PR: **zwei Runden**; vor PR-Erstellung wurde noch
+keine gestartet. CI und unabhängiges Review sind im PR nachzuhalten. Nach Merge
+liefert dieser Stand die Gestaltung für EP04/EP05; die native Beobachtung folgt
+in EP03. Als nächstes das beauftragte Folgeepic mit Zielbild #140 lesen.
+EP02 enthält keine produktive UI- oder Spielumsetzung.
