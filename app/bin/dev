@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require dirname(__DIR__).'/src/Foundation.php';
 require dirname(__DIR__).'/src/Access.php';
+require dirname(__DIR__).'/src/WindowsBridge.php';
+require dirname(__DIR__).'/src/ServerRuntime.php';
 
 $port = $argv[1] ?? '18765';
 $engine = getenv('SLICE_FRANKENPHP');
@@ -19,12 +21,18 @@ if (!$engine || !is_file($engine) || !is_executable($engine) || !function_exists
     fwrite(STDERR, "SLICE_FRANKENPHP auf die vorhandene ausführbare FrankenPHP-Datei setzen; PHP-CLI benötigt pcntl.\n");
     exit(2);
 }
+$php = getenv('SLICE_PHP') ?: PHP_BINARY;
+if (!is_executable($php) || !is_executable('/usr/bin/setsid')) {
+    fwrite(STDERR, "Vorhandenen PHP-CLI-Startweg und setsid aus util-linux prüfen.\n");
+    exit(2);
+}
 $fixture = \IndyNext\FixtureStore::create();
 \IndyNext\AccessStore::create($fixture);
+\IndyNext\ServerRuntime::createFixture($fixture, $php);
 echo 'Fixture: '.$fixture."\n";
 echo 'URL: http://127.0.0.1:'.(int) $port."\n";
 flush();
-$environment = array_intersect_key(getenv(), array_flip(['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR']));
+$environment = array_intersect_key(getenv(), array_flip(['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR', 'WSL_INTEROP', 'WSL_DISTRO_NAME']));
 $environment['INDY_NEXT_PORT'] = (string) (int) $port;
 $environment['INDY_NEXT_FIXTURE'] = $fixture;
 $environment['INDY_FAMILY_CONFIG'] = $familyPort === null ? 'family-disabled.caddy' : 'family.caddy';

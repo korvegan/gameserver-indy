@@ -25,5 +25,11 @@ Netzeinstellungen werden beim Strukturwechsel nicht verändert. Ein echter
 Windows-Neustart ohne Anmeldung und ASKA im Bootkontext sind dadurch weiterhin
 nicht praktisch abgenommen; dafür bleiben EP03/EP04/EP06 zuständig.
 
+EP05 ergänzt im Quellstand das Dashboard, Serverdetails und autorisierte einmalige
+Aktionen. Die Vorschau verwendet weiterhin eigene synthetische Daten. Der installierte
+Starter und seine private Konfiguration wurden dadurch nicht umgestellt; reale
+Spiel-/Familienanbindung und Installation bleiben EP06. Native HTTP-Tests verwenden
+ausschließlich eigene Windows-Testprogramme, keine vorhandenen Spielinstallationen.
+
 Wenn ein eigener Prozess beendet werden muss: vollständigen Codepfad, PID und
 Startidentität vor dem Signal prüfen. Keine Prozessnamen-Gruppen beenden.

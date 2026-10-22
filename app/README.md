@@ -9,14 +9,17 @@ Entwicklungsdiagnose, synthetischen Status und einen geprüften Zustandsvertrag.
 EP02 hält den bestätigten Designstand unter `design/ep02/` fest. EP03 ergänzt
 die isoliert geprüfte [native Windows-Brücke](docs/windows-bridge.md) für
 PowerShell 7.6+, lokal 7.6.7. EP04 liefert [Identität und Zugangsverwaltung](docs/family-access.md)
-mit isoliert geprüfter Serve-Vertrauensgrenze. Spielbedienung und Betriebsaktivierung
-folgen in EP05/EP06. Die Diagnose und Zugangsablage bleiben synthetisch.
+mit isoliert geprüfter Serve-Vertrauensgrenze. EP05 verbindet
+[Dashboard und Spielbedienung](docs/dashboard.md) mit autorisierten einmaligen
+Brückenaufrufen. Der normale Start und die Zugangsablage bleiben synthetisch;
+reale Aktivierung, Freigabeübernahme und Betriebsabnahme folgen in EP06.
 
 ## Start und Prüfung
 
 Vorhanden sind PHP-CLI 8.5.4 und FrankenPHP 1.13.0 mit PHP 8.5.11. Der Code
 benötigt PHP ab 8.4 mit PDO SQLite, mbstring und iconv; der WSL-Entwicklungsstarter zusätzlich
-`pcntl` und `ctype`. Neue Composer-/npm-Pakete werden nicht benötigt.
+`pcntl` und `ctype`, die einmalige Ausführung das vorhandene `setsid` aus util-linux.
+Neue Composer-/npm-Pakete werden nicht benötigt.
 
 ```sh
 export SLICE_PHP=/home/korvegan/.local/share/gameserver-indy-tools/php
@@ -30,7 +33,8 @@ FrankenPHP-Prozess auf `http://127.0.0.1:18765`; optional einen freien Port als
 Argument angeben. Mit Strg+C beenden. Die eigene synthetische Datenablage kann
 danach gelöscht werden. Es gibt keinen Parameter für echte Spieldaten.
 Ein belegter Port wird nicht übernommen und kein vorhandener Dienst beendet.
-Die lokale Zugangsverwaltung ist unter `/access` erreichbar. Für das getrennte
+Das Dashboard liegt unter `/`, Serverdetails unter `/servers/enshrouded` bzw.
+`/servers/aska`, die lokale Zugangsverwaltung unter `/access`. Für das getrennte
 synthetische Familienbackend und die Browserprüfung siehe [Zugänge](docs/family-access.md).
 
 ```sh
@@ -38,7 +42,8 @@ npm run test:app
 npm run test:app -- --idle
 ```
 
-Der erste Aufruf prüft PHP-Verträge, Brückentransport, vier konkurrierende PHP-Prozesse und den
+Der erste Aufruf prüft PHP-Verträge, Brückentransport, vier konkurrierende PHP-Prozesse,
+asynchrone Spielaktionen mit synthetischen Peers, aktuelle Rechte und den
 echten HTTP-Start auf einem eigenen Port. Die HTTP-Prüfung entfernt ihre eigene
 Datenablage und beendet ihren Server. `--idle` ergänzt unter Linux eine
 fünfsekündige Stichprobe über `/proc` ohne weitere HTTP-Abfragen.
@@ -73,6 +78,7 @@ passende Skill-Referenz lesen. Hier genügen anschließend:
 - [EP01-Prüfnachweis](docs/qualification.md)
 - [Windows-Brücke und EP03-Prüfweg](docs/windows-bridge.md)
 - [Tailscale-Vertrauensgrenze, Zugänge und EP04-Prüfweg](docs/family-access.md)
+- [Dashboard, Ausführung und EP05-Prüfweg](docs/dashboard.md)
 
 Technische Entscheidungen und Grenzen nach Änderungen dort knapp aktualisieren.
-Die Diagnose ist kein freigegebenes Dashboard und vergibt keine Familienrechte.
+Der Entwicklungsstart erteilt keine realen Familienrechte und steuert keine echten Spiele.

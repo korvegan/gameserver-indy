@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/src/Foundation.php';
+require dirname(__DIR__).'/src/Access.php';
+require dirname(__DIR__).'/src/WindowsBridge.php';
+require dirname(__DIR__).'/src/ServerRuntime.php';
+if ($argc !== 4) { exit(2); }
+try { (new \IndyNext\ServerRuntime($argv[1]))->execute($argv[2], $argv[3]); }
+catch (Throwable) { exit(1); }

@@ -10,6 +10,7 @@
   "scripts": {
     "test:app": "node app/tests/check-http.cjs",
     "test:access:browser": "node app/tests/check-access-browser.cjs",
+    "test:servers:browser": "node app/tests/check-servers-browser.cjs",
     "check:archive": "node app/tests/check-archive.cjs"
   },
   "devDependencies": {

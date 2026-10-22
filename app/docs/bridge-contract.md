@@ -69,6 +69,23 @@ und `native_enabled=false`, dazu `build` als Release-Commit oder `development`.
 `GET/HEAD /api/status`: synthetische Beobachtungen
 beider Spiele, zunächst unbekannt. Andere Methoden ergeben 405, andere Pfade 404;
 fremde Hosts/Peers 403 und fehlende oder strukturell unvollständige Fixture 503.
-Es gibt keine schreibende HTTP-Spiel-API. EP04 ergänzt `/access` zur Verwaltung
+EP01 hatte keine schreibende HTTP-Spiel-API. EP04 ergänzt `/access` zur Verwaltung
 synthetischer Freigaben sowie `/api/session` und `/api/access`; die zusätzlichen
 Grenzen stehen in [family-access.md](family-access.md).
+
+## EP05: Bedienung und einmalige Ausführung
+
+`GET /` und `GET /servers/enshrouded` bzw. `/servers/aska` liefern die Oberfläche.
+`GET /api/status` liest ausschließlich erlaubte Cacheeinträge. `POST /api/refresh`
+stößt zusammengefasste einzelne Beobachtungen an. `POST /api/actions` erhält
+`server`, `action`, `csrf`, bei Stoppen zusätzlich `confirmed` mit derselben
+Server-ID. Der Aufruf reserviert und bestätigt 202 mit Operations-ID, nicht
+mit einer behaupteten Spielbereitschaft. Alle Schreibwege benötigen aktuelle
+Identität, Freigabe, feste Origin und gebundenes CSRF-Token.
+
+Ein begrenzter CLI-Prozess prüft die gespeicherte Akteursrevision vor Beginn
+erneut und ruft den unveränderten nativen Vertrag auf. Start-/Stopp-IDs werden
+beibehalten, unklare Aufträge ausschließlich per `status` mit derselben ID
+abgeglichen. Native Bereitschaft bleibt ohne gesonderten Nachweis `null`.
+Öffentliche Antworten enthalten weder PID, private Pfade noch native Geheimnisse.
+Details, Rückmeldung, Beobachtungsfristen und Prüfung: [dashboard.md](dashboard.md).

@@ -12,8 +12,8 @@ PRs und Reviews gehören nach Forgejo. Projektregeln in `AGENTS.md` lesen.
 Seit dem ausdrücklichen Neubau-/Archivierungsauftrag vom 22.10.2026 ist `app/`
 der führende App-Bereich. PHP läuft unter WSL; native Windows-Aktionen erhalten
 eine möglichst kleine Brücke. Der aktuelle Stand ist ein isoliertes Gerüst mit
-synthetischen Daten, geprüfter nativer Brücke und Zugangsverwaltung. Echte
-Spielsteuerung, Familienzugang im Betrieb und fertiges Dashboard folgen.
+synthetischen Daten, geprüftem Dashboard, nativer Brücke und Zugangsverwaltung.
+Echte Betriebsanbindung, persönliche Zugangsübernahme und Bootabnahme folgen in EP06.
 Einstieg: `app/README.md`, Zielbild Forgejo #140.
 
 Die alte Verwaltung wurde geordnet gestoppt. Vollständiger Quellnachweis:

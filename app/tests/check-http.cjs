@@ -12,6 +12,7 @@ async function main() {
   execFileSync(php, [path.join(__dirname, 'run.php')], { stdio: 'inherit' });
   execFileSync(php, [path.join(__dirname, 'check-bridge.php')], { stdio: 'inherit' });
   execFileSync(php, [path.join(__dirname, 'check-access.php')], { stdio: 'inherit' });
+  execFileSync(php, [path.join(__dirname, 'check-servers.php')], { stdio: 'inherit' });
   const reservation = net.createServer();
   await new Promise((resolve, reject) => reservation.once('error', reject).listen(0, '127.0.0.1', resolve));
   const port = reservation.address().port;
@@ -53,7 +54,7 @@ async function main() {
     }
     assert.ok(healthy, `Startup failed: ${errors}`);
     const page = await fetch(url);
-    assert.match(await page.text(), /PHP-Grundgerüst/);
+    assert.match(await page.text(), /Serverzentrale/);
     assert.match(page.headers.get('content-security-policy'), /default-src 'none'/);
     assert.equal(page.headers.get('cache-control'), 'no-store');
     const status = await (await fetch(`${url}/api/status`)).json();
@@ -122,6 +123,41 @@ async function main() {
     assert.equal((await post({ action: 'role', id: alex.id, revision: alex.revision, role: 'family' })).status, 303);
     assert.equal((await family('alex@example.org', familyHeaders, '/access', adminPayload)).status, 403);
     assert.match(await (await fetch(`${url}/access`)).text(), /Person freigeben/);
+    const apiPost = (route, data, extra = {}) => fetch(`${url}${route}`, { method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: url, ...extra },
+      body: new URLSearchParams({ csrf: session.csrf, ...data }) });
+    assert.equal((await apiPost('/api/refresh', { csrf: 'wrong' })).status, 403);
+    assert.equal((await apiPost('/api/refresh', {})).status, 202);
+    const waitServer = async (id, predicate) => {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const state = (await (await fetch(`${url}/api/status`)).json()).servers.find((s) => s.id === id);
+        if (predicate(state)) return state;
+        await delay(50);
+      }
+      throw new Error(`HTTP executor did not finish for ${id}`);
+    };
+    for (const id of ['aska','enshrouded']) await waitServer(id, (s) => s.can_start);
+    assert.equal((await apiPost('/api/actions', { server: '../escape', action: 'start' })).status, 400);
+    assert.equal((await apiPost('/api/actions', { server: 'aska', action: 'shell' })).status, 400);
+    assert.equal((await apiPost('/api/actions', { server: 'aska', action: 'start' }, { Origin: 'https://evil.example' })).status, 403);
+    assert.equal((await apiPost('/api/actions', { server: 'enshrouded', action: 'start' })).status, 202);
+    const started = await waitServer('enshrouded', (s) => s.operation?.state === 'succeeded');
+    assert.equal(started.process, 'running');
+    assert.equal(started.ready, null);
+    assert.equal((await apiPost('/api/actions', { server: 'enshrouded', action: 'stop' })).status, 403);
+    assert.equal((await apiPost('/api/actions', { server: 'enshrouded', action: 'stop', confirmed: 'aska' })).status, 403);
+    assert.equal((await apiPost('/api/actions', { server: 'enshrouded', action: 'stop', confirmed: 'enshrouded' })).status, 202);
+    await waitServer('enshrouded', (s) => s.process === 'stopped' && s.operation?.state === 'succeeded');
+    const currentFamily = await (await family()).json();
+    const familyAction = new URLSearchParams({ csrf: currentFamily.csrf, server: 'aska', action: 'start' }).toString();
+    assert.equal((await family('robin@example.org', familyHeaders, '/api/actions', familyAction)).status, 202);
+    await waitServer('aska', (s) => s.process === 'running' && s.operation?.state === 'succeeded');
+    assert.match(await (await fetch(`${url}/servers/aska`)).text(), /Servername/);
+    assert.match(await (await fetch(`${url}/servers/enshrouded`)).text(), /Beitrittsadresse/);
+    assert.equal((await fetch(`${url}/servers/foreign`)).status, 404);
+    assert.equal((await post({ action: 'toggle', id: robin.id, revision: 3, enabled: '0' })).status, 303);
+    const revokedStop = new URLSearchParams({ csrf: currentFamily.csrf, server: 'aska', action: 'stop', confirmed: 'aska' }).toString();
+    assert.equal((await family('robin@example.org', familyHeaders, '/api/actions', revokedStop)).status, 403);
     fs.renameSync(path.join(fixture, 'fixture'), path.join(fixture, 'fixture.off'));
     assert.equal((await fetch(`${url}/health`)).status, 503);
     fs.renameSync(path.join(fixture, 'fixture.off'), path.join(fixture, 'fixture'));
@@ -132,7 +168,7 @@ async function main() {
     assert.equal((await fetch(`${url}/api/status`)).status, 503);
     fs.renameSync(path.join(fixture, 'state.saved'), path.join(fixture, 'state.sqlite'));
     assert.equal((await fetch(`${url}/health`)).status, 200);
-    console.log('PASS: real FrankenPHP, separate listeners, grants/forms, strict Origin/CSRF, forged headers, revocation, optimistic revisions, unavailable fixture');
+    console.log('PASS: real FrankenPHP, separate listeners, grants/forms, strict Origin/CSRF, confirmed game actions, family rights/revocation, routes and unavailable fixture');
     if (process.argv.includes('--idle')) {
       const ticks = () => {
         const raw = fs.readFileSync(`/proc/${child.pid}/stat`, 'utf8');

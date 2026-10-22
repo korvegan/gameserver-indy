@@ -26,12 +26,13 @@ zeigt vorzeitig auf das Gerüst; die vollständige MVP-/Bootabnahme bleibt EP06.
   werden. EP01 hat keine externen PHP-Pakete und keinen eigenen Autoloader.
 - Der vorhandene FrankenPHP-Server übernimmt HTTP mit zwei PHP-Threads.
   Der CLI-Starter ersetzt sich per `pcntl_exec`; es bleibt ein Serverprozess.
-  Kein eigener Supervisor, Worker, Broker oder Windows-Dienst wird eingerichtet.
-- PHP rendert die Seiten. JavaScript ergänzt später gezielt Status und Aktionen.
-  EP01 verwendet noch kein JavaScript im Browser.
+  Kein dauerhafter Supervisor, Broker oder Windows-Dienst wird eingerichtet.
+  EP05 startet bei Bedarf begrenzte einzelne CLI-Prozesse für langsame Brückenaufrufe.
+- PHP rendert die Seiten. Seit EP05 ergänzt JavaScript gezielt Status, Aktionen,
+  Stoppdialog und Kopieren; keine eigenständige JavaScript-App.
 - SQLite hält Beobachtungen und kleine Operationsdatensätze. Echte Spiel- und
   Zugangsdaten werden weder übernommen noch als Fixture benutzt.
-- PHP entscheidet später über Rechte, Profile und erlaubte Aktionen. Die native
+- PHP entscheidet über Rechte, Profile und erlaubte Aktionen. Die native
   Brücke prüft zusätzlich ihre eigenen Prozessziele und Eingaben. Sie erhält
   freigegebene Server-IDs und Aktionen, keine beliebigen Shellbefehle.
 
@@ -59,8 +60,9 @@ SQLite-Datei; direkte Symlinkziele werden abgelehnt. Diese Kontrolle begrenzt de
 Entwicklungsstart und ist keine Sandbox gegen andere Prozesse desselben Kontos.
 Ein echter Datenpfad/Adapter ist in EP01 nicht konfigurierbar.
 
-HTTP bindet nur Loopback. Die PHP-Grenze prüft zusätzlich Peer und exakten Host,
-ignoriert eingehende Rollen-/Tailscaleheader und bietet keine Schreibroute.
+HTTP bindet nur Loopback. Die PHP-Grenze prüft zusätzlich Peer und exakten Host.
+EP04 trennt lokalen Besitzer- und Serve-Zugang; HTTP-Rollenheader vergeben keine
+Rechte, bestätigte Tailscale-Identität benötigt eine ausdrückliche Freigabe.
 Fehlende Fixture-Markierung, Datenbank, Serverzeilen oder Operationsspalten
 ergeben auch bei `/health` 503. Dies ersetzt keine vollständige SQLite-Integritätsprüfung.
 Caddy-Admin, HTTPS-Automatik
@@ -74,16 +76,17 @@ Zuordnungsprüfung, keine Authentifizierung oder signierte Herkunftsprüfung.
 EP04 ergänzt [geprüfte Listeneridentität und getrennte persönliche Freigaben](family-access.md).
 Schreibende Zugangsänderungen prüfen feste Origin, gebundenes CSRF-Token und aktuelle
 Rechte. `AuthorizedOperations` prüft Freigaberevision und Serverbindung vor Annahme
-und Beginn einer synthetischen Aktion. Es gibt noch keine HTTP-Spielsteuerung;
-Serve und native Anbindung werden nicht aktiviert.
+und Beginn einer Aktion. EP05 verbindet die [HTTP-Spielbedienung](dashboard.md)
+mit einmaligen Brückenaufrufen; der Standardstart bleibt synthetisch und die
+reale Serve-/Spielanbindung wird nicht aktiviert.
 
 EP03 fragt native Prozesse bei Bedarf über einen einmaligen PowerShell-7-Helfer
 ab. Es gibt keinen Hintergrundpoller; ohne Spielnachweis bleibt `ready=null`.
 Per Spiel sichern native Sperre und dauerhafte Operationsbelege die Ausführung.
-Vor der späteren HTTP-Anbindung müssen Rechte erneut geprüft und längere Aktionen
-außerhalb eines Status-Requests ausgeführt werden.
-Ein zusätzlicher Prozess braucht einen nachgewiesenen Bedarf. EP01 betreibt keine
-Hintergrundabfrage oder Timer; sein Leerlaufnachweis bewertet nur dieses Gerüst.
+Längere Aufrufe laufen seit EP05 in begrenzten CLI-Prozessen außerhalb der HTTP-
+Threads. Der Statusrequest liest nur Cache; ein sichtbares Browserfenster stößt
+zusammengefasste Aktualisierungen an. Ohne Anfragen gibt es keinen Hintergrundpoller.
+Der historische EP01-Leerlaufnachweis bewertet nur das damalige Gerüst.
 
 ## Prüfgrundlage
 

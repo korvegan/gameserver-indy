@@ -18,6 +18,12 @@ Auftrag. Für ein Issue nur die nötigen Quellen und Nachweise laden.
   Desktop/Mobil, Formulare und Fokus. Der allgemeine Browser-MCP bietet keine
   Klicks oder Viewportänderung, dafür den Projektweg nutzen. Anleitung in
   `app/docs/family-access.md`; keine echte Zugangsdatenbank als Testziel verwenden.
+- EP05: `check-servers.php` prüft die einmalige asynchrone Ausführung und den
+  Operationsabgleich. `npm run test:servers:browser -- URL FAMILIEN_TESTPORT FIXTURE_PFAD`
+  prüft eigene synthetische Spiele und Familienseiten; Ablauf in `app/docs/dashboard.md`.
+  Keine parallel offene Browser-MCP-Vorschau denselben Testserver pollen lassen,
+  wenn der Test gezielt alte Beobachtungen setzt. Native Prüfung benötigt jetzt
+  zusätzlich `SLICE_FRANKENPHP` für HTTP → entkoppeltes PHP → Windows-Stellvertreter.
 - `npm run check:archive`: alle historischen Git-Blobs/Dateimodi vergleichen.
   Nach Änderungen am Archiv oder an der Struktur ausführen.
 - Windows-Starter: `app/tests/check-launcher.ps1` ersetzt Prozess-/HTTP-Aufrufe
