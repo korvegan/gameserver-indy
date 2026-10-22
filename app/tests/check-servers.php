@@ -5,6 +5,18 @@ require dirname(__DIR__).'/src/Access.php';
 require dirname(__DIR__).'/src/WindowsBridge.php';
 require dirname(__DIR__).'/src/ServerRuntime.php';
 use IndyNext\{AccessStore, AuthorizedOperations, FixtureStore, Principal, Role, ServerRuntime};
+final class InterleavedSnapshotConnection extends PDO
+{
+    public ?Closure $afterQuery = null;
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
+    {
+        $result = parent::query($query, $fetchMode, ...$fetchModeArgs);
+        $after = $this->afterQuery;
+        $this->afterQuery = null;
+        if ($after !== null) { $after(); }
+        return $result;
+    }
+}
 function check(bool $value, string $message): void { if (!$value) { throw new RuntimeException($message); } }
 function denied(callable $action, string $code): void {
     try { $action(); } catch (DomainException $e) { check($e->getMessage()===$code, $e->getMessage()); return; }
@@ -28,6 +40,26 @@ try {
     foreach (['aska','enshrouded'] as $id) { $runtime->execute($id,'status'); check($view($id)['can_start'], 'Observed stop enables start'); }
     $store->observe('aska','running',true,'2020-01-01T00:00:00Z');
     check($view('aska')['process']==='stopped', 'Older status never overwrites a newer observation');
+
+    // Complete a writer between the reader's SELECT and fetch: one response must retain one database snapshot.
+    $reader = new InterleavedSnapshotConnection('sqlite:'.$directory.'/state.sqlite', null, null,
+        [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
+    $reader->exec('PRAGMA journal_mode=WAL');
+    $snapshotStore = (new ReflectionProperty(ServerRuntime::class, 'store'))->getValue($runtime);
+    (new ReflectionProperty(FixtureStore::class, 'db'))->setValue($snapshotStore, $reader);
+    $crossing = $store->reserve('enshrouded', 'start', $owner->id, $owner->role);
+    $store->transition($crossing['id'], 'running');
+    $reader->afterQuery = function () use ($store, $crossing): void {
+        $store->observe('enshrouded', 'running', null);
+        $store->transition($crossing['id'], 'succeeded');
+    };
+    $during = $view('enshrouded');
+    check($during['process']==='stopped' && $during['operation']['state']==='running'
+        && !$during['can_start'] && !$during['can_stop'], 'Concurrent completion never mixes old process and new operation');
+    $after = $view('enshrouded');
+    check($after['process']==='running' && $after['operation']['state']==='succeeded' && $after['can_stop'], 'Next snapshot sees the completed start');
+    $runtime->execute('enshrouded', 'status');
+
     file_put_contents($directory.'/scenario.json',json_encode(['enshrouded'=>['start_delay_ms'=>2200]]));
     $start=microtime(true);
     $first=$runtime->request($owner,'enshrouded','start');
@@ -99,7 +131,7 @@ try {
     foreach ([$directory,'bridge_command','actor_revision','"pid"'] as $private) { check(!str_contains($public,$private), 'No private executor data in public status'); }
     echo "PASS: asynchronous actions, idempotency, independent games, truthful states, read-only receipt reconciliation, revocation, stale cache and executor recovery\n";
 } finally {
-    unset($runtime,$store,$access,$db);
+    unset($runtime,$store,$access,$db,$reader,$snapshotStore);
     foreach (glob($directory.'/*') as $file) { unlink($file); }
     rmdir($directory);
 }

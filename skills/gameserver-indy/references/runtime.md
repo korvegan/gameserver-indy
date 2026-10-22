@@ -9,7 +9,7 @@ Der private Windows-Starter und die vorhandene Bootaufgabe verwenden
 `%LOCALAPPDATA%\\GameServerIndy\\Start-Manager.ps1`. Die installierte Konfiguration
 hat seit der freigegebenen EP06-Umstellung am 22.10.2026 `RuntimeEngine=php-mvp`,
 ein unveränderliches Code-/Laufzeitpaket und getrenntes `AppStateDirectory`.
-Aktiviertes Release: `b6bbcc46744b3f942444f97461782a29a347ceec`, FrankenPHP 1.13.2 /
+Release der Erstumstellung: `b6bbcc46744b3f942444f97461782a29a347ceec`, FrankenPHP 1.13.2 /
 PHP 8.5.12. Aktuelle Werte immer aus `launcher.local.json` lesen. `/health` muss
 Produktionsmodus, native Anbindung, erwarteten Build und Zustandskennung bestätigen.
 Ein Aufrufertimeout allein beweist keinen Startfehler; den tatsächlichen Listener

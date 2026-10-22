@@ -134,7 +134,7 @@ ersetzen weder echten Bootnachweis noch die persönliche Smartphone-/Familienabn
 
 Die Freigabe „ja, du kannst umstellen“ und der persönliche Windows-Schritt sind in
 [#163](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/163#issuecomment-2808)
-festgehalten. Aktiviert ist das unabhängig geprüfte Release
+festgehalten. Die Erstumstellung aktivierte das unabhängig geprüfte Release
 `b6bbcc46744b3f942444f97461782a29a347ceec` mit PHP 8.5.12. Beide Spiele waren bei
 der Erstumstellung gestoppt. Vollständige Weltkopien wurden Datei für Datei per SHA-256
 verifiziert; `world-checkpoint/verified.json`, Task-XML und `activation.json` bleiben privat.
@@ -161,3 +161,12 @@ Sie und der Verwaltungsneustart bei gleichzeitig aktivem Spieler bleiben offen;
 Prozessfortbestand und Beitritt nach dem bisherigen Neustart sind belegt.
 Der private Startnachweis zeigt Sitzung 1 und ersetzt keinen Bootnachweis.
 Windows wurde nicht neu gestartet; dafür fehlt weiterhin der ausdrückliche Auftrag.
+
+Die anschließende Main-CI fand einen reproduzierten Lesewettlauf: Prozessbeobachtung
+und neuester Auftrag stammten aus getrennten Abfragen. Ein dazwischen abgeschlossener
+Start konnte dadurch kurz als abgeschlossen mit altem gestopptem Prozess erscheinen.
+Die Korrektur liest beides in einem gemeinsamen SQLite-Snapshot; sie verändert keine
+Spielbefehle oder Datenbankstruktur. Der gezielte Test lässt einen zweiten Schreiber
+während der Statusabfrage abschließen. Aktuellen installierten Codecommit stets aus
+`launcher.local.json` und `/health` abgleichen; der Betriebsnachweis oben beschreibt
+die Erstumstellung. Auch die Korrektur wird nur als geprüftes Release installiert.

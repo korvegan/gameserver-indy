@@ -89,7 +89,7 @@ final class ServerRuntime
         foreach ($this->store->snapshot() as $server) {
             if (!in_array($server['id'], $actor->servers, true)) { continue; }
             $id = $server['id'];
-            $operation = $this->store->latest($id);
+            $operation = $server['operation'];
             $age = $server['observed_at'] === null ? null : microtime(true) - (float) (new \DateTimeImmutable($server['observed_at']))->format('U.u');
             $fresh = $age !== null && $age >= -5 && $age <= 30;
             $active = $operation !== null && in_array($operation['state'], ['pending','running','unknown'], true);
