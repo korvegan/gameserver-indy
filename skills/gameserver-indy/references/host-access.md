@@ -14,6 +14,7 @@ Anleitung: `docs/family-access.md`. WSL-Distribution `Indy`, Linux-/Windows-Benu
 - Andere Tailnets: **Machines → indy → Share machine** ließ Indy erst im Familienhandy erscheinen. Benutzereinladung allein verbindet kein Gerät. Netzwerk- und persönliche App-Freigabe sind getrennt.
 - Axel und Tina (Akirra) haben auf Nutzerwunsch seit 16.10.2026 die Rolle Besitzer. Nicht wieder auf „nur starten“ einschränken. WhatsApp-Kontoeinrichtung bleibt ausschließlich lokalem uneingeschränktem Besitzer vorbehalten.
 - Familienlistener `8767`; Fixtures eigene Ports, z. B. `18767`. Geschützte CGI-Variable `INDY_LISTENER_PORT` identifiziert Listener, niemals HTTP-/Forwarded-Header.
+- EP04 im Neubau nutzt die geschützte CGI-Variable `INDY_LISTENER` (`local`/`family`), getrennte Loopback-Listener und den exakten `HTTP_HOST`. FrankenPHP lässt Host in `getallheaders()` aus. Browserformulare brauchen `Referrer-Policy: same-origin`; `no-referrer` führte unter Chrome zu `Origin: null` und korrekter Abweisung. Echte Serve-Aktivierung bleibt EP06.
 - WSL `mirrored`; Docker-Caddy auf `0.0.0.0:443` verursachte Tailscale-Bindkonflikte. Linux-/Windows-Listener gemeinsam betrachten; fremden Gateway nicht still entfernen.
 
 Aufnahme 15.10.2026: i9-12900KF, etwa 96 GB RAM, RTX 3080/10 GB, vier Spieler inkl. Host, Spielclient und Server teilen PC. Native Windows-Prozesse unterliegen nicht WSL 32 GB/12 vCPU. Gemessener Upload 10,6 Mbit/s. AC-Schlaf/Ruhezustand/Monitor-Timeout waren deaktiviert; heutige Werte bei Bedarf lesen, keine Dauerbetriebsgarantie ableiten.

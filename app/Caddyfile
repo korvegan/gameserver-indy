@@ -11,11 +11,14 @@ http://:{$INDY_NEXT_PORT:18765} {
 	bind 127.0.0.1
 	root * public
 	request_body {
-		max_size 1KB
+		max_size 4KB
 	}
 	php_server {
+		env INDY_LISTENER local
 		env INDY_NEXT_PORT {$INDY_NEXT_PORT}
 		env INDY_NEXT_FIXTURE {$INDY_NEXT_FIXTURE}
 		env INDY_APP_BUILD {$INDY_APP_BUILD}
 	}
 }
+
+import "{$INDY_FAMILY_CONFIG:family-disabled.caddy}"

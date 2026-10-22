@@ -12,6 +12,12 @@ Auftrag. Für ein Issue nur die nötigen Quellen und Nachweise laden.
 - `npm run test:app`: gezielter Vertrags-/HTTP-Test mit eigenen synthetischen
   Daten und eigenem Port. `-- --idle` nur für eine offene Leerlauffrage;
   bestandene Stichproben nicht ohne Anlass wiederholen.
+- EP04: `php app/tests/check-access.php` prüft Identität/Rechte und Entzug vor
+  wartenden synthetischen Aktionen. `npm run test:access:browser -- http://127.0.0.1:TESTPORT`
+  prüft die eigene Entwicklungsfixture mit vorhandenen Playwright-/Axe-Paketen;
+  Desktop/Mobil, Formulare und Fokus. Der allgemeine Browser-MCP bietet keine
+  Klicks oder Viewportänderung, dafür den Projektweg nutzen. Anleitung in
+  `app/docs/family-access.md`; keine echte Zugangsdatenbank als Testziel verwenden.
 - `npm run check:archive`: alle historischen Git-Blobs/Dateimodi vergleichen.
   Nach Änderungen am Archiv oder an der Struktur ausführen.
 - Windows-Starter: `app/tests/check-launcher.ps1` ersetzt Prozess-/HTTP-Aufrufe

@@ -69,4 +69,6 @@ und `native_enabled=false`, dazu `build` als Release-Commit oder `development`.
 `GET/HEAD /api/status`: synthetische Beobachtungen
 beider Spiele, zunächst unbekannt. Andere Methoden ergeben 405, andere Pfade 404;
 fremde Hosts/Peers 403 und fehlende oder strukturell unvollständige Fixture 503.
-Es gibt keine schreibende HTTP-API.
+Es gibt keine schreibende HTTP-Spiel-API. EP04 ergänzt `/access` zur Verwaltung
+synthetischer Freigaben sowie `/api/session` und `/api/access`; die zusätzlichen
+Grenzen stehen in [family-access.md](family-access.md).

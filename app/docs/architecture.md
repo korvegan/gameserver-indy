@@ -71,6 +71,12 @@ und eine `REVISION` mit Commitkennung. Der Windows-Starter vergleicht diese
 Kennung über `/health` mit seiner privaten Konfiguration. Das ist eine lokale
 Zuordnungsprüfung, keine Authentifizierung oder signierte Herkunftsprüfung.
 
+EP04 ergänzt [geprüfte Listeneridentität und getrennte persönliche Freigaben](family-access.md).
+Schreibende Zugangsänderungen prüfen feste Origin, gebundenes CSRF-Token und aktuelle
+Rechte. `AuthorizedOperations` prüft Freigaberevision und Serverbindung vor Annahme
+und Beginn einer synthetischen Aktion. Es gibt noch keine HTTP-Spielsteuerung;
+Serve und native Anbindung werden nicht aktiviert.
+
 EP03 fragt native Prozesse bei Bedarf über einen einmaligen PowerShell-7-Helfer
 ab. Es gibt keinen Hintergrundpoller; ohne Spielnachweis bleibt `ready=null`.
 Per Spiel sichern native Sperre und dauerhafte Operationsbelege die Ausführung.
