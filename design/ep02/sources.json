@@ -1,0 +1,82 @@
+{
+  "method": "Integriertes Image Gen",
+  "direction": "Ruhige Sturmklingen-Bedienflächen mit eigener Enshrouded-/ASKA-Spielidentität; Dashboardrichtung am 22.10.2026 vom Nutzer bestätigt",
+  "dashboard": {
+    "file": "concepts/dashboard-calm-v2.png",
+    "prompt": "dashboard-calm-prompt.txt",
+    "sha256": "c89169352f8d85deb3b621f30d948603b34e0314ddd37a5fe71074f2afae6cec",
+    "dimensions": [
+      1448,
+      1086
+    ],
+    "acceptance": "Vollständiger Designstand vom Nutzer am 22.10.2026 für die spätere Umsetzung bestätigt"
+  },
+  "concepts": [
+    {
+      "file": "concepts/enshrouded-calm-v2.png",
+      "prompt": "calm-concept-prompts.json#enshrouded",
+      "sha256": "40f115afa0e96f1e008c8db1f86ce6d8c0924864e928f399d692932c32f83b24",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "acceptance": "Vollständiger Designstand vom Nutzer am 22.10.2026 für die spätere Umsetzung bestätigt",
+      "id": "enshrouded"
+    },
+    {
+      "file": "concepts/aska-calm-v2.png",
+      "prompt": "calm-concept-prompts.json#aska",
+      "sha256": "3f07f2e1dc6aee1d95db252065fe982960fd747302cd52500518081cb0a9d713",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "acceptance": "Vollständiger Designstand vom Nutzer am 22.10.2026 für die spätere Umsetzung bestätigt",
+      "id": "aska"
+    },
+    {
+      "file": "concepts/zugaenge-calm-v3.png",
+      "prompt": "calm-concept-prompts.json#zugaenge",
+      "sha256": "ae8842879d7bb5bb4a40eff5f631793dd29dc3fb40005f142b78b02f42c83206",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "acceptance": "Vollständiger Designstand vom Nutzer am 22.10.2026 für die spätere Umsetzung bestätigt",
+      "id": "zugaenge"
+    },
+    {
+      "file": "concepts/stoppbestaetigung-calm-v3.png",
+      "prompt": "calm-concept-prompts.json#stopp",
+      "sha256": "2bede4d0c3024789b0ba72cc1b053fad7d36f7189430bf06db0ec93e36a67c2a",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "acceptance": "Vollständiger Designstand vom Nutzer am 22.10.2026 für die spätere Umsetzung bestätigt",
+      "id": "stopp"
+    },
+    {
+      "file": "concepts/zustaende-calm-v3.png",
+      "prompt": "calm-concept-prompts.json#zustaende",
+      "sha256": "638c9480cf58ea93f436f2ee28856c82a371878b27773268f41e456c03c67b10",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "acceptance": "Vollständiger Designstand vom Nutzer am 22.10.2026 für die spätere Umsetzung bestätigt",
+      "id": "zustaende",
+      "refinement_prompt": "states-refinement-prompt.txt"
+    }
+  ],
+  "brand_references": "brand-references.json",
+  "previous_dashboard": {
+    "file": "concepts/dashboard.png",
+    "prompt": "dashboard-prompt.txt",
+    "sha256": "e0da5f339cb0b1c90f4cc40d0cfce597a9d319b8bbcd9c8373e659c30edb9f07",
+    "dimensions": [
+      1536,
+      1024
+    ]
+  }
+}
