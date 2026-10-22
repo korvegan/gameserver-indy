@@ -95,8 +95,9 @@ INDY_PWSH='/WSL/Pfad/zur/installierten/pwsh.exe' \
   python3 app/tests/check-windows-bridge.py
 ```
 
-Für den nativen Lauf ist auch `SLICE_PHP` auf den vorhandenen CLI-Startweg zu
-setzen. Der Test verwendet den bereits installierten .NET-Framework-C#-Compiler
+Für den nativen Lauf sind `SLICE_PHP` auf den vorhandenen CLI-Startweg und
+`SLICE_FRANKENPHP` auf die vorhandene FrankenPHP-Datei zu setzen. Der Test
+verwendet den bereits installierten .NET-Framework-C#-Compiler
 für eigene Konsolen-Stellvertreter mit den beiden EXE-Namen, isolierte Welten und
 Konfigurationen mit Leerzeichen. Nur die Windows-Profilverzeichnisabfrage wird in
 einer eigenen Skriptkopie durch den Temp-Pfad ersetzt; der originale OS-Lookup wird
@@ -105,9 +106,11 @@ anschließend den echten PHP-/WSL-Transport.
 Nur diese selbst kompilierten, pfad- und hashgeprüften Prozesse werden nötigenfalls
 zur Testbereinigung hart beendet; die produktive Brücke enthält keinen solchen Weg.
 
-Die Entwicklungsdiagnose bleibt synthetisch und meldet `native_enabled=false`.
-Es gibt keine neue HTTP-Schreibroute oder aktive Profilinstallation. EP04 bindet
-bestätigte Identität, aktuelle Rechte und Reservierung vor Annahme/Ausführung an
-den PHP-Aufruf. Die spätere Bedienung führt längere Aktionen außerhalb eines
-Status-Requests aus. Echte Speicher-/Beitrittsprüfung und Bootabnahme bleiben den
-zugehörigen Betriebsarbeiten vorbehalten.
+EP05 ergänzt außerdem den echten HTTP-Weg: zwei Aktionen werden über getrennte
+CLI-Prozesse zu beiden Windows-Stellvertretern gestartet und regulär gestoppt.
+Der Test bestätigt Beobachtung und `ready=null`; die private Runtime-Datei zeigt
+ausschließlich auf diese eigenen temporären EXEs. Der normale Entwicklungsstart
+bleibt beim synthetischen Peer und meldet `native_enabled=false`.
+EP04 bindet bestätigte Identität, aktuelle Rechte und Reservierung vor Annahme/
+Ausführung an den PHP-Aufruf. Echte Profilinstallation, Speicher-/Beitrittsprüfung
+und Bootabnahme bleiben den Betriebsarbeiten vorbehalten.

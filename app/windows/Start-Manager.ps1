@@ -28,7 +28,7 @@ if (-not $health -and -not $CheckOnly) {
     # WSL preserves unnecessary quotes in option values; local paths contain no whitespace.
     $arguments = @('--distribution', $settings.WslDistribution, '--user', $settings.WslUser,
         '--cd', $settings.ProjectDirectory, '--exec', '/usr/bin/env',
-        ('SLICE_FRANKENPHP=' + $settings.FrankenPhpExecutable), $settings.RuntimeExecutable,
+        ('SLICE_FRANKENPHP=' + $settings.FrankenPhpExecutable), ('SLICE_PHP=' + $settings.RuntimeExecutable), $settings.RuntimeExecutable,
         'app/bin/dev', [int]$settings.Port) -join ' '
     Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\wsl.exe') -ArgumentList $arguments -WindowStyle Hidden | Out-Null
     $started = $true

@@ -53,8 +53,8 @@ und vor `pending → running` wird erneut geprüft. Die Reservierung speichert d
 ursprüngliche Akteursrevision, auch bei doppelten Anfragen. Nach Sperre oder
 Rollen-/Serveränderung wird eine wartende Aktion verworfen. Bereits begonnene
 Aktionen werden nicht zurückgerollt. Der rohe `FixtureStore` bleibt der interne
-synthetische Vertrag; EP05 muss den autorisierten Einstieg verwenden. EP04 bietet
-keine HTTP-Spielaktionen und ruft keine native Brücke auf.
+synthetische Vertrag. EP05 verwendet den autorisierten Einstieg für seine
+[HTTP-Spielaktionen und einmaligen Brückenaufrufe](dashboard.md).
 
 ## HTTP und Bedienung
 

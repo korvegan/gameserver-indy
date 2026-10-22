@@ -45,3 +45,5 @@ jobs:
         run: php app/tests/check-bridge.php
       - name: Check identity, access grants and revocation without real accounts
         run: php app/tests/check-access.php
+      - name: Check asynchronous game operations with synthetic bridge peers
+        run: php app/tests/check-servers.php

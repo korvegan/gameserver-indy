@@ -26,7 +26,7 @@ try {
     if ($result.Running -or $global:IndyLauncherFixture.Starts -ne 0) { throw 'CheckOnly started a process' }
     $result = & $source -NoBrowser -PassThru | ConvertFrom-Json
     if (-not $result.Running -or -not $result.Started -or $global:IndyLauncherFixture.Starts -ne 1) { throw 'Start failed' }
-    if ($global:IndyLauncherFixture.Arguments -ne '--distribution Indy --user fixture --cd /tmp/code --exec /usr/bin/env SLICE_FRANKENPHP=/tmp/frankenphp /tmp/php app/bin/dev 18765') { throw 'Wrong entrypoint or literal WSL quotes' }
+    if ($global:IndyLauncherFixture.Arguments -ne '--distribution Indy --user fixture --cd /tmp/code --exec /usr/bin/env SLICE_FRANKENPHP=/tmp/frankenphp SLICE_PHP=/tmp/php /tmp/php app/bin/dev 18765') { throw 'Wrong entrypoint or literal WSL quotes' }
     $result = & $source -NoBrowser -PassThru | ConvertFrom-Json
     if ($result.Started -or $global:IndyLauncherFixture.Starts -ne 1) { throw 'Existing app was not reused' }
     $settings.ProjectDirectory = '/tmp/unsupported path'

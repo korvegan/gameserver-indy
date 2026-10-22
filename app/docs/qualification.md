@@ -108,3 +108,64 @@ QA-Ausgaben, keine persönlichen Freigaben oder Laufzeitdateien werden versionie
 Keine echten Konten, Serve-/Firewalländerungen, Spielaktionen oder Installation.
 Der bestehende persönliche Mobilzugang und Bootbetrieb sind damit nicht neu
 abgenommen; dafür bleibt EP06 zuständig.
+
+## EP05: Dashboard und autorisierte Spielbedienung
+
+Stand 22.10.2026, Arbeitsissue #161. `npm run test:app -- --idle` besteht:
+Zustands-/Rechteverträge, echter HTTP-Start, direkte und bestätigte Spielaktionen,
+Familienrechte und Entzug, derselbe Auftrag bei doppelten Anfragen, getrennte Spiele,
+langsamer Status, Fehlstart, unklarer Ausgang, belegter Operationsabgleich sowie
+verlorene/wartende Executorprozesse. Veraltete Antworten überschreiben keinen
+neueren Cache; öffentliche Statusdaten enthalten keine PID, Pfade oder Befehle.
+
+Die fünfsekündige Leerlaufstichprobe nach synthetischen HTTP-Aktionen zeigte
+einen Serverprozess, keine Kind-PIDs, 14 Threads und RSS 102592 KiB. In diesem
+Fenster kamen 0 gemessene CPU-Ticks hinzu (Auflösung 10 ms). Das ist keine
+Zusicherung von exakt null Verbrauch oder eine Aussage über Produktionslast.
+
+Native Windows-Prüfung unter PowerShell 7.6.7 bestanden: bisherige isolierte
+Brückenabläufe plus PHP-/WSL-Transport und neu der vollständige Weg
+HTTP → entkoppelter PHP-Prozess → PowerShell → beide eigenen Windows-EXEs.
+Beide Starts laufen unabhängig, Status bleibt ohne Bereitschaftsnachweis `null`,
+beide Stopps sind regulär bestätigt. Der Windows-Starter wurde separat mit
+vollständig gemockten Prozess-/Netzaufrufen einschließlich `SLICE_PHP` geprüft.
+Es wurden keine echten Spielserver, Spielkonfigurationen oder Welten benutzt.
+
+Browser-MCP zuerst für Einstieg, Titel, DOM und Screenshot verwendet. Für Klicks,
+mobile Viewports und Axe das vorhandene Projekt-Playwright 1.64.1 samt passendem
+Chromium genutzt: Der allgemeine Browser-MCP bietet diese Methoden nicht.
+`check-servers-browser.cjs` besteht mit beiden Spielen und tatsächlichen
+Start-/Stoppabläufen bei 1280 und 390 px; Layout zusätzlich bei 320 px. Details,
+Abbrechen, Escape, Tab-Grenzen, Fokusrückkehr, Kopieren samt Fallback, unbekannter
+Ausgang, fehlgeschlagener Start, veralteter Status und verlorene Antwort geprüft.
+Eine alte Familienseite löst nach Entzug keine neue Aktion aus; Axe prüft auch
+den gesperrten Zustand. Kein unerwarteter Konsolen-/Seitenfehler, kein Axe-Befund.
+Ein zusätzlicher gezielter Browsercheck bestätigt, dass unveränderte Beobachtungen
+keine erneuten `aria-live`-Textänderungen erzeugen.
+
+Akzeptierte EP02-Tafeln für Dashboard, beide Details und Stoppdialog sowie die
+aktuellen Desktop-/Mobil-Screenshots wurden mit `view_image` verglichen. Erfasst
+bei 1280×1080 und 390×844; die Referenztafeln sind zusammengesetzte Desktop-/Mobil-
+Ansichten und kein einzelner exakt reproduzierbarer Browserviewport.
+
+| Vergleichspunkt | Ergebnis |
+| --- | --- |
+| Texte/Hierarchie | Serverzentrale, Spielwahl, direkte Aktionen, Server öffnen, Beitreten und Dialogbeschriftung erhalten |
+| Spielidentität | Alle vier Originalbilder/-logos anhand der EP02-Hashes unverändert geprüft; keine generischen Ersatzmotive oder Tönung |
+| Aufbau | Enshrouded links/oben, ASKA rechts/unten; gleiche Karten und Details; Smartphone im normalen Seitenfluss |
+| Flächen/Schrift | Ruhige dunkle Flächen, feine Kanten, sparsame Goldakzente, Systemschrift und vorhandene App-Marke |
+| Status/Bedienung | Prozess und Bereitschaft getrennt, echte deaktivierte Buttons, Statuspunkte mit Text, mindestens 44 px Bedienflächen |
+| Dialog/Fokus | Abbrechen sichtbar golden fokussiert, Stoppen dunkelrot, Hintergrund inaktiv, Escape und Fokusrückkehr geprüft |
+| Bewusste Ergänzungen | ASKA-Servername und bestätigte Beitrittshinweise statt unbelegtem Code; Vorschauhinweis und notwendige Fehler-/Fortschrittstexte |
+
+Die sichtbaren Texte wurden gegen die bestätigte Liste abgeglichen; zusätzliche
+Texte sind nur die genannten funktionalen Hinweise. Die Bildränder der originalen
+PNG-Logos wurden über CSS berücksichtigt; Ausgangsdateien bleiben unverändert.
+Keine wesentlichen offenen Gestaltungsabweichungen. Screenshots liegen als lokale
+QA-Ausgaben außerhalb des Repositories.
+
+PHP-/JavaScript-Syntax, Dokumentationsverweise, Originalasset-Hashes und der
+Projekt-Skill sind geprüft. CI und unabhängiger Review werden am endgültigen
+PR-Head dokumentiert. Reale PHP-/Serve-Aktivierung, Freigabeübernahme, Spielspeichern,
+Beitritt mit echten Personen, Smartphone über Mobilfunk und Boot ohne Anmeldung
+bleiben EP06; die vorhandene Betriebsinstallation wurde nicht verändert.

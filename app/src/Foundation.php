@@ -33,7 +33,8 @@ final class FixtureStore
             id TEXT PRIMARY KEY CHECK (id IN ('enshrouded', 'aska')),
             process TEXT NOT NULL CHECK (process IN ('unknown', 'stopped', 'running')),
             ready INTEGER CHECK (ready IS NULL OR (process = 'running' AND ready IN (0, 1))),
-            observed_at TEXT
+            observed_at TEXT,
+            refresh_after INTEGER NOT NULL DEFAULT 0
         )");
         $db->exec("INSERT INTO servers (id, process) VALUES ('enshrouded', 'unknown'), ('aska', 'unknown')");
         $db->exec("CREATE TABLE operations (
@@ -42,7 +43,10 @@ final class FixtureStore
             action TEXT NOT NULL CHECK (action IN ('start', 'stop')),
             actor TEXT NOT NULL,
             state TEXT NOT NULL CHECK (state IN ('pending', 'running', 'succeeded', 'failed', 'cancelled', 'unknown')),
-            actor_revision INTEGER NOT NULL DEFAULT 0
+            actor_revision INTEGER NOT NULL DEFAULT 0,
+            error TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL DEFAULT 0,
+            updated_at INTEGER NOT NULL DEFAULT 0
         )");
         $db->exec("CREATE UNIQUE INDEX one_active_operation ON operations(server)
             WHERE state IN ('pending', 'running', 'unknown')");
@@ -70,7 +74,8 @@ final class FixtureStore
         if ($ids !== ['aska', 'enshrouded']) {
             throw new \RuntimeException('incomplete_fixture');
         }
-        $this->db->query('SELECT id, server, action, actor, state, actor_revision FROM operations LIMIT 0');
+        $this->db->query('SELECT observed_at, refresh_after FROM servers LIMIT 0');
+        $this->db->query('SELECT id, server, action, actor, state, actor_revision, error, created_at, updated_at FROM operations LIMIT 0');
     }
 
     public function snapshot(): array
@@ -82,15 +87,19 @@ final class FixtureStore
         return $servers;
     }
 
-    public function observe(string $server, string $process, ?bool $ready): void
+    public function observe(string $server, string $process, ?bool $ready, ?string $at = null): void
     {
         self::server($server);
         if (!in_array($process, ['unknown', 'stopped', 'running'], true)
             || ($ready !== null && $process !== 'running')) {
             throw new \InvalidArgumentException('invalid_observation');
         }
-        $query = $this->db->prepare('UPDATE servers SET process = ?, ready = ?, observed_at = ? WHERE id = ?');
-        $query->execute([$process, $ready === null ? null : (int) $ready, gmdate('c'), $server]);
+        $at = $at === null ? new \DateTimeImmutable('now', new \DateTimeZone('UTC'))
+            : new \DateTimeImmutable(preg_replace('/(\.\d{6})\dZ$/', '$1Z', $at));
+        $stamp = $at->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
+        $query = $this->db->prepare('UPDATE servers SET process = ?, ready = ?, observed_at = ?
+            WHERE id = ? AND (observed_at IS NULL OR observed_at <= ?)');
+        $query->execute([$process, $ready === null ? null : (int) $ready, $stamp, $server, $stamp]);
     }
 
     public function reserve(string $server, string $action, string $actor, Role $role, int $revision = 0): array
@@ -113,8 +122,9 @@ final class FixtureStore
                 return $active;
             }
             $operation = ['id' => bin2hex(random_bytes(16)), 'server' => $server,
-                'action' => $action, 'actor' => $actor, 'state' => 'pending', 'actor_revision' => $revision];
-            $query = $this->db->prepare('INSERT INTO operations (id, server, action, actor, state, actor_revision) VALUES (?, ?, ?, ?, ?, ?)');
+                'action' => $action, 'actor' => $actor, 'state' => 'pending', 'actor_revision' => $revision,
+                'error' => '', 'created_at' => (int) (microtime(true) * 1000), 'updated_at' => (int) (microtime(true) * 1000)];
+            $query = $this->db->prepare('INSERT INTO operations (id, server, action, actor, state, actor_revision, error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $query->execute(array_values($operation));
             $this->db->exec('COMMIT');
             return $operation;
@@ -124,7 +134,7 @@ final class FixtureStore
         }
     }
 
-    public function transition(string $id, string $state): void
+    public function transition(string $id, string $state, string $error = ''): void
     {
         $from = match ($state) {
             'running', 'cancelled' => ['pending'],
@@ -133,8 +143,8 @@ final class FixtureStore
             default => throw new \InvalidArgumentException('invalid_transition'),
         };
         $slots = implode(', ', array_fill(0, count($from), '?'));
-        $query = $this->db->prepare("UPDATE operations SET state = ? WHERE id = ? AND state IN ($slots)");
-        $query->execute([$state, $id, ...$from]);
+        $query = $this->db->prepare("UPDATE operations SET state = ?, error = ?, updated_at = ? WHERE id = ? AND state IN ($slots)");
+        $query->execute([$state, $error, (int) (microtime(true) * 1000), $id, ...$from]);
         if ($query->rowCount() !== 1) {
             throw new \RuntimeException('invalid_transition');
         }
@@ -147,6 +157,42 @@ final class FixtureStore
         $operation = $query->fetch();
         if ($operation === false) { throw new \RuntimeException('operation_missing'); }
         return $operation;
+    }
+
+    public function latest(string $server): ?array
+    {
+        self::server($server);
+        $query = $this->db->prepare('SELECT * FROM operations WHERE server = ? ORDER BY created_at DESC, rowid DESC LIMIT 1');
+        $query->execute([$server]);
+        return $query->fetch() ?: null;
+    }
+
+    public function claimRefresh(string $server): bool
+    {
+        self::server($server);
+        $now = (int) (microtime(true) * 1000);
+        $query = $this->db->prepare('UPDATE servers SET refresh_after = ? WHERE id = ? AND refresh_after <= ?');
+        $query->execute([$now + 100000, $server, $now]);
+        return $query->rowCount() === 1;
+    }
+
+    public function releaseRefresh(string $server): void
+    {
+        $query = $this->db->prepare('UPDATE servers SET refresh_after = ? WHERE id = ?');
+        $query->execute([(int) (microtime(true) * 1000) + 5000, $server]);
+    }
+
+    public function recover(string $server): void
+    {
+        self::server($server);
+        $now = (int) (microtime(true) * 1000);
+        // Late workers cannot begin a cancelled pending operation; running work is never retried.
+        $query = $this->db->prepare("UPDATE operations SET state = 'cancelled', error = 'executor_unavailable', updated_at = ?
+            WHERE server = ? AND state = 'pending' AND updated_at < ?");
+        $query->execute([$now, $server, $now - 30000]);
+        $query = $this->db->prepare("UPDATE operations SET state = 'unknown', error = 'outcome_unresolved', updated_at = ?
+            WHERE server = ? AND state = 'running' AND updated_at < ?");
+        $query->execute([$now, $server, $now - 105000]);
     }
 
     private static function server(string $server): void
