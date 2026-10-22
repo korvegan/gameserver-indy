@@ -5,7 +5,8 @@ und [#161](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/161)
 Der Entwicklungsstart zeigt die PHP-gerenderte Serverzentrale mit beiden Spielen.
 Er erzeugt weiterhin ausschließlich neue synthetische Daten; echte Konten,
 Installationen und Welten werden nicht übernommen. Die Ansicht kennzeichnet
-dies mit `Lokale Vorschau mit Testdaten.` Die Betriebsaktivierung bleibt EP06.
+dies mit `Lokale Vorschau mit Testdaten.` Die dauerhaft provisionierte EP06-Installation
+zeigt diesen Vorschauhinweis nicht. [EP06](operation.md) beschreibt Aktivierung und echte Abnahme.
 
 ## Oberfläche und Zustand
 
@@ -125,8 +126,7 @@ Testcode. Keine parallel offene Vorschau desselben Testservers pollen lassen,
 wenn für den Stale-Test gezielt alte Beobachtungen eingesetzt werden.
 
 EP06 übernimmt ein geprüftes Release, aktuellen Zustand samt nativen Belegen,
-persönliche Freigaben und passende Betriebswerte gezielt. Vor der
-Betriebsaktivierung auch die vorhandene PHP-Laufzeit auf den aktuellen
-Sicherheitsstand bringen. Reale Speicher-/Beitritts-, Mobil-/Familien- und
+persönliche Freigaben und passende Betriebswerte gezielt. Der Releaseweg bindet die
+geprüfte Sicherheitslaufzeit für HTTP und CLI. Reale Speicher-/Beitritts-, Mobil-/Familien- und
 Bootabnahme stehen weiterhin aus; keine Freigabe für echte Spielaktionen aus
 diesen synthetischen Prüfungen ableiten.

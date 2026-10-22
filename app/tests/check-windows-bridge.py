@@ -16,7 +16,8 @@ result = subprocess.check_output([pwsh, '-NoProfile', '-NonInteractive', '-Comma
 windows_temp = Path(subprocess.check_output(['wslpath', '-u', result], text=True).strip())
 with tempfile.TemporaryDirectory(prefix='indy-bridge-code-', dir=windows_temp) as temporary:
     stage = Path(temporary)
-    for name in ('windows/Bridge.ps1', 'windows/NativeConsole.cs', 'windows/GameProfile.ps1', 'tests/check-bridge.ps1', 'tests/BridgeStandin.cs'):
+    for name in ('windows/Bridge.ps1', 'windows/NativeConsole.cs', 'windows/GameProfile.ps1', 'windows/Start-Manager.ps1',
+                 'windows/Update-Startup.ps1', 'tests/check-launcher.ps1', 'tests/check-startup.ps1', 'tests/check-bridge.ps1', 'tests/BridgeStandin.cs'):
         destination = stage / 'app' / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(root / 'app' / name, destination)
@@ -25,6 +26,9 @@ with tempfile.TemporaryDirectory(prefix='indy-bridge-code-', dir=windows_temp) a
     manifest_file = stage / 'windows-fixture.json'
     command = [pwsh, '-NoLogo', '-NoProfile', '-NonInteractive', '-File', script]
     try:
+        for check in ('check-launcher.ps1','check-startup.ps1'):
+            check_script = subprocess.check_output(['wslpath','-w',str(stage / 'app/tests' / check)],text=True).strip()
+            subprocess.run([pwsh,'-NoLogo','-NoProfile','-NonInteractive','-File',check_script],check=True)
         subprocess.run([*command, '-ExportDirectory', stage_windows], check=True)
         manifest = json.loads(manifest_file.read_text(encoding='utf-8-sig'))
         manifest['pwsh_wsl'] = pwsh

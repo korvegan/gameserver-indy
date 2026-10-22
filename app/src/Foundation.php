@@ -14,20 +14,23 @@ enum Role: string
     }
 }
 
-/** EP01 has no native adapter: every database is a disposable fixture. */
+/** Shared state schema; disposable fixtures and explicitly provisioned private installations. */
 final class FixtureStore
 {
     private \PDO $db;
+    private string $mode;
 
-    public static function create(): string
+    public static function create(?string $directory = null): string
     {
-        $directory = sys_get_temp_dir().'/indy-next-'.bin2hex(random_bytes(12));
+        $production = $directory !== null;
+        $directory ??= sys_get_temp_dir().'/indy-next-'.bin2hex(random_bytes(12));
         if (!mkdir($directory, 0700)) {
             throw new \RuntimeException('fixture_create_failed');
         }
-        file_put_contents($directory.'/fixture', "indy-next-v1\n");
+        $marker = $production ? 'installation' : 'fixture';
+        file_put_contents($directory.'/'.$marker, $production ? "indy-production-v1\n" : "indy-next-v1\n");
         $db = new \PDO('sqlite:'.$directory.'/state.sqlite');
-        chmod($directory.'/fixture', 0600);
+        chmod($directory.'/'.$marker, 0600);
         chmod($directory.'/state.sqlite', 0600);
         $db->exec("CREATE TABLE servers (
             id TEXT PRIMARY KEY CHECK (id IN ('enshrouded', 'aska')),
@@ -57,13 +60,20 @@ final class FixtureStore
     {
         $parent = realpath(sys_get_temp_dir());
         $resolved = realpath($directory);
-        if ($resolved === false || is_link($directory) || dirname($resolved) !== $parent
-            || !preg_match('/^indy-next-[a-f0-9]{24}$/D', basename($resolved))
-            || is_link($resolved.'/fixture') || is_link($resolved.'/state.sqlite')
-            || !is_file($resolved.'/state.sqlite')
-            || @file_get_contents($resolved.'/fixture') !== "indy-next-v1\n") {
+        $fixture = $resolved !== false && dirname($resolved) === $parent
+            && preg_match('/^indy-next-[a-f0-9]{24}$/D', basename($resolved))
+            && !is_link($resolved.'/fixture') && @file_get_contents($resolved.'/fixture') === "indy-next-v1\n";
+        $production = $resolved !== false && $resolved === $directory
+            && !file_exists($resolved.'/fixture') && !is_link($resolved.'/installation')
+            && @file_get_contents($resolved.'/installation') === "indy-production-v1\n"
+            && (fileperms($resolved.'/installation') & 0777) === 0600;
+        if ($resolved === false || is_link($directory) || (!$fixture && !$production)
+            || (fileperms($resolved) & 0777) !== 0700 || fileowner($resolved) !== posix_geteuid()
+            || is_link($resolved.'/state.sqlite') || !is_file($resolved.'/state.sqlite')
+            || (fileperms($resolved.'/state.sqlite') & 0777) !== 0600) {
             throw new \RuntimeException('isolated_fixture_required');
         }
+        $this->mode = $production ? 'production' : 'fixture';
         $this->db = new \PDO('sqlite:'.$resolved.'/state.sqlite', null, null, [
             \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
@@ -77,6 +87,8 @@ final class FixtureStore
         $this->db->query('SELECT observed_at, refresh_after FROM servers LIMIT 0');
         $this->db->query('SELECT id, server, action, actor, state, actor_revision, error, created_at, updated_at FROM operations LIMIT 0');
     }
+
+    public function mode(): string { return $this->mode; }
 
     public function snapshot(): array
     {

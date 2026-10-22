@@ -36,7 +36,7 @@ jobs:
         uses: https://github.com/shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: '8.5'
-          extensions: pdo_sqlite, pcntl, mbstring, iconv
+          extensions: pdo_sqlite, pcntl, mbstring, iconv, posix
           coverage: none
           tools: none
       - name: Check the new foundation contracts
@@ -47,3 +47,5 @@ jobs:
         run: php app/tests/check-access.php
       - name: Check asynchronous game operations with synthetic bridge peers
         run: php app/tests/check-servers.php
+      - name: Check persistent installation, grant migration and data-preserving recovery
+        run: python3 app/tests/check-release.py

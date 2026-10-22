@@ -12,7 +12,7 @@ $global:IndyLauncherFixture = @{Available=$false;Starts=0;Arguments=''}
 function Invoke-RestMethod {
     [CmdletBinding()]param($Uri,$TimeoutSec)
     if (-not $global:IndyLauncherFixture.Available) { throw 'fixture connection refused' }
-    return @{mode='fixture';native_enabled=$false;build=('a' * 40)}
+    return @{mode=$global:IndyLauncherFixture.Mode ?? 'fixture';native_enabled=[bool]$global:IndyLauncherFixture.Production;build=('a' * 40);instance=$global:IndyLauncherFixture.Instance}
 }
 function Start-Process {
     [CmdletBinding()]param($FilePath,$ArgumentList,$WindowStyle)
@@ -21,6 +21,8 @@ function Start-Process {
     $global:IndyLauncherFixture.Arguments = $ArgumentList
     $global:IndyLauncherFixture.Available = $true
 }
+function Get-CimInstance { return @{LastBootUpTime=[datetime]'2026-10-22T08:00:00Z'} }
+function Get-Process { return @{SessionId=0} }
 try {
     $result = & $source -CheckOnly -NoBrowser -PassThru | ConvertFrom-Json
     if ($result.Running -or $global:IndyLauncherFixture.Starts -ne 0) { throw 'CheckOnly started a process' }
@@ -40,6 +42,21 @@ try {
     $rejected = $false
     try { & $source -CheckOnly -NoBrowser | Out-Null } catch { $rejected = $true }
     if (-not $rejected) { throw 'Legacy configuration accepted' }
+    $settings.RuntimeEngine = 'php-mvp'
+    $settings.AppStateDirectory = '/private/mvp-state-' + ('b' * 24)
+    $settings.Instance = 'mvp-state-' + ('b' * 24)
+    $settings | ConvertTo-Json | Set-Content -LiteralPath $configuration -Encoding UTF8
+    $global:IndyLauncherFixture.Mode='production';$global:IndyLauncherFixture.Production=$true
+    $global:IndyLauncherFixture.Instance=$settings.Instance;$global:IndyLauncherFixture.Available=$false
+    $result = & $source -NoBrowser -PassThru | ConvertFrom-Json
+    if (-not $result.Running -or $result.Mode -ne 'production' -or $global:IndyLauncherFixture.Starts -ne 2 -or
+        $global:IndyLauncherFixture.Arguments -notlike '*app/bin/run /private/mvp-state-*') { throw 'Persistent startup failed' }
+    $proof=Get-Content -LiteralPath (Join-Path $temporary 'GameServerIndy\startup-proof.json') -Raw | ConvertFrom-Json
+    if ($proof.WindowsSessionId -ne 0 -or $proof.Instance -cne $settings.Instance) { throw 'Missing startup context proof' }
+    $global:IndyLauncherFixture.Instance='mvp-state-' + ('c' * 24)
+    $rejected=$false
+    try { & $source -CheckOnly -NoBrowser | Out-Null } catch { $rejected=$true }
+    if (-not $rejected -or $global:IndyLauncherFixture.Starts -ne 2) { throw 'Wrong state instance accepted' }
     Write-Output 'PASS: isolated Windows starter, check-only, start, reuse and legacy rejection; no real WSL/process/network action'
 } finally {
     $env:LOCALAPPDATA = $previous

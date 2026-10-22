@@ -1,5 +1,10 @@
 # Windows und Familienzugriff
 
+EP06: Der vorhandene Verwaltungstask verwendet noch Windows PowerShell 5.1.
+Der vorbereitete reine Aktionswechsel nutzt die installierte PowerShell 7.6.7
+im selben Besitzerkonto. Native lesende Profil-/Statusprüfung bestanden;
+eine Bootabnahme lässt sich daraus nicht ableiten. Ablauf: `app/docs/operation.md`.
+
 Anleitung: `docs/family-access.md`. WSL-Distribution `Indy`, Linux-/Windows-Benutzer `korvegan`; Launcher `%LOCALAPPDATA%\GameServerIndy`.
 
 - Prozesse anhand kanonischem vollständigem EXE-Pfad, PID und Startidentität steuern. Windows liefert auch 8.3-Pfade. Windows-/UNC-Pfade nicht erneut mit `wslpath -w` umwandeln; das verursachte „Serverprogramm nicht gefunden“.

@@ -98,7 +98,7 @@ try {
     }
     if ($path === '/health') {
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['mode' => 'fixture', 'native_enabled' => $runtime->nativeEnabled(), 'instance' => basename($directory),
+        echo json_encode(['mode' => $runtime->mode(), 'native_enabled' => $runtime->nativeEnabled(), 'instance' => basename($directory),
             'build' => getenv('INDY_APP_BUILD') ?: 'development'], JSON_THROW_ON_ERROR);
     } elseif ($path === '/api/session') {
         header('Content-Type: application/json; charset=utf-8');
@@ -109,7 +109,7 @@ try {
         echo json_encode(['grants' => $access->view($actor)], JSON_THROW_ON_ERROR);
     } elseif ($path === '/api/status') {
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['mode'=>'fixture', 'servers'=>$runtime->snapshot($actor)], JSON_THROW_ON_ERROR);
+        echo json_encode(['mode'=>$runtime->mode(), 'servers'=>$runtime->snapshot($actor)], JSON_THROW_ON_ERROR);
     } elseif ($path === '/access') {
         $grants = $access->view($actor);
         $token = $access->token($actor, $origin);
@@ -135,10 +135,11 @@ try {
         'invalid_csrf' => 'Die Anfrage ist nicht mehr gültig. Bitte lade die Seite neu und versuche es erneut.',
         'server_busy' => 'Der Serverstatus hat sich geändert oder eine Aktion läuft. Bitte prüfe den aktuellen Status.',
         'confirmation_required' => 'Bitte bestätige das Stoppen des gewählten Servers.',
+        'maintenance' => 'Die Verwaltung wird aktualisiert. Bitte warte kurz.',
     ];
     $message = $messages[$error->getMessage()] ?? 'Bitte wende dich an die Verwaltung.';
     http_response_code(match ($error->getMessage()) {
-        'grant_changed','server_busy' => 409,
+        'grant_changed','server_busy','maintenance' => 409,
         'invalid_form', 'invalid_identity', 'identity_exists' => 400,
         default => 403,
     });
@@ -152,5 +153,5 @@ try {
 } catch (\Throwable) {
     http_response_code(503);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Isolierter Testmodus nicht verfügbar.';
+    echo 'Verwaltung nicht verfügbar.';
 }

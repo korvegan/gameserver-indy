@@ -9,6 +9,20 @@ Auftrag. Für ein Issue nur die nötigen Quellen und Nachweise laden.
   `SLICE_PHP` und `SLICE_FRANKENPHP` wählen diese vorhandenen Werkzeuge.
 - PHP-Kindprozesse beachten `SLICE_PHP`: `PHP_BINARY` übernimmt die mit
   `-n/-d` gesetzten Erweiterungen des lokalen CLI-Wrappers nicht.
+- EP06 bindet projektbezogen die offizielle FrankenPHP-1.13.2-Datei mit PHP 8.5.12
+  und geprüftem SHA-256; `runtime/php` verwendet deren `php-cli`. Die alten
+  Werkzeugpfade oben sind der erhaltene Entwicklungs-/Rückwegstand, vor neuer
+  Verwendung die geprüfte Sicherheitslaufzeit setzen. Keine Systempakete dafür entpacken.
+- ZTS-`php-cli`: PHPs `chdir()` änderte hier nicht das vom Exec übernommene
+  OS-Arbeitsverzeichnis (HTTP 404 trotz gestarteten Servers). Gemeinsamer Start
+  über GNU `env --chdir=<app>`; mit echter HTTP-Prüfung abgesichert.
+- FrankenPHP `php-cli` mit PHP 8.5.12 unterstützt `-l` hier nicht als Lint:
+  die angegebene Datei wurde ausgeführt. Für reine Syntaxprüfung
+  `token_get_all(file_get_contents($argv[1]), TOKEN_PARSE)` über `-r` verwenden.
+- `check-release.py` prüft eigene dauerhafte Ablage und Freigabeübernahme;
+  mit `SLICE_FRANKENPHP` zusätzlich HTTP-Neustart/-Wechsel/Rückweg und fehlende
+  Bereitschaft. Sperren mit `ce` öffnen; Kindprozesse dürfen die feste
+  Verwaltungslease auf FD 9 nicht erben (sonst Selbstblockade bzw. verwaiste Lease).
 - `npm run test:app`: gezielter Vertrags-/HTTP-Test mit eigenen synthetischen
   Daten und eigenem Port. `-- --idle` nur für eine offene Leerlauffrage;
   bestandene Stichproben nicht ohne Anlass wiederholen.

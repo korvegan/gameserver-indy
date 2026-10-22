@@ -5,6 +5,7 @@ require dirname(__DIR__).'/src/Foundation.php';
 require dirname(__DIR__).'/src/Access.php';
 require dirname(__DIR__).'/src/WindowsBridge.php';
 require dirname(__DIR__).'/src/ServerRuntime.php';
+require dirname(__DIR__).'/src/HttpServer.php';
 
 $port = $argv[1] ?? '18765';
 $engine = getenv('SLICE_FRANKENPHP');
@@ -32,23 +33,5 @@ $fixture = \IndyNext\FixtureStore::create();
 echo 'Fixture: '.$fixture."\n";
 echo 'URL: http://127.0.0.1:'.(int) $port."\n";
 flush();
-$environment = array_intersect_key(getenv(), array_flip(['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR', 'WSL_INTEROP', 'WSL_DISTRO_NAME']));
-$environment['INDY_NEXT_PORT'] = (string) (int) $port;
-$environment['INDY_NEXT_FIXTURE'] = $fixture;
-$environment['INDY_FAMILY_CONFIG'] = $familyPort === null ? 'family-disabled.caddy' : 'family.caddy';
-if ($familyPort !== null) {
-    $environment['INDY_FAMILY_PORT'] = (string) (int) $familyPort;
-    $environment['INDY_FAMILY_HOST'] = $familyHost;
-}
-$revisionFile = dirname(__DIR__, 2).'/REVISION';
-$revision = is_file($revisionFile) ? trim(file_get_contents($revisionFile)) : 'development';
-if (!preg_match('/^(development|[a-f0-9]{40})$/D', $revision)) {
-    throw new RuntimeException('invalid_release_revision');
-}
-$environment['INDY_APP_BUILD'] = $revision;
-$environment['XDG_CONFIG_HOME'] = $fixture.'/config';
-$environment['XDG_DATA_HOME'] = $fixture.'/data';
-chdir(dirname(__DIR__));
-pcntl_exec($engine, ['run', '--config', __DIR__.'/../Caddyfile', '--adapter', 'caddyfile'], $environment);
-fwrite(STDERR, "FrankenPHP konnte nicht gestartet werden.\n");
-exit(1);
+\IndyNext\HttpServer::run($fixture, ['port'=>(int) $port, 'family_port'=>$familyPort === null ? null : (int) $familyPort,
+    'family_host'=>$familyHost, 'engine'=>$engine, 'php'=>$php]);

@@ -57,7 +57,7 @@ foreach ($servers as $server): if ($selected !== null && $selected !== $server['
 <?php endforeach; ?>
 </div>
 <noscript><p>Für Statusaktualisierung und Spielsteuerung bitte JavaScript aktivieren.</p></noscript>
-<p class="preview-note">Lokale Vorschau mit Testdaten.</p>
+<?php if ($runtime->mode() === 'fixture'): ?><p class="preview-note">Lokale Vorschau mit Testdaten.</p><?php endif; ?>
 </main>
 </div>
 <dialog aria-labelledby="stop-title" aria-describedby="stop-description">

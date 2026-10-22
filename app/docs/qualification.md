@@ -169,3 +169,59 @@ Projekt-Skill sind geprüft. CI und unabhängiger Review werden am endgültigen
 PR-Head dokumentiert. Reale PHP-/Serve-Aktivierung, Freigabeübernahme, Spielspeichern,
 Beitritt mit echten Personen, Smartphone über Mobilfunk und Boot ohne Anmeldung
 bleiben EP06; die vorhandene Betriebsinstallation wurde nicht verändert.
+
+## EP06 – technische Vorbereitung, noch keine Betriebsabnahme
+
+Zu #146/#163, 22.10.2026. Geprüfte Laufzeit: offizielle FrankenPHP-1.13.2-Datei,
+PHP **8.5.12** für HTTP und `php-cli`; Downloadhash gegen den festgelegten
+Release-Hash geprüft. PowerShell **7.6.7** bleibt die vorhandene Store-Installation.
+
+`check-release.py` arbeitet nur in einem eigenen privaten Testverzeichnis. Bestanden:
+schreibgeschützter Import ohne Besitzerverlust, Sperrreaktivierung oder Erweiterung
+eingeschränkter Serverlisten; Leser bleiben gesperrt; geänderte Quelle erhält anderen
+Fingerprint. Erneute Provisionierung überschreibt keinen Bestand. Verzeichnis-/Dateimodi,
+Schlüssel und persistente Zustände geprüft.
+
+Mit echter FrankenPHP-HTTP-Laufzeit zusätzlich bestanden: Neustart mit gleichem Zustand
+und CSRF-Schlüssel; zweite Instanz abgewiesen; Wartung blockiert Auftragsannahme;
+alte Releasebindung abgewiesen. Langsamer Executor erbt keine Verwaltungslease.
+Laufende/unklare Operationen und gehaltene Statussperren verhindern den Wechsel.
+Tatsächlicher HTTP-Codewechsel, Verwaltungsneustart, bewusster Rückweg sowie Rückweg
+bei absichtlich fehlender Startbestätigung bestanden. Nach dem Wechsel gesperrte
+Freigaben und aktuelle Schlüssel/Operationsbelege bleiben beim Rückweg erhalten.
+Windows-Taskaufrufe sind in dieser portablen Prüfung vollständig ersetzt.
+
+`npm run test:app` mit derselben Laufzeit bestanden. Native Prüfung unter Windows:
+gemockter Starter und Task-Aktionswechsel sowie eigene native Spielstellvertreter
+einschließlich HTTP → einzelnes PHP → PowerShell → beide Spiele bestanden.
+Die bestehenden Spielinstallationen wurden dafür nicht gestartet.
+
+Lesende Hostprüfung separat: bestehende Besitzer-/Passwort-/Bootaufgabe und geplanter
+PowerShell-7-Aktionswechsel passen; keine Taskänderung. Aus bisherigen privaten
+Bindungen erzeugte Testprofile validieren beide vorhandenen Weltverzeichnisse über
+`Assert-World`. Native Statusabfrage bestätigt beide Spiele gestoppt. Diese Profile
+lagen nur in einem eigenen Windows-Tempverzeichnis und wurden danach entfernt.
+Bestehendes Serve zeigt auf Familienbackend 8767; keine Netzänderung.
+
+Browser-QA: eigene synthetische Installation mit Produktionsmarker und PHP-Peers,
+keine echten Profile. Allgemeiner Browser-MCP zuerst für Navigation und Snapshot;
+Klick-/Viewport-APIs werden dort nicht angeboten. Deshalb vorhandenen Projekt-Playwright
+für die Interaktion verwendet, ohne Installation oder Änderung der Sandbox.
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| Identität/erster Inhalt | Richtige URL/Titel, beide Spielkarten, kein Overlay |
+| Wartung | Alle Spielaktionen gesperrt, verständliche Meldung; erwartetes HTTP 409 beim Refresh |
+| Desktop 1280 × 1000 | Nach Freigabe Start, bestätigter Prozessstatus, Navigation zu Details |
+| Mobil 390 × 844 | Start, Stoppdialog mit Abbrechen-Fokus, Escape, kein horizontaler Überlauf |
+| Rechte/Beitritt | Lokaler Verwaltungslink, fehlende Joinwerte nicht kopierbar |
+| Axe/Konsole | Keine Axe-Befunde auf geprüften Ansichten, keine Appfehler; erwartete 409 erklärt |
+| Produktionsansicht | Testdaten-Fußzeile fehlt, bestehendes Layout/Originalassets unverändert |
+
+Screenshots außerhalb des Repositorys unter
+`~/.codex/browser-tools/general/output/gameserver-ep06-{maintenance,desktop,mobile}.png`,
+mit `view_image` geprüft. Eigene Browser-/Testinstanz anschließend beendet.
+
+**Offen:** reale Aktivierung, aktuelle persönliche Freigabeübernahme, Spiel-/Welt-/Speicher-
+und Beitrittsprüfung, echte Familienidentität/Smartphone sowie Windows-Boot ohne Anmeldung.
+Der [konkrete Ablauf und Rückweg](operation.md) verlangen dafür das vereinbarte Wartungsfenster.
