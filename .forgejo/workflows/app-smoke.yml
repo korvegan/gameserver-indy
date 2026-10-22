@@ -41,3 +41,5 @@ jobs:
           tools: none
       - name: Check the new foundation contracts
         run: php app/tests/run.php
+      - name: Check the Windows transport contract without native game actions
+        run: php app/tests/check-bridge.php

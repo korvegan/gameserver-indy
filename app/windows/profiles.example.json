@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "owner_sid": "OWNER-SID",
+  "profiles": {
+    "enshrouded": {
+      "executable": "D:\\SteamLibrary\\steamapps\\common\\EnshroudedServer\\enshrouded_server.exe",
+      "configuration": "D:\\SteamLibrary\\steamapps\\common\\EnshroudedServer\\enshrouded_server.json",
+      "world_directory": "D:\\SteamLibrary\\steamapps\\common\\EnshroudedServer\\EXISTING_SAVE_DIRECTORY",
+      "stop_timeout_ms": 45000
+    },
+    "aska": {
+      "executable": "D:\\SteamLibrary\\steamapps\\common\\ASKA Dedicated Server\\AskaServer.exe",
+      "configuration": "C:\\Users\\WINDOWS_USER\\Documents\\workspace\\Aska\\config\\server properties.txt",
+      "world_directory": "C:\\Users\\WINDOWS_USER\\AppData\\LocalLow\\Sand Sailor Studio\\Aska\\data\\server\\savegame_EXISTING_SAVE_ID",
+      "save_id": "EXISTING_SAVE_ID",
+      "stop_timeout_ms": 45000
+    }
+  }
+}

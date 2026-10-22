@@ -1,11 +1,11 @@
-# EP01: Status- und Aktionsvertrag v1
+# Status- und Aktionsvertrag v1
 
 Der Store in `src/Foundation.php` prüft diesen Vertrag mit synthetischen Daten.
 EP03 liefert den nativen Adapter; EP04 die Identität/Rechte und EP05 die Bedienung.
 
 ## Native Grenze
 
-Ein künftiger Aufruf benennt Version, Server-ID (`enshrouded` oder `aska`) und
+Ein nativer Aufruf benennt Version, Server-ID (`enshrouded` oder `aska`) und
 Aktion (`status`, `start`, `stop`). Schreibende Aufrufe besitzen zusätzlich die
 eindeutige Operations-ID. Beispiel:
 
@@ -17,8 +17,9 @@ Profile, erlaubte EXE-/Konfigurationspfade und Windows-Benutzerkontext stammen
 aus vertrauenswürdiger lokaler Konfiguration. Der Helfer bindet jede Änderung
 an die tatsächliche Prozessidentität einschließlich EXE-Pfad und Startkennung;
 eine nackte PID oder ein Prozessname reicht nicht. Native Geheimnisse verlassen
-den lokalen Ablauf nicht. Die konkrete Transportform wird in EP03 anhand der
-notwendigen Windows-Aktionen gewählt; EP01 startet keinen Helferdienst.
+den lokalen Ablauf nicht. EP03 verwendet einmalige PowerShell-7-Aufrufe mit
+lokalen Request-/Reply-Dateien; [Transport und Journal](windows-bridge.md) halten
+die native Grenze fest. Ein dauerhafter Helferdienst ist nicht erforderlich.
 
 Antworten sind versionierte strukturierte Daten mit Server-/Operationsbezug,
 beobachtetem Ergebnis oder begrenztem Fehlercode. Timeout ist kein Beleg für
@@ -56,9 +57,10 @@ blockieren einander nicht dauerhaft; kurze SQLite-Schreibtransaktionen sind seri
 
 Vor jeder Annahme/Ausführung muss PHP bestätigte Identität, aktuelle Freigabe und
 Profilbindung prüfen. Nach einem Executor-Abbruch werden begonnene Operationen
-vor neuer Ausführung abgeglichen; keine automatische Wiederholung. In EP01 gibt
-es keinen Executor. Der Store-Test belegt die erhaltene unbekannte Reservierung
-nach erneutem Öffnen; er belegt keinen nativen Wiederanlauf.
+vor neuer Ausführung abgeglichen; keine automatische Wiederholung. Der
+`FixtureStore` bleibt synthetisch. Sein Test belegt die erhaltene unbekannte
+Reservierung nach erneutem Öffnen. EP03 prüft zusätzlich das native Journal,
+Timeout und Abgleich nach Helferabbruch an isolierten Windows-Prozessen.
 
 ## Entwicklungs-HTTP in EP01
 

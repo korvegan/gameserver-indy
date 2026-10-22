@@ -10,6 +10,7 @@ const { setTimeout: delay } = require('node:timers/promises');
 async function main() {
   const php = process.env.SLICE_PHP || 'php';
   execFileSync(php, [path.join(__dirname, 'run.php')], { stdio: 'inherit' });
+  execFileSync(php, [path.join(__dirname, 'check-bridge.php')], { stdio: 'inherit' });
   const reservation = net.createServer();
   await new Promise((resolve, reject) => reservation.once('error', reject).listen(0, '127.0.0.1', resolve));
   const port = reservation.address().port;

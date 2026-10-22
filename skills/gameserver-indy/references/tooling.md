@@ -19,6 +19,13 @@ Auftrag. Für ein Issue nur die nötigen Quellen und Nachweise laden.
   Native WSL-Prüfung bestätigte: unnötige Quotes um den Distributionswert
   werden wörtlich übernommen (`WSL_E_DISTRO_NOT_FOUND`). Der lokale Starter
   übergibt validierte Werte ohne Quotes; seine Linux-Pfade enthalten keinen Leerraum.
+- EP03: `"$SLICE_PHP" app/tests/check-bridge.php` prüft den portablen Transport.
+  `INDY_PWSH=/WSL/Pfad/zur/installierten/pwsh.exe python3 app/tests/check-windows-bridge.py`
+  prüft unter PowerShell 7.6+ eigene native Stellvertreter samt PHP-/WSL-Aufruf.
+  `SLICE_PHP` auch dabei setzen. Bestehenden .NET-Framework-Compiler nur für
+  die eigenen Test-EXEs verwenden; die Brücke nutzt `Add-Type`, keine neue Installation.
+  JSON-Startzeiten mit `ConvertFrom-Json -DateKind String` lesen, damit
+  der exakte Identitätsvergleich unverändert bleibt; Standardkonvertierung erzeugt DateTime-Werte.
 - Node-Version steht in `.node-version`. Browserprüfungen erst für tatsächliche
   UI-Arbeit; verfügbare Browserlaufzeit zuerst prüfen. Bei Playwright benötigen
   Axe-Tests `browser.newContext()` und dessen `newPage()`.

@@ -1,4 +1,4 @@
-# Neues PHP-Grundgerüst
+# Neue PHP-Anwendung
 
 Zu [EP01 #141](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/141),
 [Arbeitsissue #147](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/147)
@@ -6,8 +6,10 @@ und [Zielbild #140](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/is
 
 `app/` ist der führende neue App-Bereich. EP01 liefert eine PHP-gerenderte
 Entwicklungsdiagnose, synthetischen Status und einen geprüften Zustandsvertrag.
-Fantasy-Design, native Spielaktionen und Tailscale-Anmeldung folgen in eigenen
-Epics. Das bestehende Release und seine Daten werden hier nicht geladen.
+EP02 hält den bestätigten Designstand unter `design/ep02/` fest. EP03 ergänzt
+die isoliert geprüfte [native Windows-Brücke](docs/windows-bridge.md) für
+PowerShell 7.6+, lokal 7.6.7. Familienanmeldung, fertige Bedienung und
+Betriebsaktivierung folgen in eigenen Epics. Die Diagnose bleibt synthetisch.
 
 ## Start und Prüfung
 
@@ -33,13 +35,15 @@ npm run test:app
 npm run test:app -- --idle
 ```
 
-Der erste Aufruf prüft PHP-Verträge, vier konkurrierende PHP-Prozesse und den
+Der erste Aufruf prüft PHP-Verträge, Brückentransport, vier konkurrierende PHP-Prozesse und den
 echten HTTP-Start auf einem eigenen Port. Die HTTP-Prüfung entfernt ihre eigene
 Datenablage und beendet ihren Server. `--idle` ergänzt unter Linux eine
 fünfsekündige Stichprobe über `/proc` ohne weitere HTTP-Abfragen.
 Die Forgejo-CI führt den PHP-Vertragstest mit PHP 8.5 aus. FrankenPHP-HTTP und
 Leerlauf werden gezielt lokal geprüft; sie sind nicht Teil dieses CI-Jobs.
 Zusätzlich prüft sie das vollständige Quellarchiv und die Release-Verpackung.
+Die native Brückenprüfung läuft gezielt unter Windows; Aufruf und Voraussetzungen
+stehen in [windows-bridge.md](docs/windows-bridge.md).
 
 ```sh
 npm run check:archive
@@ -64,6 +68,7 @@ passende Skill-Referenz lesen. Hier genügen anschließend:
 - [Architekturentscheidung](docs/architecture.md)
 - [Zustands- und Brückenvertrag](docs/bridge-contract.md)
 - [EP01-Prüfnachweis](docs/qualification.md)
+- [Windows-Brücke und EP03-Prüfweg](docs/windows-bridge.md)
 
 Technische Entscheidungen und Grenzen nach Änderungen dort knapp aktualisieren.
 Die Diagnose ist kein freigegebenes Dashboard und vergibt keine Familienrechte.
