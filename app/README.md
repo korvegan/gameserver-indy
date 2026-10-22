@@ -11,11 +11,14 @@ die isoliert geprüfte [native Windows-Brücke](docs/windows-bridge.md) für
 PowerShell 7.6+, lokal 7.6.7. EP04 liefert [Identität und Zugangsverwaltung](docs/family-access.md)
 mit isoliert geprüfter Serve-Vertrauensgrenze. EP05 verbindet
 [Dashboard und Spielbedienung](docs/dashboard.md) mit autorisierten einmaligen
-Brückenaufrufen. Der normale Start und die Zugangsablage bleiben synthetisch;
-reale Aktivierung, Freigabeübernahme und Betriebsabnahme folgen in EP06.
+Brückenaufrufen. Der Entwicklungsstart bleibt synthetisch. Die installierte
+Verwaltung wurde in EP06 mit bestehenden Freigaben und echten Spielbindungen
+aktiviert. Beide Bestandswelten, Beitritt, Stopp und neue Speicherdateien sind
+bestätigt; Familienabnahme und Bootprüfung sind noch offen.
 Der [EP06-Releaseweg](docs/operation.md) ergänzt die dauerhafte Ablage, gezielte
 Freigabeübernahme, feste Sicherheitslaufzeit und den Wartungs-/Rückweg.
-Seine Vorbereitung aktiviert noch keinen Betrieb.
+Vorbereitung und Aktivierung sind getrennte Schritte; der aktuelle Betriebsnachweis
+und verbleibende Abnahmen stehen in derselben Anleitung.
 
 ## Start und Prüfung
 
