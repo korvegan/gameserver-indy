@@ -14,7 +14,8 @@ Der neue App-Bereich liegt in `app/`. Auf ausdrücklichen Nutzerauftrag wurde
 die bisherige Verwaltung gestoppt und ihr vollständiger Quellstand archiviert.
 PHP bleibt Hauptanwendung; Spielprozesse bleiben
 unabhängig davon native Windows-Prozesse. Installationen und Welten behalten
-ihre bisherigen Pfade. Eine echte Anbindung beginnt in EP03. Der lokale Einstieg
+ihre bisherigen Pfade. EP03 ergänzt die isoliert geprüfte
+[Windows-Brücke](windows-bridge.md); die Betriebsaktivierung bleibt ausstehend. Der lokale Einstieg
 zeigt vorzeitig auf das Gerüst; die vollständige MVP-/Bootabnahme bleibt EP06.
 
 ## Werkzeuge und Verantwortung
@@ -70,9 +71,11 @@ und eine `REVISION` mit Commitkennung. Der Windows-Starter vergleicht diese
 Kennung über `/health` mit seiner privaten Konfiguration. Das ist eine lokale
 Zuordnungsprüfung, keine Authentifizierung oder signierte Herkunftsprüfung.
 
-Für EP03/EP04 festlegen: konkrete native Beobachtungs-/Weckquelle, Verhalten bei
-veralteten Beobachtungen und der begrenzte Ausführungsweg langer Start-/Stoppaktionen.
-Kein langsamer nativer Aufruf wird später ungeprüft in einen HTTP-Request gelegt.
+EP03 fragt native Prozesse bei Bedarf über einen einmaligen PowerShell-7-Helfer
+ab. Es gibt keinen Hintergrundpoller; ohne Spielnachweis bleibt `ready=null`.
+Per Spiel sichern native Sperre und dauerhafte Operationsbelege die Ausführung.
+Vor der späteren HTTP-Anbindung müssen Rechte erneut geprüft und längere Aktionen
+außerhalb eines Status-Requests ausgeführt werden.
 Ein zusätzlicher Prozess braucht einen nachgewiesenen Bedarf. EP01 betreibt keine
 Hintergrundabfrage oder Timer; sein Leerlaufnachweis bewertet nur dieses Gerüst.
 
