@@ -6,7 +6,11 @@ $mode = $argv[2];
 $nonce = $argv[4];
 $request = json_decode(file_get_contents($directory.'/request-'.$nonce.'.json'), true, 8, JSON_THROW_ON_ERROR);
 file_put_contents($directory.'/calls.txt', $request['action']."\n", FILE_APPEND);
-if ($mode === 'timeout') {
+if ($mode === 'ignore-term') {
+    pcntl_async_signals(true);
+    pcntl_signal(SIGTERM, SIG_IGN);
+}
+if (in_array($mode, ['timeout','ignore-term'], true)) {
     sleep(5);
 }
 $reply = [...$request, 'outcome' => 'succeeded', 'error' => '', 'process' => 'running', 'ready' => null,

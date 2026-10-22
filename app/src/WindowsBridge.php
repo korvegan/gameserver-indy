@@ -63,6 +63,13 @@ final class WindowsBridge
             if (!$finished) {
                 // Only our one-shot transport is cancelled; the independent game is never killed.
                 proc_terminate($process);
+                $grace = hrtime(true) + 100_000_000;
+                while (proc_get_status($process)['running'] && hrtime(true) < $grace) {
+                    usleep(10_000);
+                }
+                if (proc_get_status($process)['running']) {
+                    proc_terminate($process, 9);
+                }
                 return $this->uncertain($request, 'transport_timeout');
             }
             if ($state['exitcode'] !== 0 || !is_file($replyFile) || is_link($replyFile)

@@ -38,6 +38,9 @@ Konfigurationen und Weltdateien.
   anschließender Strg+C-Stopp mit gespeichertem Abschlussmarker.
 - ASKA erhält die externe Properties-Datei mit Leerzeichen als ein Argument
   und SteamAppId/SteamGameId 1898300; falsche Save-ID und Besitzer-SID werden abgelehnt.
+  Ein gleichnamiger Save-Ordner unter falschem Stamm wird ebenfalls abgelehnt.
+  Nur der Profilverzeichnis-Lookup ist in der privaten Testkopie auf Windows-Temp
+  ersetzt; der originale Windows-Lookup wird separat geprüft.
 - Zwei parallele Starts erzeugen genau einen zusätzlichen Zielprozess.
 - Während eines langsamen Stopps bleiben Status und das andere Spiel benutzbar.
   Timeout bleibt unbekannt, neue Befehle bleiben gesperrt, Wiederholung sendet
@@ -51,7 +54,7 @@ Konfigurationen und Weltdateien.
   über den tatsächlichen Datei-/Prozessaufruf; alte Operations-IDs werden erkannt.
 
 Der portable PHP-Test prüft gebundene und begrenzte Antworten, ungültige Eingaben,
-verworfenes stderr, Transporttimeout und die persistierende unbekannte Reservierung.
+verworfenes stderr, Transporttimeout auch bei ignoriertem SIGTERM und die persistierende unbekannte Reservierung.
 Er läuft auch in Forgejo-CI. Der Windows-Test benötigt diesen Host und läuft lokal.
 
 Der Nachweis bestätigt die Brücke an Stellvertretern. Echte Speicher- und

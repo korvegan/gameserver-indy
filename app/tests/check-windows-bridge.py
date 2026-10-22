@@ -14,7 +14,7 @@ result = subprocess.check_output([pwsh, '-NoProfile', '-NonInteractive', '-Comma
 windows_temp = Path(subprocess.check_output(['wslpath', '-u', result], text=True).strip())
 with tempfile.TemporaryDirectory(prefix='indy-bridge-code-', dir=windows_temp) as temporary:
     stage = Path(temporary)
-    for name in ('windows/Bridge.ps1', 'windows/NativeConsole.cs', 'tests/check-bridge.ps1', 'tests/BridgeStandin.cs'):
+    for name in ('windows/Bridge.ps1', 'windows/NativeConsole.cs', 'windows/GameProfile.ps1', 'tests/check-bridge.ps1', 'tests/BridgeStandin.cs'):
         destination = stage / 'app' / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(root / 'app' / name, destination)

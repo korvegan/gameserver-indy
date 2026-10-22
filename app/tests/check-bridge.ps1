@@ -44,6 +44,17 @@ function Await-File([string]$Path) {
 function Op { return [guid]::NewGuid().ToString('N') }
 try {
     [IO.Directory]::CreateDirectory($root) | Out-Null
+    . (Join-Path $PSScriptRoot '../windows/GameProfile.ps1')
+    Check ((Get-WindowsUserProfile) -ceq [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)) 'Real Windows profile lookup'
+    $code = Join-Path $temporary 'bridge'
+    [IO.Directory]::CreateDirectory($code) | Out-Null
+    foreach ($file in @('Bridge.ps1','NativeConsole.cs','GameProfile.ps1')) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot ('../windows/' + $file)) -Destination (Join-Path $code $file)
+    }
+    $bridge = Join-Path $code 'Bridge.ps1'
+    $windowsProfile = Join-Path $temporary 'synthetic Windows profile'
+    # Replace only the OS profile-directory lookup in our private copy; all game I/O stays in Temp.
+    [IO.File]::AppendAllText((Join-Path $code 'GameProfile.ps1'), ("`nfunction Get-WindowsUserProfile { return '" + $windowsProfile.Replace("'", "''") + "' }`n"))
     $fixtures = @{}
     foreach ($server in @('enshrouded','aska','foreign')) {
         $folder = Join-Path $temporary ($server + ' with spaces')
@@ -52,7 +63,8 @@ try {
         $executable = Join-Path $folder $name
         & (Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe') /nologo /target:exe /out:$executable (Join-Path $PSScriptRoot 'BridgeStandin.cs')
         Check ($LASTEXITCODE -eq 0) 'Standin compilation failed'
-        $world = Join-Path $folder 'data/server/savegame_fixture'
+        $world = if ($server -eq 'aska') { Join-Path $windowsProfile 'AppData/LocalLow/Sand Sailor Studio/Aska/data/server/savegame_fixture' }
+            else { Join-Path $folder 'data/server/savegame_fixture' }
         [IO.Directory]::CreateDirectory($world) | Out-Null
         [IO.File]::WriteAllText((Join-Path $world 'world.bin'), 'synthetic existing world')
         $configuration = Join-Path $folder $(if ($server -eq 'aska') { 'server properties.txt' } else { 'enshrouded_server.json' })
@@ -151,6 +163,13 @@ try {
     $bad = Call 'aska' 'start' (Op)
     Check ($bad.error -eq 'world_mismatch') 'Wrong ASKA world accepted'
     [IO.File]::WriteAllText($fixtures.aska.configuration, $savedConfig)
+    $boundWorld = $fixtures.aska.world_directory
+    $wrongRoot = Join-Path $temporary 'backup/data/server/savegame_fixture'
+    [IO.Directory]::CreateDirectory($wrongRoot) | Out-Null
+    $fixtures.aska.world_directory = $wrongRoot
+    Json (Join-Path $root 'profiles.local.json') $settings
+    Check ((Call 'aska' 'start' (Op)).error -eq 'world_mismatch') 'Matching ASKA save folder under wrong root accepted'
+    $fixtures.aska.world_directory = $boundWorld
     $settings.owner_sid = 'S-1-5-18'
     Json (Join-Path $root 'profiles.local.json') $settings
     Check ((Call 'aska' 'status').error -eq 'owner_mismatch') 'Wrong Windows owner accepted'

@@ -46,6 +46,9 @@ try {
     try { $store->reserve('enshrouded', 'start', 'synthetic-owner', Role::Family); throw new RuntimeException('Unknown replay accepted'); }
     catch (RuntimeException $e) { verify($e->getMessage() === 'server_busy', 'Unknown reservation survives reopen'); }
     verify(count(glob($directory.'/request-*.json')) === 1, 'Timed-out exchange remains for diagnosis');
+    $started = microtime(true);
+    $result = $client('ignore-term')->call('aska', 'status', null, 0.15);
+    verify(microtime(true) - $started < 1.5 && $result['error'] === 'transport_timeout', 'Uncooperative own transport remains bounded');
     echo "PASS: PHP bridge transport, strict binding/schema, no private output, bounded timeout and persistent unknown reservation\n";
 } finally {
     unset($store);

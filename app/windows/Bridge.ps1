@@ -53,25 +53,6 @@ function Observe {
     $reply.observed_at = [DateTime]::UtcNow.ToString('o')
     return $found
 }
-function Assert-World {
-    if (-not [IO.Directory]::Exists($profile.world_directory)) { throw 'world_mismatch' }
-    if ($server -eq 'enshrouded') {
-        $configuration = Read-Json $profile.configuration 1048576
-        if ([IO.Path]::GetFullPath($profile.configuration) -ine (Join-Path $working 'enshrouded_server.json') -or
-            $configuration.saveDirectory -isnot [string]) { throw 'world_mismatch' }
-        $world = [IO.Path]::GetFullPath($configuration.saveDirectory, $working)
-        if ($world.TrimEnd('\') -ine ([IO.Path]::GetFullPath($profile.world_directory)).TrimEnd('\')) { throw 'world_mismatch' }
-    } else {
-        $properties = [IO.File]::ReadAllLines($profile.configuration)
-        $ids = @($properties | Where-Object { $_ -match '^\s*save id\s*=' })
-        if ($profile.save_id -notmatch '^[A-Za-z0-9_-]+$' -or $ids.Count -ne 1 -or
-            $ids[0] -cnotmatch ('^\s*save id\s*=\s*' + [regex]::Escape($profile.save_id) + '\s*$') -or
-            [IO.Path]::GetFileName($profile.world_directory.TrimEnd('\')) -cne ('savegame_' + $profile.save_id) -or
-            [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($profile.world_directory.TrimEnd('\'))) -cne 'server') {
-            throw 'world_mismatch'
-        }
-    }
-}
 function Receipt-Path([string]$Id) { return Join-Path $root ($server + '-' + $Id + '.json') }
 function Read-Receipt([string]$Id) {
     try { $record = Read-Json (Receipt-Path $Id) } catch { throw 'invalid_state' }
@@ -121,6 +102,7 @@ try {
         $profile.configuration.Contains('"') -or $profile.configuration.Contains("`n") -or
         $profile.stop_timeout_ms -isnot [long] -or $profile.stop_timeout_ms -lt 100 -or $profile.stop_timeout_ms -gt 45000) { throw 'invalid_profile' }
     Add-Type -Path (Join-Path $PSScriptRoot 'NativeConsole.cs')
+    . (Join-Path $PSScriptRoot 'GameProfile.ps1')
     $executable = [IndyNativeConsole]::Canonical($profile.executable)
     $working = [IO.Path]::GetDirectoryName($executable)
     $processes = @(Observe)
@@ -160,7 +142,7 @@ try {
     if ($action -ne 'status' -and -not $receipt -and $lock) {
         if ($active -and $activeReceipt.outcome -eq 'unknown') { throw 'server_busy' }
         $processes = @(Observe)
-        if ($action -eq 'start') { Assert-World }
+        if ($action -eq 'start') { Assert-World $server $profile $working }
         # Persist uncertainty before the side effect; a crash must never make a retry look new.
         Write-Json $activeFile @{id=$inputData.operation}
         $receipt = @{version=1;server=$server;action=$action;operation=$inputData.operation;outcome='unknown';error='outcome_unresolved';target=$null}

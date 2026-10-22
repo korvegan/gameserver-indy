@@ -26,11 +26,13 @@ Enshrouded startet seine EXE im Installationsverzeichnis. Dessen vorhandene
 `enshrouded_server.json` muss mit `saveDirectory` auf den freigegebenen vorhandenen
 Weltordner zeigen. ASKA erhält die externe Datei als korrekt gequotetes
 `-propertiesPath`-Argument sowie SteamAppId/SteamGameId `1898300`. Ihre einzige
-`save id` muss zum gebundenen `data/server/savegame_<id>` passen.
+`save id` muss zum vollständigen Pfad unter dem tatsächlichen Windows-Besitzerprofil
+passen: `AppData/LocalLow/Sand Sailor Studio/Aska/data/server/savegame_<id>`.
+Ein gleichnamiger Ordner unter anderem Stammverzeichnis wird abgelehnt.
 Die Brücke legt keine Welt an und ändert weder Spielkonfiguration noch Weltdateien.
 Der bestehende ASKA-Discordstarter wird dabei nicht aufgerufen.
 
-Die spätere Installation muss Skript und C#-Datei gemeinsam unter Windows
+Die spätere Installation muss beide Skripte und die C#-Datei gemeinsam unter Windows
 bereitstellen: Auf diesem Host lehnt RemoteSigned ein Skript auf dem WSL-UNC-Pfad
 ab. Die native Prüfung kopiert ihre eigenen Dateien deshalb in Windows-Temp;
 sie setzt weder ExecutionPolicy noch Hostberechtigungen herab.
@@ -82,7 +84,8 @@ deren Prozessliste nur Ziel und Helfer enthält. Eine geteilte Konsole wird mit
 `unsafe_console` abgelehnt. Der Helfer wartet höchstens den lokal eingestellten
 Zeitraum, maximal 45 Sekunden. Timeout bleibt `unknown`; es gibt keinen harten
 Abbruch als Ersatz. PHP begrenzt den Transport separat und beendet dabei allenfalls
-seinen einmaligen Helfer, niemals das Spiel.
+seinen einmaligen Helfer, niemals das Spiel. Reagiert dieser unter WSL nicht auf
+SIGTERM, wird ausschließlich dieser eigene Transport nach kurzer Frist mit SIGKILL beendet.
 
 ## Prüfung und nächste Anbindung
 
@@ -95,7 +98,10 @@ INDY_PWSH='/WSL/Pfad/zur/installierten/pwsh.exe' \
 Für den nativen Lauf ist auch `SLICE_PHP` auf den vorhandenen CLI-Startweg zu
 setzen. Der Test verwendet den bereits installierten .NET-Framework-C#-Compiler
 für eigene Konsolen-Stellvertreter mit den beiden EXE-Namen, isolierte Welten und
-Konfigurationen mit Leerzeichen. Er prüft anschließend den echten PHP-/WSL-Transport.
+Konfigurationen mit Leerzeichen. Nur die Windows-Profilverzeichnisabfrage wird in
+einer eigenen Skriptkopie durch den Temp-Pfad ersetzt; der originale OS-Lookup wird
+separat geprüft. Keine Testwelt liegt im echten AppData-Spielpfad. Der Test prüft
+anschließend den echten PHP-/WSL-Transport.
 Nur diese selbst kompilierten, pfad- und hashgeprüften Prozesse werden nötigenfalls
 zur Testbereinigung hart beendet; die produktive Brücke enthält keinen solchen Weg.
 
