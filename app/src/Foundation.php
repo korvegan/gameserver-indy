@@ -92,9 +92,17 @@ final class FixtureStore
 
     public function snapshot(): array
     {
-        $servers = $this->db->query('SELECT id, process, ready, observed_at FROM servers ORDER BY id')->fetchAll();
+        // Process observation and latest operation must come from the same SQLite read snapshot.
+        $servers = $this->db->query('SELECT s.id, s.process, s.ready, s.observed_at,
+            o.id AS operation_id, o.action AS operation_action, o.state AS operation_state
+            FROM servers s LEFT JOIN operations o ON o.rowid = (
+                SELECT rowid FROM operations WHERE server = s.id ORDER BY created_at DESC, rowid DESC LIMIT 1
+            ) ORDER BY s.id')->fetchAll();
         foreach ($servers as &$server) {
             $server['ready'] = $server['ready'] === null ? null : (bool) $server['ready'];
+            $server['operation'] = $server['operation_id'] === null ? null
+                : ['id'=>$server['operation_id'], 'action'=>$server['operation_action'], 'state'=>$server['operation_state']];
+            unset($server['operation_id'], $server['operation_action'], $server['operation_state']);
         }
         return $servers;
     }

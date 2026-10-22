@@ -234,3 +234,12 @@ Eine fünfsekündige Stichprobe der aktiven Verwaltung während dieser Betriebsp
 zeigt genau einen Serverprozess, RSS 103572–103608 KiB und 16 Threads, an beiden
 Messpunkten ohne Kindprozesse. Die CPU-Zeit steigt um zwei Ticks bei 10 ms Auflösung.
 Das ist eine kurze Betriebsstichprobe, keine Last- oder Leerlaufmessung.
+
+Die Main-CI nach dem Dokumentationsmerge #165 machte einen Lesewettlauf im
+Startstatus sichtbar. Der ergänzte Regressionstest schreibt über eine zweite
+SQLite-Verbindung zwischen SELECT und Auslesen der Statuszeilen: am alten Code
+reproduziert er die Mischung aus altem Prozess und neuem Auftragsabschluss.
+Ein gemeinsamer SELECT für Beobachtung und neuesten Auftrag erhält denselben
+Datenbank-Snapshot; der nächste Aufruf sieht den abgeschlossenen Start.
+Gezielter Regressionstest und `npm run test:app` mit derselben PHP-8.5.12-Laufzeit
+bestanden; keine echten Spielaktionen für diese Korrektur.
