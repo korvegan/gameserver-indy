@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/src/WindowsBridge.php';
+try {
+    if ($argc !== 2 || !is_file($argv[1]) || is_link($argv[1]) || filesize($argv[1])>65536
+        || (fileperms($argv[1]) & 0777) !== 0600) { throw new RuntimeException('private_runtime_required'); }
+    $s = json_decode(file_get_contents($argv[1]), true, 16, JSON_THROW_ON_ERROR);
+    if ($s['kind'] !== 'windows') { throw new RuntimeException('native_binding_required'); }
+    $bridge = new \IndyNext\WindowsBridge($s['bridge_directory'], $s['bridge_command']);
+    $result = [];
+    foreach (['enshrouded','aska'] as $server) {
+        $reply = $bridge->call($server, 'status');
+        if ($reply['outcome'] !== 'succeeded' || $reply['process'] === 'unknown') { throw new RuntimeException('unconfirmed_process'); }
+        $result[$server] = ['process'=>$reply['process'], 'identity'=>$reply['identity']];
+    }
+    echo json_encode($result, JSON_THROW_ON_ERROR)."\n";
+} catch (Throwable) { fwrite(STDERR, "Prozessbeobachtung nicht bestaetigt; keine Umstellung.\n"); exit(1); }

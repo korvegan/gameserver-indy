@@ -50,14 +50,42 @@ final class ServerRuntime
             }
         }
         $this->settings = $s;
+        $this->checkRelease();
     }
 
     public function nativeEnabled(): bool { return $this->settings['kind'] === 'windows'; }
+    public function mode(): string { return $this->store->mode(); }
+
+    private function checkRelease(): void
+    {
+        if ($this->mode() !== 'production') { return; }
+        $revision = @file_get_contents(dirname(__DIR__, 2).'/REVISION');
+        if ($this->settings['kind'] !== 'windows' || !is_string($revision)
+            || !preg_match('/^[a-f0-9]{40}\n$/D', $revision)
+            || @file_get_contents($this->directory.'/active-release') !== $revision) {
+            throw new \RuntimeException('inactive_release');
+        }
+    }
+
+    private function admit(callable $action): mixed
+    {
+        if ($this->mode() !== 'production') { return $action(); }
+        $path = $this->directory.'/admission.lock';
+        $lock = fopen($path, 'ce');
+        if ($lock === false || !chmod($path, 0600)) { throw new \RuntimeException('admission_failed'); }
+        try {
+            if (!flock($lock, LOCK_EX)) { throw new \RuntimeException('admission_failed'); }
+            $this->checkRelease();
+            if (file_exists($this->directory.'/maintenance')) { throw new \DomainException('maintenance'); }
+            return $action();
+        } finally { fclose($lock); }
+    }
 
     public function snapshot(Principal $actor): array
     {
         $this->access->authorize($actor, 'read');
         $result = [];
+        $maintenance = $this->mode() === 'production' && file_exists($this->directory.'/maintenance');
         foreach ($this->store->snapshot() as $server) {
             if (!in_array($server['id'], $actor->servers, true)) { continue; }
             $id = $server['id'];
@@ -90,8 +118,9 @@ final class ServerRuntime
             $connection = $fresh && $server['process'] === 'running' && !$active
                 ? ($this->settings['connections'][$id] ?? null) : null;
             $result[] = [...$server, 'name'=>$id === 'aska' ? 'ASKA' : 'Enshrouded', 'status'=>$status,
-                'detail'=>$detail, 'tone'=>$tone, 'can_start'=>$fresh && !$active && $server['process'] === 'stopped',
-                'can_stop'=>$fresh && !$active && $server['process'] === 'running',
+                'detail'=>$maintenance ? 'Die Verwaltung wird aktualisiert.' : $detail, 'tone'=>$tone,
+                'can_start'=>!$maintenance && $fresh && !$active && $server['process'] === 'stopped',
+                'can_stop'=>!$maintenance && $fresh && !$active && $server['process'] === 'running',
                 'connection'=>$connection, 'connection_label'=>$id === 'aska' ? 'Servername' : 'Beitrittsadresse',
                 'connection_help'=>$id === 'aska' ? 'In ASKA in der Serverliste nach dem Servernamen suchen.' : 'Im Spiel nach Adresse und Query-Port suchen.',
                 'operation'=>$operation === null ? null : array_intersect_key($operation, array_flip(['id','action','state']))];
@@ -110,28 +139,34 @@ final class ServerRuntime
         $op = $current['operation'];
         $sameActive = $op !== null && in_array($op['state'], ['pending','running'], true) && $op['action'] === $action;
         if (!$sameActive && !$current['can_'.$action]) { throw new \DomainException('server_busy'); }
-        $operation = (new AuthorizedOperations($this->access, $this->store))->reserve($actor, $server, $action);
-        $this->launch($server, $operation['id']);
+        $operation = $this->admit(function () use ($actor, $server, $action): array {
+            $operation = (new AuthorizedOperations($this->access, $this->store))->reserve($actor, $server, $action);
+            $this->launch($server, $operation['id']);
+            return $operation;
+        });
         return array_intersect_key($operation, array_flip(['id','server','action','state']));
     }
 
     public function refresh(Principal $actor): void
     {
         $this->access->authorize($actor, 'read');
-        foreach ($actor->servers as $server) {
+        $this->admit(function () use ($actor): void { foreach ($actor->servers as $server) {
             $this->store->recover($server);
             if ($this->store->claimRefresh($server)) {
                 try { $this->launch($server, 'status'); }
                 catch (\Throwable $e) { $this->store->releaseRefresh($server); throw $e; }
             }
-        }
+        } });
     }
 
     private function launch(string $server, string $job): void
     {
         // setsid's parent exits immediately; only the bounded one-shot executor continues.
-        $process = proc_open(['/usr/bin/setsid', '--fork', $this->settings['php'], dirname(__DIR__).'/bin/execute',
-            $this->directory, $server, $job], [0=>['file','/dev/null','r'],1=>['file','/dev/null','w'],2=>['file','/dev/null','w']], $pipes,
+        $command = ['/usr/bin/setsid', '--fork', $this->settings['php'], dirname(__DIR__).'/bin/execute', $this->directory, $server, $job];
+        if ($this->mode() === 'production') {
+            $command = ['/bin/sh','-c','exec 9>&-; exec "$@"','indy-job',...$command];
+        }
+        $process = proc_open($command, [0=>['file','/dev/null','r'],1=>['file','/dev/null','w'],2=>['file','/dev/null','w']], $pipes,
             null, array_intersect_key(getenv(), array_flip(['PATH','HOME','LANG','LC_ALL','TMPDIR','WSL_INTEROP','WSL_DISTRO_NAME'])));
         if (!is_resource($process) || proc_close($process) !== 0) { throw new \RuntimeException('executor_unavailable'); }
     }
@@ -141,7 +176,7 @@ final class ServerRuntime
         if (!in_array($server, ['aska','enshrouded'], true) || ($job !== 'status' && !preg_match('/^[a-f0-9]{32}$/D', $job))) {
             throw new \InvalidArgumentException('invalid_job');
         }
-        $lock = fopen($this->directory.'/'.($job === 'status' ? 'status-' : 'action-').$server.'.lock', 'c');
+        $lock = fopen($this->directory.'/'.($job === 'status' ? 'status-' : 'action-').$server.'.lock', 'ce');
         if ($lock === false) { throw new \RuntimeException('executor_unavailable'); }
         chmod($this->directory.'/'.($job === 'status' ? 'status-' : 'action-').$server.'.lock', 0600);
         $locked = false;
@@ -150,6 +185,7 @@ final class ServerRuntime
             if (!$locked) { return; }
             $bridge = new WindowsBridge($this->settings['bridge_directory'], $this->settings['bridge_command']);
             if ($job === 'status') {
+                $this->admit(fn () => null);
                 $operation = $this->store->latest($server);
                 $reconcile = $operation !== null && $operation['state'] === 'unknown';
                 $reply = $bridge->call($server, 'status', $reconcile ? $operation['id'] : null);
@@ -162,7 +198,7 @@ final class ServerRuntime
                 $operation = $this->store->operation($job);
                 if ($operation['server'] !== $server) { throw new \RuntimeException('operation_mismatch'); }
                 if ($operation['state'] !== 'pending') { return; }
-                (new AuthorizedOperations($this->access, $this->store))->begin($job);
+                $this->admit(fn () => (new AuthorizedOperations($this->access, $this->store))->begin($job));
                 $reply = $bridge->call($server, $operation['action'], $job);
                 $this->observation($server, $reply);
                 $state = match ($reply['outcome']) { 'succeeded'=>'succeeded', 'failed','busy'=>'failed', default=>'unknown' };

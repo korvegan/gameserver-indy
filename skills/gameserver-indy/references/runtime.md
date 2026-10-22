@@ -33,3 +33,12 @@ ausschließlich eigene Windows-Testprogramme, keine vorhandenen Spielinstallatio
 
 Wenn ein eigener Prozess beendet werden muss: vollständigen Codepfad, PID und
 Startidentität vor dem Signal prüfen. Keine Prozessnamen-Gruppen beenden.
+
+EP06 ergänzt den getrennten `php-mvp`-Startweg: unveränderliches Code-/Laufzeitpaket,
+persistentes `AppStateDirectory`, geschützte Freigabeübernahme und gezielte Umstellung.
+Anleitung und konkrete Betriebsgrenze: `app/docs/operation.md`. Solange kein
+Aktivierungsnachweis vorliegt, bleibt der oben beschriebene installierte Gerüststand
+führend. Eine reine Vorbereitung verändert weder Starter/Bootaufgabe noch echte Spiele.
+Rückweg setzt nur Codebindung zurück; aktuelle Zugänge, Schlüssel und native Belege
+nie aus alten Datenbanken wiederherstellen. Erstumstellung fällt auf das synthetische
+Gerüst zurück, nicht auf den archivierten Controller.

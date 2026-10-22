@@ -1,0 +1,21 @@
+<?php
+declare(strict_types=1);
+
+require dirname(__DIR__).'/src/Foundation.php';
+require dirname(__DIR__).'/src/Access.php';
+require dirname(__DIR__).'/src/WindowsBridge.php';
+require dirname(__DIR__).'/src/ServerRuntime.php';
+require dirname(__DIR__).'/src/Provision.php';
+
+try {
+    if ($argc === 3 && $argv[1] === '--fingerprint') {
+        echo \IndyNext\Provision::fingerprint($argv[2])."\n";
+    } elseif ($argc === 2 && is_file($argv[1]) && !is_link($argv[1]) && filesize($argv[1]) <= 65536
+        && (fileperms($argv[1]) & 0777) === 0600) {
+        \IndyNext\Provision::create(json_decode(file_get_contents($argv[1]), true, 16, JSON_THROW_ON_ERROR));
+        echo "Private Installation vorbereitet; kein Prozess gestartet.\n";
+    } else { throw new RuntimeException('invalid_provision_request'); }
+} catch (Throwable) {
+    fwrite(STDERR, "Vorbereitung abgebrochen. Private Eingaben und Quellstand prüfen; nichts aktivieren.\n");
+    exit(1);
+}

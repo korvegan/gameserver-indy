@@ -1,0 +1,22 @@
+<?php
+declare(strict_types=1);
+
+require dirname(__DIR__).'/src/Foundation.php';
+require dirname(__DIR__).'/src/Access.php';
+require dirname(__DIR__).'/src/WindowsBridge.php';
+require dirname(__DIR__).'/src/ServerRuntime.php';
+require dirname(__DIR__).'/src/HttpServer.php';
+
+try {
+    if ($argc !== 2 || (new \IndyNext\FixtureStore($argv[1]))->mode() !== 'production') {
+        throw new RuntimeException('provisioned_installation_required');
+    }
+    $path = $argv[1].'/service.json';
+    if (is_link($path) || !is_file($path) || (fileperms($path) & 0777) !== 0600 || filesize($path)>16384) {
+        throw new RuntimeException('private_service_settings_required');
+    }
+    \IndyNext\HttpServer::run($argv[1], json_decode(file_get_contents($path), true, 8, JSON_THROW_ON_ERROR));
+} catch (Throwable) {
+    fwrite(STDERR, "Verwaltung nicht gestartet. Release, private Konfiguration und Belegung prüfen.\n");
+    exit(1);
+}

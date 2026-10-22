@@ -14,6 +14,9 @@ der führende App-Bereich. PHP läuft unter WSL; native Windows-Aktionen erhalte
 eine möglichst kleine Brücke. Der aktuelle Stand ist ein isoliertes Gerüst mit
 synthetischen Daten, geprüftem Dashboard, nativer Brücke und Zugangsverwaltung.
 Echte Betriebsanbindung, persönliche Zugangsübernahme und Bootabnahme folgen in EP06.
+Der EP06-Code bereitet den dauerhaften Releaseweg samt gezielter Freigabeübernahme
+vor: `app/docs/operation.md`. Vorbereitung und isolierte Prüfungen aktivieren ihn nicht;
+die konkrete Betriebs-/Neustartfreigabe und persönliche Abnahme separat festhalten.
 Einstieg: `app/README.md`, Zielbild Forgejo #140.
 
 Die alte Verwaltung wurde geordnet gestoppt. Vollständiger Quellnachweis:

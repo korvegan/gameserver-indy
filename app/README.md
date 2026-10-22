@@ -13,17 +13,23 @@ mit isoliert geprüfter Serve-Vertrauensgrenze. EP05 verbindet
 [Dashboard und Spielbedienung](docs/dashboard.md) mit autorisierten einmaligen
 Brückenaufrufen. Der normale Start und die Zugangsablage bleiben synthetisch;
 reale Aktivierung, Freigabeübernahme und Betriebsabnahme folgen in EP06.
+Der [EP06-Releaseweg](docs/operation.md) ergänzt die dauerhafte Ablage, gezielte
+Freigabeübernahme, feste Sicherheitslaufzeit und den Wartungs-/Rückweg.
+Seine Vorbereitung aktiviert noch keinen Betrieb.
 
 ## Start und Prüfung
 
-Vorhanden sind PHP-CLI 8.5.4 und FrankenPHP 1.13.0 mit PHP 8.5.11. Der Code
+Die alten Entwicklungswerkzeuge sind PHP-CLI 8.5.4 und FrankenPHP 1.13.0 mit PHP 8.5.11.
+EP06 verwendet FrankenPHP 1.13.2 mit PHP 8.5.12 für HTTP und CLI; auch die Entwicklung
+vor weiterer Verwendung darauf umstellen. Der Code
 benötigt PHP ab 8.4 mit PDO SQLite, mbstring und iconv; der WSL-Entwicklungsstarter zusätzlich
-`pcntl` und `ctype`, die einmalige Ausführung das vorhandene `setsid` aus util-linux.
+`pcntl`, `posix` und `ctype`, die einmalige Ausführung das vorhandene `setsid` aus util-linux;
+der dauerhafte Start zusätzlich `flock` und GNU `env --chdir`.
 Neue Composer-/npm-Pakete werden nicht benötigt.
 
 ```sh
-export SLICE_PHP=/home/korvegan/.local/share/gameserver-indy-tools/php
-export SLICE_FRANKENPHP=/home/korvegan/.local/share/gameserver-indy-tools/frankenphp-1.13.0/frankenphp
+export SLICE_PHP=/pfad/zum/geprüften-mvp-release/runtime/php
+export SLICE_FRANKENPHP=/pfad/zum/geprüften-mvp-release/runtime/frankenphp
 "$SLICE_PHP" app/bin/dev
 ```
 
@@ -56,6 +62,7 @@ stehen in [windows-bridge.md](docs/windows-bridge.md).
 ```sh
 npm run check:archive
 python3 app/tests/check-install.py
+python3 app/tests/check-release.py
 ```
 
 Der Verpackungstest benötigt einen Commit mit der neuen `app/`-Struktur.
@@ -79,6 +86,7 @@ passende Skill-Referenz lesen. Hier genügen anschließend:
 - [Windows-Brücke und EP03-Prüfweg](docs/windows-bridge.md)
 - [Tailscale-Vertrauensgrenze, Zugänge und EP04-Prüfweg](docs/family-access.md)
 - [Dashboard, Ausführung und EP05-Prüfweg](docs/dashboard.md)
+- [Release, Umstellung, Rückweg und EP06-Abnahme](docs/operation.md)
 
 Technische Entscheidungen und Grenzen nach Änderungen dort knapp aktualisieren.
 Der Entwicklungsstart erteilt keine realen Familienrechte und steuert keine echten Spiele.

@@ -30,8 +30,9 @@ zeigt vorzeitig auf das Gerüst; die vollständige MVP-/Bootabnahme bleibt EP06.
   EP05 startet bei Bedarf begrenzte einzelne CLI-Prozesse für langsame Brückenaufrufe.
 - PHP rendert die Seiten. Seit EP05 ergänzt JavaScript gezielt Status, Aktionen,
   Stoppdialog und Kopieren; keine eigenständige JavaScript-App.
-- SQLite hält Beobachtungen und kleine Operationsdatensätze. Echte Spiel- und
-  Zugangsdaten werden weder übernommen noch als Fixture benutzt.
+- SQLite hält Beobachtungen und kleine Operationsdatensätze. Entwicklungsfixtures
+  verwenden keine echten Spiel- oder Zugangsdaten. EP06 provisioniert getrennt
+  davon eine private dauerhafte Installation mit gezielt übernommenen Freigaben.
 - PHP entscheidet über Rechte, Profile und erlaubte Aktionen. Die native
   Brücke prüft zusätzlich ihre eigenen Prozessziele und Eingaben. Sie erhält
   freigegebene Server-IDs und Aktionen, keine beliebigen Shellbefehle.
@@ -45,7 +46,8 @@ Aktion erhalten dieselbe ID; eine Gegenaktion wartet nicht in einer verborgenen
 Queue, sondern erhält `server_busy`. Unbekannter Ausgang blockiert weitere
 Aktionen bis zum geprüften Abgleich. Enshrouded und ASKA sind unabhängig reservierbar.
 
-`FixtureStore` ist der überprüfbare synthetische Zustandsvertrag, kein nativer
+`FixtureStore` hält den gemeinsamen Zustandsvertrag für Fixtures und die ausdrücklich
+markierte private EP06-Installation; er ist kein nativer
 Executor und keine vollständige Autorisierung. `Role` kennt Administrator und
 Familie; beide dürfen steuern, nur Administratoren Zugänge verwalten. EP04
 bindet bestätigte Identität und aktuelle Freigaben vor Annahme und Ausführung
@@ -53,12 +55,16 @@ an diese Rechte. Der HTTP-Einstieg nimmt in EP01 ausschließlich Lesezugriffe an
 
 ## Isolation und Daten
 
-Der Starter erzeugt ausschließlich neue Verzeichnisse `indy-next-<Zufallswert>`
+Der Entwicklungsstarter erzeugt ausschließlich neue Verzeichnisse `indy-next-<Zufallswert>`
 im temporären Systemverzeichnis, mit Verzeichnismodus 0700 und Dateien 0600.
 Der Store verlangt diesen Ort, Namen, eine Fixture-Markierung und eine vorhandene
 SQLite-Datei; direkte Symlinkziele werden abgelehnt. Diese Kontrolle begrenzt den
 Entwicklungsstart und ist keine Sandbox gegen andere Prozesse desselben Kontos.
 Ein echter Datenpfad/Adapter ist in EP01 nicht konfigurierbar.
+EP06 ergänzt einen getrennten provisionierten Startweg mit `installation`-Marker,
+Besitzer-/Modusprüfung, festem aktiven Release und Zustandslease. Ein fehlender
+Produktionszustand wird nicht automatisch angelegt. [Release und Rückweg](operation.md)
+beschreiben Übernahme, Auftragssperre und die gesonderte Betriebsfreigabe.
 
 HTTP bindet nur Loopback. Die PHP-Grenze prüft zusätzlich Peer und exakten Host.
 EP04 trennt lokalen Besitzer- und Serve-Zugang; HTTP-Rollenheader vergeben keine
