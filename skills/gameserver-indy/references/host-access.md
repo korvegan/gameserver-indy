@@ -1,9 +1,10 @@
 # Windows und Familienzugriff
 
-EP06: Der vorhandene Verwaltungstask verwendet noch Windows PowerShell 5.1.
-Der vorbereitete reine Aktionswechsel nutzt die installierte PowerShell 7.6.7
-im selben Besitzerkonto. Native lesende Profil-/Statusprüfung bestanden;
-eine Bootabnahme lässt sich daraus nicht ableiten. Ablauf: `app/docs/operation.md`.
+EP06: Der vorhandene Verwaltungstask verwendet PowerShell 7.6.7 im selben
+Besitzerkonto. Der separat freigegebene Windows-Neustart am 22.10.2026 bestätigt
+Verwaltungsstart in Sitzung 0, Smartphonezugriff und ASKA-Start/-Stopp vor bzw.
+aus dem Bootkontext. Welt-/Speicherabnahme nach diesem Boot bleibt offen.
+Nachweis und Grenzen: `app/docs/operation.md`.
 
 Anleitung: `docs/family-access.md`. WSL-Distribution `Indy`, Linux-/Windows-Benutzer `korvegan`; Launcher `%LOCALAPPDATA%\GameServerIndy`.
 
@@ -21,6 +22,7 @@ Anleitung: `docs/family-access.md`. WSL-Distribution `Indy`, Linux-/Windows-Benu
 - Familienlistener `8767`; Fixtures eigene Ports, z. B. `18767`. Geschützte CGI-Variable `INDY_LISTENER_PORT` identifiziert Listener, niemals HTTP-/Forwarded-Header.
 - EP04 im Neubau nutzt die geschützte CGI-Variable `INDY_LISTENER` (`local`/`family`), getrennte Loopback-Listener und den exakten `HTTP_HOST`. FrankenPHP lässt Host in `getallheaders()` aus. Browserformulare brauchen `Referrer-Policy: same-origin`; `no-referrer` führte unter Chrome zu `Origin: null` und korrekter Abweisung. Echte Serve-Aktivierung bleibt EP06.
 - EP05 reicht für entkoppelte WSL-CLI-Aufrufe gezielt `WSL_INTEROP` und `WSL_DISTRO_NAME` weiter; native HTTP-Prüfung mit beiden Windows-Stellvertretern bestanden. Den vollständigen `SLICE_PHP`-Wrapperstartweg erhalten, nicht nur `PHP_BINARY`. Keine globale WSLENV-/Netzänderung dafür nötig.
+- Nach dem Boot blieb ein ASKA-Stopp wegen `transport_failed` gesperrt, obwohl `proc_open` keinen Helfer erzeugt hatte. #167 behandelt diesen sicheren Nichtstart als fehlgeschlagen; Timeouts/verlorene Antworten bleiben unklar. Tatsächliche Ursache des damaligen Prozessstartfehlers unbestätigt. Diagnose und regulärer Stopp gelangen mit dem erhaltenen `WSL_INTEROP` der Verwaltung in Sitzung 0; ein Desktopaufruf nutzt sonst Sitzung 1.
 - WSL `mirrored`; Docker-Caddy auf `0.0.0.0:443` verursachte Tailscale-Bindkonflikte. Linux-/Windows-Listener gemeinsam betrachten; fremden Gateway nicht still entfernen.
 
 Aufnahme 15.10.2026: i9-12900KF, etwa 96 GB RAM, RTX 3080/10 GB, vier Spieler inkl. Host, Spielclient und Server teilen PC. Native Windows-Prozesse unterliegen nicht WSL 32 GB/12 vCPU. Gemessener Upload 10,6 Mbit/s. AC-Schlaf/Ruhezustand/Monitor-Timeout waren deaktiviert; heutige Werte bei Bedarf lesen, keine Dauerbetriebsgarantie ableiten.

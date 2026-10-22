@@ -124,7 +124,7 @@ Verwaltung nach Auftragssperre/Abwarten neu und vergleicht die Spielidentitäten
 - [ ] Verwaltung während Spielrunde neu gestartet: gleiche PID/Startzeit, Runde läuft weiter.
 - [ ] Nach vereinbartem Windows-Neustart am Anmeldebildschirm bleiben. Smartphonezugriff,
   ASKA-Start im tatsächlichen Bootkontext, Welt/Beitritt/Speichern bestätigen; erst dann Desktopanmeldung.
-- [ ] Privaten `startup-proof.json` mit Boot-/Bereitschaftszeit, Build und Windows-Sitzung 0
+- [x] Privaten `startup-proof.json` mit Boot-/Bereitschaftszeit, Build und Windows-Sitzung 0
   abgleichen. Ein Desktopaufruf überschreibt den vorhandenen Nachweis derselben Boot-Sitzung 0 nicht.
 
 Taskregistrierung, manueller Taskstart, synthetische Header und Besitzer-Selbsttest
@@ -159,8 +159,8 @@ Prüfung des Speicherformats oder Wiederherstellung.
 Die Prüfung mit anderer Familienidentität ist auf Nutzerwunsch verschoben.
 Sie und der Verwaltungsneustart bei gleichzeitig aktivem Spieler bleiben offen;
 Prozessfortbestand und Beitritt nach dem bisherigen Neustart sind belegt.
-Der private Startnachweis zeigt Sitzung 1 und ersetzt keinen Bootnachweis.
-Windows wurde nicht neu gestartet; dafür fehlt weiterhin der ausdrückliche Auftrag.
+Der damalige private Startnachweis zeigte Sitzung 1 und ersetzte keinen Bootnachweis.
+Der anschließend separat freigegebene Windows-Neustart ist unten festgehalten.
 
 Die anschließende Main-CI fand einen reproduzierten Lesewettlauf: Prozessbeobachtung
 und neuester Auftrag stammten aus getrennten Abfragen. Ein dazwischen abgeschlossener
@@ -170,3 +170,35 @@ Spielbefehle oder Datenbankstruktur. Der gezielte Test lässt einen zweiten Schr
 während der Statusabfrage abschließen. Aktuellen installierten Codecommit stets aus
 `launcher.local.json` und `/health` abgleichen; der Betriebsnachweis oben beschreibt
 die Erstumstellung. Auch die Korrektur wird nur als geprüftes Release installiert.
+
+## Bootprüfung und Brückenstartfehler vom 22.10.2026
+
+Der Nutzer gab den Windows-Neustart mit „ok, dann jetzt neustarten“ ausdrücklich frei.
+Der erhaltene private `startup-proof.json` bestätigt Boot um 14:30:22 UTC und
+Bereitschaft um 14:30:58 UTC in **Windows-Sitzung 0**, mit Build
+`ce32136fdd8e5fe8e6db7cdbde9dc8dd9dfbe92a` und derselben Zustandskennung.
+Der Nutzer bestätigt Smartphonezugriff und ASKA-Start vor der Desktopanmeldung.
+Native Beobachtung bestätigt den ASKA-Prozess in Sitzung 0.
+
+Der anschließende ASKA-Stopp blieb in der Oberfläche als unklar gesperrt.
+Der Executor hatte `transport_failed` gespeichert: `proc_open` hatte keinen
+Brückenprozess erzeugt. Der ursprüngliche Request lag vor, ein nativer Stoppbeleg
+und ein noch laufender zugehöriger Helfer fehlten. ASKA reagierte laut Windows;
+ein Zusammenhang mit seiner Spielinitialisierung ist nicht nachgewiesen.
+Der nachweislich nicht zugestellte ursprüngliche Stopp wurde im Bootkontext unter
+derselben Operations-ID zugestellt. Die Brücke bestätigte den regulären Stopp
+genau des beobachteten ASKA-Prozesses; der HTTP-Statusabgleich löste die Sperre.
+Danach beide Spiele gestoppt, keine Datenbankzeilen manuell zurückgesetzt.
+
+[#167](https://git.sturmklingen.dedyn.io/Korwerk/gameserver-indy/issues/167)
+unterscheidet den sicher fehlgeschlagenen Brückenstart von einem unklaren
+Ausführungsausgang. Ohne gestarteten Helfer schlägt der Auftrag fehl; nach frischer
+Prozessbeobachtung ist die Bedienung wieder möglich. Timeouts und verlorene oder
+ungültige Antworten bleiben unklar. Es gibt keine automatische Wiederholung.
+Ein eigener Testprozess begrenzt seine Dateideskriptoren und reproduziert den
+fehlgeschlagenen `proc_open`-Aufruf; die Ursache der damaligen Startstörung ist damit
+nicht bestimmt.
+
+Verwaltungsstart, Smartphonezugriff und ASKA-Start/-Stopp im Bootkontext sind belegt.
+Welt/Beitritt/Speichern nach diesem Boot, andere Familienidentität und ein
+Verwaltungsneustart während einer aktiven Spielerunde bleiben offen.

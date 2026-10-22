@@ -14,7 +14,9 @@ mit isoliert geprüfter Serve-Vertrauensgrenze. EP05 verbindet
 Brückenaufrufen. Der Entwicklungsstart bleibt synthetisch. Die installierte
 Verwaltung wurde in EP06 mit bestehenden Freigaben und echten Spielbindungen
 aktiviert. Beide Bestandswelten, Beitritt, Stopp und neue Speicherdateien sind
-bestätigt; Familienabnahme und Bootprüfung sind noch offen.
+bestätigt. Auch Verwaltungsstart, Smartphonezugriff und ASKA-Start/-Stopp in
+Windows-Sitzung 0 sind belegt; Familienabnahme und Welt-/Speicherprüfung nach
+diesem Boot bleiben offen.
 Der [EP06-Releaseweg](docs/operation.md) ergänzt die dauerhafte Ablage, gezielte
 Freigabeübernahme, feste Sicherheitslaufzeit und den Wartungs-/Rückweg.
 Vorbereitung und Aktivierung sind getrennte Schritte; der aktuelle Betriebsnachweis

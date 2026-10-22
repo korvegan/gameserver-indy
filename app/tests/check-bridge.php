@@ -14,11 +14,29 @@ function verify(bool $condition, string $message): void
 }
 
 $php = getenv('SLICE_PHP') ?: PHP_BINARY;
+if (($argv[1] ?? '') === '--spawn-unavailable') {
+    // Leave one descriptor for the request, fewer than proc_open needs for its three streams.
+    $limit = max(array_map('intval', array_filter(scandir('/proc/self/fd'), 'ctype_digit'))) + 1;
+    verify(posix_setrlimit(POSIX_RLIMIT_NOFILE, $limit, $limit), 'Limit only this disposable worker');
+    $bridge = new WindowsBridge($argv[2], [$php, __DIR__.'/bridge-peer.php', $argv[2], 'normal']);
+    echo json_encode(@$bridge->call('aska', 'stop', str_repeat('b', 32)), JSON_THROW_ON_ERROR);
+    exit;
+}
 $directory = sys_get_temp_dir().'/indy bridge-'.bin2hex(random_bytes(12));
 mkdir($directory, 0700);
 $fixture = FixtureStore::create();
 try {
     $client = fn (string $mode) => new WindowsBridge($directory, [$php, __DIR__.'/bridge-peer.php', $directory, $mode]);
+    $worker = proc_open([$php, __FILE__, '--spawn-unavailable', $directory],
+        [0=>['file','/dev/null','r'],1=>['pipe','w'],2=>['file','/dev/null','w']], $pipes);
+    verify(is_resource($worker), 'Spawn isolated descriptor-limit worker');
+    $unavailable = json_decode(stream_get_contents($pipes[1]), true, 16, JSON_THROW_ON_ERROR);
+    fclose($pipes[1]);
+    verify(proc_close($worker) === 0, 'Descriptor-limit worker finished');
+    verify($unavailable['outcome'] === 'failed' && $unavailable['error'] === 'transport_failed',
+        'A transport that never started must not leave the action uncertain');
+    verify(!file_exists($directory.'/calls.txt') && count(glob($directory.'/request-*.json')) === 0,
+        'No native effect or abandoned request after a failed spawn');
     $operation = str_repeat('a', 32);
     $result = $client('normal')->call('enshrouded', 'start', $operation);
     verify($result['outcome'] === 'succeeded' && $result['process'] === 'running' && $result['ready'] === null,
