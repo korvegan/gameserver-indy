@@ -41,7 +41,8 @@ final class FixtureStore
             server TEXT NOT NULL REFERENCES servers(id),
             action TEXT NOT NULL CHECK (action IN ('start', 'stop')),
             actor TEXT NOT NULL,
-            state TEXT NOT NULL CHECK (state IN ('pending', 'running', 'succeeded', 'failed', 'cancelled', 'unknown'))
+            state TEXT NOT NULL CHECK (state IN ('pending', 'running', 'succeeded', 'failed', 'cancelled', 'unknown')),
+            actor_revision INTEGER NOT NULL DEFAULT 0
         )");
         $db->exec("CREATE UNIQUE INDEX one_active_operation ON operations(server)
             WHERE state IN ('pending', 'running', 'unknown')");
@@ -69,7 +70,7 @@ final class FixtureStore
         if ($ids !== ['aska', 'enshrouded']) {
             throw new \RuntimeException('incomplete_fixture');
         }
-        $this->db->query('SELECT id, server, action, actor, state FROM operations LIMIT 0');
+        $this->db->query('SELECT id, server, action, actor, state, actor_revision FROM operations LIMIT 0');
     }
 
     public function snapshot(): array
@@ -92,7 +93,7 @@ final class FixtureStore
         $query->execute([$process, $ready === null ? null : (int) $ready, gmdate('c'), $server]);
     }
 
-    public function reserve(string $server, string $action, string $actor, Role $role): array
+    public function reserve(string $server, string $action, string $actor, Role $role, int $revision = 0): array
     {
         self::server($server);
         if (!in_array($action, ['start', 'stop'], true) || trim($actor) === '') {
@@ -112,8 +113,8 @@ final class FixtureStore
                 return $active;
             }
             $operation = ['id' => bin2hex(random_bytes(16)), 'server' => $server,
-                'action' => $action, 'actor' => $actor, 'state' => 'pending'];
-            $query = $this->db->prepare('INSERT INTO operations (id, server, action, actor, state) VALUES (?, ?, ?, ?, ?)');
+                'action' => $action, 'actor' => $actor, 'state' => 'pending', 'actor_revision' => $revision];
+            $query = $this->db->prepare('INSERT INTO operations (id, server, action, actor, state, actor_revision) VALUES (?, ?, ?, ?, ?, ?)');
             $query->execute(array_values($operation));
             $this->db->exec('COMMIT');
             return $operation;
@@ -137,6 +138,15 @@ final class FixtureStore
         if ($query->rowCount() !== 1) {
             throw new \RuntimeException('invalid_transition');
         }
+    }
+
+    public function operation(string $id): array
+    {
+        $query = $this->db->prepare('SELECT * FROM operations WHERE id = ?');
+        $query->execute([$id]);
+        $operation = $query->fetch();
+        if ($operation === false) { throw new \RuntimeException('operation_missing'); }
+        return $operation;
     }
 
     private static function server(string $server): void

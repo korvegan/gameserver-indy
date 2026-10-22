@@ -61,3 +61,50 @@ Der Nachweis bestätigt die Brücke an Stellvertretern. Echte Speicher- und
 Beitrittsprüfung beider Spiele, Familienrechte und Windows-Boot sind weiterhin
 gesondert abzunehmen. Es wurden keine echten Spielserver gestartet oder gestoppt;
 die HTTP-Diagnose aktiviert keine native Steuerung.
+
+## EP04: Identität und Zugangsverwaltung
+
+Stand 22.10.2026, Arbeitsissue #159. `npm run test:app` besteht einschließlich
+`check-access.php`: getrennte Listener, exakter Host/Peer, explizite Freigaben,
+Rollen/Serverbindung, Origin/CSRF, gefälschte Header, Zielrevisionen und Entzug vor
+Annahme sowie Beginn wartender synthetischer Aktionen. Ein echter HTTP-Aufruf am
+Familienbackend bestätigt auch die feste HTTPS-Origin und Administratorrechte;
+ein danach herabgestufter Administrator kann seinen alten Auftrag nicht senden.
+
+Browser-MCP: Einstieg `/access`, richtiger Titel, DOM und Desktop-Screenshot
+geprüft. Für Formulare, Viewports und Axe ergänzend vorhandenes Playwright 1.64.1
+mit passendem Chromium, ohne Displayvariablen: Der allgemeine Browser-MCP bietet
+keine Klick-/Viewportmethoden. `check-access-browser.cjs` besteht auf 1280, 390 und
+320 px; Anlage, Sperren/Freigeben, Rolle, geschützter eigener Zugang, Tastaturfokus,
+keine horizontalen Überläufe, Axe ohne Befund und keine Konsolen-/Seitenfehler.
+320 px ist zusätzlich der Layoutcheck; Kernabläufe laufen auf Desktop und Mobil.
+
+Ein erster Browserlauf zeigte `Origin: null` bei `no-referrer`; auf `same-origin`
+korrigiert und denselben Formularablauf erneut bestanden. Die Origin-Prüfung
+wurde nicht gelockert. Eine spätere Rollen-Disclosure beseitigt zusätzliche
+Zeilen im mobilen Entwurf; der zugängliche Name enthält den sichtbaren Rollennamen.
+
+Die akzeptierte zusammengesetzte Konzepttafel
+`design/ep02/concepts/zugaenge-calm-v3.png` und aktuelle Desktop-/Mobil-Screenshots
+wurden in derselben QA mit `view_image` verglichen. Die Tafel enthält Desktop und
+Smartphone nebeneinander, ist also kein einzelner Browserviewport. Die realen
+Ansichten wurden bei 1280×1080 und 390×844 erfasst; zusätzlich Layout bei 320 px.
+
+| Vergleichspunkt | Ergebnis |
+| --- | --- |
+| Beschriftungen/Hierarchie | Marke, zurück zur Serverzentrale, Zugänge, fünf Spalten und Person freigeben erhalten |
+| Layout | Desktop-Tabelle und mobile beschriftete Einträge; Formular folgt im Seitenfluss |
+| Palette/Flächen | Dunkle ruhige Flächen, feine Kanten, Gold für Freigeben und Fokus; keine Spielbilder auf Zugänge |
+| Typografie/Bedienung | Systemschrift, klare Titel, mindestens 44 px bedienbare Flächen, sichtbarer Fokus |
+| Status/Aktionen | Text plus Statuspunkt, einzelne Sperren/Freigeben-Aktion, eigener Zugang geschützt |
+| Notwendige Abweichungen | Lokaler Besitzer mit wahrer lokaler Zugangsart; Rollenname klappt Bearbeitung auf; skalierbares Schwert-/Kreis-SVG |
+
+Die sichtbare Beschriftung wurde gegen die freigegebene Liste geprüft. Ergänzt
+sind nur funktionsbezogene Bestätigung/Fehler und die oben benannten Abweichungen.
+Die Gestaltung ist gegen den bestätigten Entwurf geprüft; keine offenen
+funktionalen oder wesentlichen visuellen Abweichungen. Screenshots bleiben lokale
+QA-Ausgaben, keine persönlichen Freigaben oder Laufzeitdateien werden versioniert.
+
+Keine echten Konten, Serve-/Firewalländerungen, Spielaktionen oder Installation.
+Der bestehende persönliche Mobilzugang und Bootbetrieb sind damit nicht neu
+abgenommen; dafür bleibt EP06 zuständig.

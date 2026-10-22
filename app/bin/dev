@@ -2,11 +2,17 @@
 declare(strict_types=1);
 
 require dirname(__DIR__).'/src/Foundation.php';
+require dirname(__DIR__).'/src/Access.php';
 
 $port = $argv[1] ?? '18765';
 $engine = getenv('SLICE_FRANKENPHP');
-if ($argc > 2 || !ctype_digit($port) || (int) $port < 1024 || (int) $port > 65535) {
-    fwrite(STDERR, "Aufruf: php app/bin/dev [Port 1024–65535]\n");
+$familyPort = $argv[2] ?? null;
+$familyHost = $argv[3] ?? null;
+if (!in_array($argc, [1,2,4], true) || !ctype_digit($port) || (int) $port < 1024 || (int) $port > 65535
+    || ($familyPort !== null && (!ctype_digit($familyPort) || (int) $familyPort < 1024
+        || (int) $familyPort > 65535 || (int) $familyPort === (int) $port
+        || !preg_match('/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.ts\.net$/D', $familyHost ?? '')))) {
+    fwrite(STDERR, "Aufruf: php app/bin/dev [Port [Familien-Testport Tailscale-Hostname]]\n");
     exit(2);
 }
 if (!$engine || !is_file($engine) || !is_executable($engine) || !function_exists('pcntl_exec')) {
@@ -14,12 +20,18 @@ if (!$engine || !is_file($engine) || !is_executable($engine) || !function_exists
     exit(2);
 }
 $fixture = \IndyNext\FixtureStore::create();
+\IndyNext\AccessStore::create($fixture);
 echo 'Fixture: '.$fixture."\n";
 echo 'URL: http://127.0.0.1:'.(int) $port."\n";
 flush();
 $environment = array_intersect_key(getenv(), array_flip(['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR']));
 $environment['INDY_NEXT_PORT'] = (string) (int) $port;
 $environment['INDY_NEXT_FIXTURE'] = $fixture;
+$environment['INDY_FAMILY_CONFIG'] = $familyPort === null ? 'family-disabled.caddy' : 'family.caddy';
+if ($familyPort !== null) {
+    $environment['INDY_FAMILY_PORT'] = (string) (int) $familyPort;
+    $environment['INDY_FAMILY_HOST'] = $familyHost;
+}
 $revisionFile = dirname(__DIR__, 2).'/REVISION';
 $revision = is_file($revisionFile) ? trim(file_get_contents($revisionFile)) : 'development';
 if (!preg_match('/^(development|[a-f0-9]{40})$/D', $revision)) {
