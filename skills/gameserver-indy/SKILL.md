@@ -15,8 +15,10 @@ eine möglichst kleine Brücke. Der Entwicklungsstart verwendet synthetische Dat
 Die installierte Verwaltung wurde am 22.10.2026 in EP06 auf `php-mvp` mit echten
 Spielbindungen und bestehenden Freigaben umgestellt. Smartphonezugriff, beide
 Bestandswelten/Beitritte, reguläre Stopps und neue Speicherdateien sind bestätigt;
-Verwaltungsneustart erhält die Spielprozesse. Andere Familienidentität, Neustart
-mit aktivem Spieler und Boot ohne Desktopanmeldung bleiben offen.
+Verwaltungsneustart erhält die Spielprozesse. Nach freigegebenem Windows-Neustart
+sind Verwaltungsstart, Smartphonezugriff und ASKA-Start/-Stopp in Sitzung 0 bestätigt.
+Andere Familienidentität, Neustart mit aktivem Spieler und Welt-/Speicherabnahme
+nach diesem Boot bleiben offen.
 Aktueller Nachweis und Rückweg: `app/docs/operation.md`.
 Vorbereitung und isolierte Prüfungen aktivieren keinen Betrieb;
 die konkrete Betriebs-/Neustartfreigabe und persönliche Abnahme separat festhalten.

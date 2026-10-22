@@ -36,8 +36,11 @@ ohne ExecutionPolicy-Bypass. Ihr Aktionswechsel verlangte trotz administrativem
 Kontext mit `0x8007052e` erneut das Windows-Kontokennwort. Der Nutzer führte
 `Set-ScheduledTask` lokal mit `-User` und `-Password` aus; Konto und Trigger blieben
 erhalten, XML-Sicherung liegt privat. Kennwort/PIN nie in Chat oder Repository erfassen.
-Der aktuelle Startnachweis zeigt Windows-Sitzung 1. Boot ohne Desktopanmeldung
-und ASKA in Sitzung 0 bleiben ungeprüft; Windows-Neustart braucht ausdrücklichen Auftrag.
+Der separat freigegebene Windows-Neustart am 22.10.2026 bestätigt Verwaltungsstart
+in Sitzung 0, Smartphonezugriff und ASKA-Start vor Desktopanmeldung. Der erhaltene
+Startnachweis passt zu Boot, Build und Zustand. ASKA danach regulär in Sitzung 0
+gestoppt; Welt/Beitritt/Speichern nach diesem Boot bleiben offen. Weitere Windows-
+Neustarts brauchen einen passenden Auftrag.
 
 Wenn ein eigener Prozess beendet werden muss: vollständigen Codepfad, PID und
 Startidentität vor dem Signal prüfen. Keine Prozessnamen-Gruppen beenden.

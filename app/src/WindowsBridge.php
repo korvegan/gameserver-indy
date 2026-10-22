@@ -49,7 +49,9 @@ final class WindowsBridge
             $process = proc_open([...$this->command, '-Request', $nonce],
                 [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
             if (!is_resource($process)) {
-                return $this->uncertain($request, 'transport_failed');
+                // No helper was spawned, so the action never reached Windows.
+                $finished = true;
+                return [...$this->uncertain($request, 'transport_failed'), 'outcome' => 'failed'];
             }
             $deadline = hrtime(true) + (int) ($timeout * 1_000_000_000);
             do {
